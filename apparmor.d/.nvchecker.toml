@@ -1,0 +1,4 @@
+["apparmor.d"]
+source = "git"
+git = "https://github.com/roddhjav/apparmor.d.git"
+prefix = "v"

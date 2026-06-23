@@ -1,0 +1,4 @@
+[xlayoutdisplay]
+source = "git"
+git = "https://github.com/alex-courtis/xlayoutdisplay.git"
+prefix = "v"

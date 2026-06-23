@@ -1,0 +1,4 @@
+[freefilesync]
+source = "regex"
+url = "https://freefilesync.org/download.php"
+regex = 'FreeFileSync_(\d+(?:\.\d+)*)_Source\.zip'

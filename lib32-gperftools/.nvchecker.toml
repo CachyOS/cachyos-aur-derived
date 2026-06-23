@@ -1,0 +1,3 @@
+[lib32-gperftools]
+source = "git"
+git = "https://github.com/gperftools/gperftools.git"

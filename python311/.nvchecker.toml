@@ -1,0 +1,4 @@
+[python311]
+source = "regex"
+url = "https://www.python.org/ftp/python/"
+regex = 'href="(3\.11\.\d+)/"'

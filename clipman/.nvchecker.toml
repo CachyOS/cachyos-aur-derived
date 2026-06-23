@@ -1,0 +1,4 @@
+[clipman]
+source = "git"
+git = "https://github.com/chmouel/clipman.git"
+prefix = "v"

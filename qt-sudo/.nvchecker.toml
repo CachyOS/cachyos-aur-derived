@@ -1,0 +1,4 @@
+[qt-sudo]
+source = "git"
+git = "https://github.com/aarnt/qt-sudo.git"
+prefix = "v"

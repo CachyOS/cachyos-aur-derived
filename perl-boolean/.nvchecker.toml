@@ -1,0 +1,3 @@
+[perl-boolean]
+source = "cpan"
+cpan = "boolean"

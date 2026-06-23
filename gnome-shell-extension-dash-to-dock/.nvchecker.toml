@@ -1,0 +1,3 @@
+[gnome-shell-extension-dash-to-dock]
+source = "git"
+git = "https://github.com/micheleg/dash-to-dock.git"

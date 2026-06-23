@@ -1,0 +1,4 @@
+[cargo-pgo]
+source = "git"
+git = "https://github.com/kobzol/cargo-pgo.git"
+prefix = "v"

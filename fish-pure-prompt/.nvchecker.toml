@@ -1,0 +1,4 @@
+[fish-pure-prompt]
+source = "git"
+git = "https://github.com/pure-fish/pure.git"
+prefix = "v"

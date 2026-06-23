@@ -1,0 +1,4 @@
+[libscrypt]
+source = "git"
+git = "https://github.com/technion/libscrypt.git"
+prefix = "v"

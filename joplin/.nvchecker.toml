@@ -1,0 +1,4 @@
+[joplin]
+source = "git"
+git = "https://github.com/laurent22/joplin.git"
+prefix = "v"

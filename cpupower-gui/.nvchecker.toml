@@ -1,0 +1,4 @@
+[cpupower-gui]
+source = "git"
+git = "https://github.com/vagnum08/cpupower-gui.git"
+prefix = "v"

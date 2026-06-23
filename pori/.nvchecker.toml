@@ -1,0 +1,4 @@
+[pori]
+source = "git"
+git = "https://github.com/Seafoam-Labs/Pori.git"
+prefix = "v"

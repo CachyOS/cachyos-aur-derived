@@ -1,0 +1,4 @@
+[pamac-aur]
+source = "git"
+git = "https://github.com/manjaro/pamac.git"
+prefix = "v"

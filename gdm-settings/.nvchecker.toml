@@ -1,0 +1,4 @@
+[gdm-settings]
+source = "git"
+git = "https://github.com/gdm-settings/gdm-settings.git"
+prefix = "v"

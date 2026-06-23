@@ -1,0 +1,3 @@
+[freetube]
+source = "git"
+git = "https://github.com/FreeTubeApp/FreeTube.git"

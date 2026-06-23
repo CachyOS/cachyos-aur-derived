@@ -1,0 +1,4 @@
+[obs-vkcapture]
+source = "git"
+git = "https://github.com/nowrep/obs-vkcapture.git"
+prefix = "v"

@@ -1,0 +1,4 @@
+[hhd-ui]
+source = "git"
+git = "https://github.com/hhd-dev/hhd-ui.git"
+prefix = "v"

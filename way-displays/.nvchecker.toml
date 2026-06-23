@@ -1,0 +1,3 @@
+[way-displays]
+source = "git"
+git = "https://github.com/alex-courtis/way-displays.git"

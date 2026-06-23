@@ -1,0 +1,4 @@
+[zfsbootmenu]
+source = "git"
+git = "https://github.com/zbm-dev/zfsbootmenu.git"
+prefix = "v"

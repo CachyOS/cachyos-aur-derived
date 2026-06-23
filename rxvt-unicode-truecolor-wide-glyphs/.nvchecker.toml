@@ -1,0 +1,4 @@
+[rxvt-unicode-truecolor-wide-glyphs]
+source = "regex"
+url = "https://dist.schmorp.de/rxvt-unicode/Attic/"
+regex = 'rxvt-unicode-(\d+(?:\.\d+)*)\.tar\.bz2'

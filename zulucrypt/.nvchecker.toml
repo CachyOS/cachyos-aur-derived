@@ -1,0 +1,4 @@
+[zulucrypt]
+source = "git"
+git = "https://github.com/mhogomchungu/zuluCrypt.git"
+prefix = "v"

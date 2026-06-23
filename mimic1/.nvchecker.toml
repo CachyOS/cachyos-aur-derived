@@ -1,0 +1,3 @@
+[mimic1]
+source = "git"
+git = "https://github.com/MycroftAI/mimic1.git"

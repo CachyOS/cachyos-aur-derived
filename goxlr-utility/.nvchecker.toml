@@ -1,0 +1,4 @@
+[goxlr-utility]
+source = "git"
+git = "https://github.com/GoXLR-on-Linux/goxlr-utility.git"
+prefix = "v"

@@ -1,0 +1,3 @@
+[optimus-manager-qt]
+source = "git"
+git = "https://github.com/Shatur/optimus-manager-qt.git"

@@ -1,0 +1,4 @@
+[xob]
+source = "git"
+git = "https://github.com/florentc/xob.git"
+prefix = "v"

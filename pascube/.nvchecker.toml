@@ -1,0 +1,4 @@
+[pascube]
+source = "git"
+git = "https://github.com/benjamimgois/pascube.git"
+prefix = "v"

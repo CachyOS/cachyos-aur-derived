@@ -1,0 +1,3 @@
+[cursor-bin]
+source = "git"
+git = "https://gitlab.archlinux.org/archlinux/packaging/packages/code.git"

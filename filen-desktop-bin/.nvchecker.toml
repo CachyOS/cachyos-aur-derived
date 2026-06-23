@@ -1,0 +1,5 @@
+[filen-desktop-bin]
+source = "github"
+github = "FilenCloudDienste/filen-desktop"
+use_latest_release = true
+prefix = "v"

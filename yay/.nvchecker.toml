@@ -1,0 +1,4 @@
+[yay]
+source = "git"
+git = "https://github.com/Jguer/yay.git"
+prefix = "v"

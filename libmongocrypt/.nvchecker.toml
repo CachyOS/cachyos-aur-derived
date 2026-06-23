@@ -1,0 +1,3 @@
+[libmongocrypt]
+source = "git"
+git = "https://github.com/mongodb/libmongocrypt.git"

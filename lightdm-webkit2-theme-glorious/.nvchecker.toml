@@ -1,0 +1,4 @@
+[lightdm-webkit2-theme-glorious]
+source = "git"
+git = "https://github.com/manilarome/lightdm-webkit2-theme-glorious.git"
+prefix = "v"

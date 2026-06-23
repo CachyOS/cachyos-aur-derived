@@ -1,0 +1,3 @@
+[r8168-dkms]
+source = "git"
+git = "https://github.com/mtorromeo/r8168.git"

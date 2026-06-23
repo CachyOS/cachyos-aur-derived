@@ -1,0 +1,4 @@
+[celt]
+source = "git"
+git = "https://gitlab.xiph.org/xiph/celt.git"
+prefix = "v"

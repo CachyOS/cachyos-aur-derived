@@ -1,0 +1,3 @@
+[patool]
+source = "git"
+git = "https://github.com/wummel/patool.git"

@@ -1,0 +1,3 @@
+[cryptomator]
+source = "git"
+git = "https://github.com/cryptomator/cryptomator.git"

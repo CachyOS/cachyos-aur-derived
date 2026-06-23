@@ -1,0 +1,4 @@
+[refind-btrfs]
+source = "git"
+git = "https://github.com/Venom1991/refind-btrfs.git"
+prefix = "v"

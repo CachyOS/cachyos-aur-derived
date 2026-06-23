@@ -1,0 +1,4 @@
+[adjustor]
+source = "git"
+git = "https://github.com/hhd-dev/adjustor.git"
+prefix = "v"

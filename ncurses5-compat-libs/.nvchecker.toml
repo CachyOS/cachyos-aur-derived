@@ -1,0 +1,4 @@
+[ncurses5-compat-libs]
+source = "regex"
+url = "https://ftp.gnu.org/pub/gnu/ncurses/"
+regex = 'ncurses-(\d+(?:\.\d+)*)\.tar\.gz'

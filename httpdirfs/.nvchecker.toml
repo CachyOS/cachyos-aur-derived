@@ -1,0 +1,4 @@
+[httpdirfs]
+source = "git"
+git = "https://github.com/fangfufu/httpdirfs.git"
+prefix = "v"

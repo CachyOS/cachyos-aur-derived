@@ -1,0 +1,3 @@
+[beautyline]
+source = "git"
+git = "https://gitlab.com/garuda-linux/themes-and-settings/artwork/beautyline.git"

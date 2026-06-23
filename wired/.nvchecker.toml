@@ -1,0 +1,4 @@
+[wired]
+source = "git"
+git = "https://github.com/Toqozz/wired-notify.git"
+prefix = "v"

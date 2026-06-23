@@ -1,0 +1,3 @@
+[pwvucontrol]
+source = "git"
+git = "https://github.com/saivert/pwvucontrol.git"

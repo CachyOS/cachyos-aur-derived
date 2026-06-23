@@ -1,0 +1,3 @@
+[wd719x-firmware]
+source = "git"
+git = "https://github.com/mijailr/wd719x-firmware.git"

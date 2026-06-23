@@ -1,0 +1,3 @@
+[perl-linux-desktopfiles]
+source = "cpan"
+cpan = "Linux-DesktopFiles"

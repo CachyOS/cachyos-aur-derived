@@ -1,0 +1,3 @@
+[libsrm]
+source = "git"
+git = "https://github.com/CuarzoSoftware/SRM.git"

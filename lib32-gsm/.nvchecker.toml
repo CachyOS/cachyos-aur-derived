@@ -1,0 +1,4 @@
+[lib32-gsm]
+source = "regex"
+url = "http://www.quut.com/gsm/"
+regex = 'gsm-(\d+(?:\.\d+)+)\.tar\.gz'

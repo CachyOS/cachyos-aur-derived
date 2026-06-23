@@ -1,0 +1,4 @@
+[noctalia-shell]
+source = "git"
+git = "https://github.com/noctalia-dev/noctalia.git"
+prefix = "v"

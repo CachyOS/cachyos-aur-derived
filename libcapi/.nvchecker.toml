@@ -1,0 +1,4 @@
+[libcapi]
+source = "git"
+git = "https://gitlab.com/tabos/libcapi.git"
+prefix = "v"

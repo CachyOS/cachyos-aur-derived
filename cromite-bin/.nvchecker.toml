@@ -1,0 +1,4 @@
+[cromite-bin]
+source = "git"
+git = "https://github.com/foutrelis/chromium-launcher.git"
+prefix = "v"

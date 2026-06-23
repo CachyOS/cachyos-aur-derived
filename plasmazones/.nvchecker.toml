@@ -1,0 +1,4 @@
+[plasmazones]
+source = "git"
+git = "https://github.com/fuddlesworth/PlasmaZones.git"
+prefix = "v"

@@ -1,0 +1,4 @@
+[mongodb-compass]
+source = "git"
+git = "https://github.com/mongodb-js/compass.git"
+prefix = "v"

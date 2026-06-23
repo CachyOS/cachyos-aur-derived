@@ -1,0 +1,4 @@
+[modprobed-db]
+source = "git"
+git = "https://github.com/graysky2/modprobed-db.git"
+prefix = "v"

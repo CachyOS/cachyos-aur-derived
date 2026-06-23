@@ -1,0 +1,3 @@
+[cef-minimal-obs-bin]
+source = "git"
+git = "https://github.com/tytan652/cef.git"

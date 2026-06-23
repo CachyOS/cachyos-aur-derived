@@ -1,0 +1,4 @@
+[amneziawg-dkms]
+source = "git"
+git = "https://github.com/amnezia-vpn/amneziawg-linux-kernel-module.git"
+prefix = "v"

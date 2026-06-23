@@ -1,0 +1,4 @@
+[amneziawg-tools]
+source = "git"
+git = "https://github.com/amnezia-vpn/amneziawg-tools.git"
+prefix = "v"

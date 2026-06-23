@@ -1,0 +1,3 @@
+[circle-flags]
+source = "git"
+git = "https://github.com/linuxmint/circle-flags.git"

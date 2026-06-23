@@ -1,0 +1,3 @@
+[faugus-launcher]
+source = "git"
+git = "https://github.com/Faugus/faugus-launcher.git"

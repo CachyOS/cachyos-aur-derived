@@ -1,0 +1,4 @@
+[equibop]
+source = "git"
+git = "https://github.com/Equicord/Equibop.git"
+prefix = "v"

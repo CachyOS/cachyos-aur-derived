@@ -1,0 +1,4 @@
+[httpfs2-2gbplus]
+source = "regex"
+url = "https://sourceforge.net/projects/httpfs/files/httpfs2/"
+regex = 'httpfs2-(\d+(?:\.\d+)+)\.tar\.gz'

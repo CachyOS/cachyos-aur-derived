@@ -1,0 +1,4 @@
+[heroic-games-launcher-bin]
+source = "git"
+git = "https://github.com/Heroic-Games-Launcher/HeroicGamesLauncher.git"
+prefix = "v"

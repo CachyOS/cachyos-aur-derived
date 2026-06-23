@@ -1,0 +1,4 @@
+[auto-cpufreq]
+source = "git"
+git = "https://github.com/AdnanHodzic/auto-cpufreq.git"
+prefix = "v"

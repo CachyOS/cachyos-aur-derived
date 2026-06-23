@@ -1,0 +1,4 @@
+[auto-epp]
+source = "git"
+git = "https://github.com/jothi-prasath/auto-epp.git"
+prefix = "v"

@@ -1,0 +1,4 @@
+[ds-inhibit]
+source = "git"
+git = "https://gitlab.com/evlaV/ds-inhibit.git"
+prefix = "v"

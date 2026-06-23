@@ -1,0 +1,6 @@
+[gimp-devel]
+source = "git"
+git = "https://gitlab.gnome.org/GNOME/gimp.git"
+include_regex = 'GIMP_\d+_\d+_\d+_RC\d+'
+from_pattern = 'GIMP_(\d+)_(\d+)_(\d+)_RC(\d+)'
+to_pattern = '\1.\2.\3rc\4'

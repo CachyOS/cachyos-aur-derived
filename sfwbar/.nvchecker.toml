@@ -1,0 +1,4 @@
+[sfwbar]
+source = "git"
+git = "https://github.com/LBCrion/sfwbar.git"
+prefix = "v"

@@ -1,0 +1,4 @@
+[shelly]
+source = "git"
+git = "https://github.com/Seafoam-Labs/Shelly-ALPM.git"
+prefix = "v"

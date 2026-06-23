@@ -1,0 +1,4 @@
+[etcher-bin]
+source = "git"
+git = "https://github.com/balena-io/etcher.git"
+prefix = "v"

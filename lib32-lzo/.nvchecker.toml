@@ -1,0 +1,4 @@
+[lib32-lzo]
+source = "regex"
+url = "https://www.oberhumer.com/opensource/lzo/download/"
+regex = 'lzo-(\d+(?:\.\d+)+)\.tar\.gz'

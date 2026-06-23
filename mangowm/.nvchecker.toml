@@ -1,0 +1,3 @@
+[mangowm]
+source = "git"
+git = "https://github.com/mangowm/mango.git"

@@ -1,0 +1,4 @@
+[chromium-extension-web-store]
+source = "git"
+git = "https://github.com/NeverDecaf/chromium-web-store.git"
+prefix = "v"

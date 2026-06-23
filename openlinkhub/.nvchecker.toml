@@ -1,0 +1,3 @@
+[openlinkhub]
+source = "git"
+git = "https://github.com/jurkovic-nikola/OpenLinkHub.git"

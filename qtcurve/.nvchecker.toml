@@ -1,0 +1,4 @@
+[qtcurve]
+source = "git"
+git = "https://invent.kde.org/system/qtcurve.git"
+prefix = "v"

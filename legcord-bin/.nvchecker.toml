@@ -1,0 +1,5 @@
+[legcord-bin]
+source = "github"
+github = "Legcord/Legcord"
+use_latest_release = true
+prefix = "v"

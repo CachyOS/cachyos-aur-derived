@@ -1,0 +1,3 @@
+[jitsi]
+source = "git"
+git = "https://github.com/jitsi/jitsi.git"

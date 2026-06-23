@@ -1,0 +1,3 @@
+[clementine]
+source = "git"
+git = "https://github.com/clementine-player/Clementine.git"

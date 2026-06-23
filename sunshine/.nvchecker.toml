@@ -1,0 +1,4 @@
+[sunshine]
+source = "git"
+git = "https://github.com/LizardByte/Sunshine.git"
+prefix = "v"

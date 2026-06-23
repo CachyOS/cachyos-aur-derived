@@ -1,0 +1,4 @@
+[teams-for-linux]
+source = "git"
+git = "https://github.com/IsmaelMartinez/teams-for-linux.git"
+prefix = "v"

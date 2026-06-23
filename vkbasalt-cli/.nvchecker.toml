@@ -1,0 +1,4 @@
+[vkbasalt-cli]
+source = "git"
+git = "https://gitlab.com/TheEvilSkeleton/vkbasalt-cli.git"
+prefix = "v"

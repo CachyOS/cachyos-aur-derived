@@ -1,0 +1,4 @@
+[mini-benchmarker]
+source = "git"
+git = "https://gitlab.com/torvic9/mini-benchmarker.git"
+prefix = "v"

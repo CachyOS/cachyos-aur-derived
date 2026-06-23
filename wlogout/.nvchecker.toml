@@ -1,0 +1,3 @@
+[wlogout]
+source = "git"
+git = "https://github.com/ArtsyMacaw/wlogout.git"

@@ -1,0 +1,4 @@
+[swaylock-effects]
+source = "git"
+git = "https://github.com/jirutka/swaylock-effects.git"
+prefix = "v"

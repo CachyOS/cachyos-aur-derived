@@ -1,0 +1,3 @@
+[ungoogled-chromium-bin]
+source = "git"
+git = "https://github.com/ungoogled-software/ungoogled-chromium-archlinux.git"

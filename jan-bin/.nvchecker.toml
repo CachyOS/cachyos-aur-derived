@@ -1,0 +1,4 @@
+[jan-bin]
+source = "git"
+git = "https://github.com/janhq/jan.git"
+prefix = "v"

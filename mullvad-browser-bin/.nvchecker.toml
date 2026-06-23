@@ -1,0 +1,4 @@
+[mullvad-browser-bin]
+source = "regex"
+url = "https://dist.torproject.org/mullvadbrowser/"
+regex = 'href="(\d+(?:\.\d+)*)/"'

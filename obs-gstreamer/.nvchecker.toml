@@ -1,0 +1,4 @@
+[obs-gstreamer]
+source = "git"
+git = "https://github.com/fzwoch/obs-gstreamer.git"
+prefix = "v"

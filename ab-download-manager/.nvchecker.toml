@@ -1,0 +1,4 @@
+[ab-download-manager]
+source = "git"
+git = "https://github.com/amir1376/ab-download-manager.git"
+prefix = "v"
