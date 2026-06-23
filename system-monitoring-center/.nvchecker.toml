@@ -1,0 +1,4 @@
+[system-monitoring-center]
+source = "git"
+git = "https://github.com/mamolinux/system-monitoring-center.git"
+prefix = "v"

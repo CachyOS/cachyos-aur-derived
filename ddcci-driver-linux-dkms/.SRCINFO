@@ -1,0 +1,15 @@
+pkgbase = ddcci-driver-linux-dkms
+	pkgdesc = A pair of Linux kernel drivers for DDC/CI monitors (DKMS)
+	pkgver = 0.4.5
+	pkgrel = 1
+	url = https://gitlab.com/ddcci-driver-linux/ddcci-driver-linux/
+	arch = i686
+	arch = x86_64
+	arch = aarch64
+	license = GPL2
+	depends = dkms
+	conflicts = ddcci-driver-linux
+	source = https://gitlab.com/ddcci-driver-linux/ddcci-driver-linux/-/archive/v0.4.5/ddcci-driver-linux-v0.4.5.tar.gz
+	b2sums = c4bfea5acbe0c78370fee7fad34de6cbf2b500c0d1620b4f717119859466cd111a88d5ec38d7545e9e8904052ce12ed09ad7bd3f7fd9227fd7137b94fee50be0
+
+pkgname = ddcci-driver-linux-dkms

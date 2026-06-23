@@ -1,0 +1,8 @@
+*
+!.gitignore
+!.SRCINFO
+!BUILDING
+!PKGBUILD
+!vscodium-uri-handler.desktop
+!vscodium-wayland.desktop
+!vscodium.desktop

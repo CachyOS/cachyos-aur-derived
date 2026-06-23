@@ -1,0 +1,21 @@
+diff --unified --recursive --text a/src/graphics.rs b/src/graphics.rs
+--- a/src/graphics.rs	2025-09-23 10:07:35.000000000 -0600
++++ b/src/graphics.rs	2025-09-23 11:39:57.133696948 -0600
+@@ -137,7 +137,7 @@
+     SysFs(io::Error),
+     #[error("failed to unbind {} on PCI driver {}: {}", func, driver, why)]
+     Unbind { func: String, driver: String, why: io::Error },
+-    #[error("update-initramfs failed with {} status", _0)]
++    #[error("mkinitcpio failed with {} status", _0)]
+     UpdateInitramfs(ExitStatus),
+     #[error("failed to access Xserver config: {}", _0)]
+     XserverConf(io::Error),
+@@ -686,7 +686,7 @@
+     if path::Path::new("/usr/bin/dracut").exists() {
+         ("dracut", "--force")
+     } else {
+-        ("update-initramfs", "-u")
++        ("mkinitcpio", "-P")
+     }
+ }
+ 

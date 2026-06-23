@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=Joplin
+Comment=Joplin for Desktop
+Exec=/usr/bin/joplin-desktop
+Terminal=false
+Icon=joplin-desktop
+StartupWMClass=@joplin/app-desktop
+Type=Application
+Categories=Office;
+MimeType=x-scheme-handler/joplin;
+SingleMainWindow=true

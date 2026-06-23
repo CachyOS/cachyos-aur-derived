@@ -1,0 +1,9 @@
+*.pkg.*
+*.log
+OpenTabletDriver*.tar.gz
+opentabletdriver*.tar.gz
+OpenTabletDriver/
+OpenTabletDriver-udev/
+
+pkg/
+src/

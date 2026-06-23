@@ -1,0 +1,9 @@
+diff -ura httpdirfs-1.2.11.orig/meson.build httpdirfs-1.2.11.new/meson.build
+--- httpdirfs-1.2.11.orig/meson.build	2026-05-23 18:21:16.260268673 +0200
++++ httpdirfs-1.2.11.new/meson.build	2026-05-23 18:21:28.135088264 +0200
+@@ -94,5 +94,3 @@
+ 
+ run_target('doxygen',
+   command : 'scripts/doxygen.sh')
+-
+-subdir('tests')

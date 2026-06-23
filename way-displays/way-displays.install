@@ -1,0 +1,48 @@
+all_off="$(tput sgr0)"
+bold="${all_off}$(tput bold)"
+red="${bold}$(tput setaf 1)"
+green="${bold}$(tput setaf 2)" # PR
+yellow="${bold}$(tput setaf 3)" # title
+blue="${bold}$(tput setaf 4)" # section
+magenta="${bold}$(tput setaf 5)" # issue
+cyan="${bold}$(tput setaf 6)" # person
+
+# Colored makepkg-like functions
+note() {
+    printf "${blue}==>${yellow} NOTE:${all_off} ${1}\n"
+}
+
+plain() {
+    printf "${1}\n"
+}
+
+green() {
+    printf "${green}${1}${all_off}\n"
+}
+
+yello() {
+    printf "${yellow}${1}${all_off}\n"
+}
+
+blue() {
+    printf "${blue}${1}${all_off}\n"
+}
+
+magen() {
+    printf "${magenta}${1}${all_off}\n"
+}
+
+post_install() {
+    yello "1.15.0"
+    blue  "New Features:"
+    plain "  ${magenta}#225${all_off} add warning: 'DP-1' will match eDP-1 and DP-1. Consider using regex '!^DP-1$' to exactly match. by ${cyan}@alex-courtis${all_off} in ${green}#226${all_off}"
+    plain "  ${magenta}#227${all_off} add IPC request/response schemas, change HZ from integer to number, minor schema version bumps by ${cyan}@alex-courtis${all_off} in ${green}#228${all_off}"
+    blue  "Bug Fixes:"
+    plain "  ${magenta}docs${all_off} fix broken links on manpage by ${cyan}@maricn${all_off} in ${green}#222${all_off}"
+    plain "  ${magenta}#227${all_off} restore 1.0.0 schemas by ${cyan}@alex-courtis${all_off} in ${green}#231${all_off}"
+}
+
+post_upgrade() {
+    post_install
+}
+

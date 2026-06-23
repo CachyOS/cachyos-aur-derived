@@ -1,0 +1,27 @@
+pkgbase = mangowm
+	pkgdesc = A Wayland compositor with smooth animation
+	pkgver = 0.14.4
+	pkgrel = 1
+	url = https://github.com/DreamMaoMao/mangowc
+	arch = x86_64
+	license = GPL-3.0
+	makedepends = meson
+	makedepends = ninja
+	makedepends = wayland-protocols>=1.41
+	depends = glibc
+	depends = wayland>=1.23.1
+	depends = libinput>=1.27.1
+	depends = libdrm
+	depends = pixman
+	depends = libxkbcommon
+	depends = pcre2
+	depends = libwlroots-0.19.so
+	depends = scenefx0.4
+	depends = cjson
+	provides = wayland-compositor
+	provides = mangowc
+	replaces = mangowc
+	source = mango-0.14.4.tar.gz::https://github.com/mangowm/mango/archive/refs/tags/0.14.4.tar.gz
+	md5sums = 5def85b3b371b02cf40dfe6382121a26
+
+pkgname = mangowm

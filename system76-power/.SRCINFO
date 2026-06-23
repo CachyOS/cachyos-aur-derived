@@ -1,0 +1,22 @@
+pkgbase = system76-power
+	pkgdesc = System76 Power Management
+	pkgver = 1.2.8
+	pkgrel = 1
+	url = https://github.com/pop-os/system76-power
+	install = system76-power.install
+	arch = x86_64
+	arch = aarch64
+	license = GPL-3.0-or-later
+	makedepends = cargo
+	depends = dbus
+	depends = libusb
+	depends = polkit
+	optdepends = system76-acpi-dkms: only needed for systems using open firmware with kernels <5.16
+	optdepends = system76-dkms: needed for systems using proprietary firmware
+	provides = power-profiles-daemon
+	source = system76-power-1.2.8.tar.gz::https://github.com/pop-os/system76-power/archive/1.2.8.tar.gz
+	source = use-mkinitcpio.patch
+	sha256sums = 6c3f145b6c7abb7b4251dc29a77a0ce395ac0939a71d540032e2e153e2542b78
+	sha256sums = fd69c70b5c64516c92418bda6bad7a21e0695f47ad85def4132b12a97916ed02
+
+pkgname = system76-power

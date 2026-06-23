@@ -1,0 +1,41 @@
+pkgbase = sentencepiece
+	pkgdesc = Unsupervised text tokenizer for Neural Network-based text generation
+	pkgver = 0.2.1
+	pkgrel = 2
+	url = https://github.com/google/sentencepiece
+	arch = x86_64
+	license = Apache-2.0
+	checkdepends = python-pytest
+	makedepends = git
+	makedepends = cmake
+	makedepends = abseil-cpp
+	makedepends = gperftools
+	makedepends = protobuf
+	makedepends = python
+	makedepends = python-build
+	makedepends = python-setuptools
+	makedepends = python-wheel
+	makedepends = python-installer
+	source = sentencepiece::git+https://github.com/google/sentencepiece.git#tag=v0.2.1
+	source = dont-include-data-files-in-python-pkg.patch
+	sha512sums = f9bfaf0183da4f1aa27f169b28fb0db95cdc1ff7e3e12f04cc64eae563c0ab5ed6a30e820659736509ca420363473ece1af27657975095080e772d841e5f3475
+	sha512sums = 86443111c23d1d0f7db27673d8bb34e1a5d7e49e301b0e0978bb32b29cde51a924ff95bd079923f993c8e1180400b4268c39fa500102c99925daaaffeefe90ff
+
+pkgname = sentencepiece
+	depends = libgcc
+	depends = libstdc++
+	depends = glibc
+	depends = abseil-cpp
+	depends = gperftools
+	depends = protobuf
+	provides = libsentencepiece.so
+	provides = libsentencepiece_train.so
+
+pkgname = python-sentencepiece
+	pkgdesc = Python wrapper for SentencePiece
+	depends = sentencepiece=0.2.1-2
+	depends = libgcc
+	depends = libstdc++
+	depends = glibc
+	depends = python
+	optdepends = python-protobuf

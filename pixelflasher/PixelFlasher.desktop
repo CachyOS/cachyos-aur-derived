@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=PixelFlasher
+Comment=Android Flashing Tool
+Exec=PixelFlasher
+Icon=pixelflasher
+Categories=Utility;Development;
+Terminal=false
+StartupWMClass=PixelFlasher.py

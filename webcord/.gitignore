@@ -1,0 +1,7 @@
+*
+!.gitignore
+!.SRCINFO
+!PKGBUILD
+!webcord.desktop
+!buildInfo.json
+!webcord.sh
