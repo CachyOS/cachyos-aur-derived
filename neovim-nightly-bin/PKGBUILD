@@ -24,7 +24,8 @@ optdepends=('python-neovim: for Python 3 plugin support (see :help provider-pyth
 provides=("$_pkgname=${pkgver/\+*/}" 'vim-plugin-runtime')
 conflicts=("$_pkgname")
 _date="$(date -u +%Y%m%d)"
-case "$CARCH" in
+_carch="${CARCH:-x86_64}"
+case "$_carch" in
 x86_64)
 	architecture="x86_64"
 	;;
@@ -32,7 +33,7 @@ aarch64)
 	architecture="arm64"
 	;;
 *)
-	echo "Unsupported architecture: $CARCH"
+	echo "Unsupported architecture: $_carch"
 	exit 1
 	;;
 esac
