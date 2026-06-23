@@ -1,3 +1,7 @@
 [vlc-luajit]
 source = "git"
 git = "https://code.videolan.org/videolan/vlc.git"
+include_regex = '\d+\.\d+\.\d+(?:-\d+)?'
+exclude_regex = '.*(dev|git|pre|rc|test|trunk).*'
+from_pattern = '-'
+to_pattern = '_'

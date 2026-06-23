@@ -1,3 +1,2 @@
 [ast-firmware]
-source = "git"
-git = "https://github.com/Labaman/ast-firmware.git"
+source = "manual"

@@ -1,3 +1,2 @@
 [imagewriter]
-source = "git"
-git = "https://github.com/openSUSE/imagewriter.git"
+source = "manual"

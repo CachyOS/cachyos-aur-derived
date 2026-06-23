@@ -1,3 +1,2 @@
 [nouveau-fw]
-source = "git"
-git = "https://github.com/envytools/firmware.git"
+source = "manual"

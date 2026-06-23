@@ -1,5 +1,6 @@
 [github-copilot-cli]
-source = "github"
-github = "github/copilot-cli"
-use_latest_release = true
+source = "git"
+git = "https://github.com/github/copilot-cli.git"
+include_regex = 'v\d+\.\d+\.\d+'
+exclude_regex = '.*-.*'
 prefix = "v"

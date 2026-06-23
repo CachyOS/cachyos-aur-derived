@@ -1,4 +1,5 @@
 [mongodb-compass]
 source = "git"
 git = "https://github.com/mongodb-js/compass.git"
+include_regex = 'v\d+\.\d+\.\d+'
 prefix = "v"

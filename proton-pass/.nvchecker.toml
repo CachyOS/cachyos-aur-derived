@@ -1,7 +1,8 @@
 [proton-pass]
-source = "github"
-github = "ProtonMail/WebClients"
+source = "git"
+git = "https://github.com/ProtonMail/WebClients.git"
 use_max_tag = true
-include_regex = "proton-pass@(.*)"
+include_regex = "proton-pass@.*"
 exclude_regex = '.*(alpha|rc|\d{3}).*'
-prefix = "proton-pass@"
+from_pattern = 'proton-pass@(.+)'
+to_pattern = '\1'

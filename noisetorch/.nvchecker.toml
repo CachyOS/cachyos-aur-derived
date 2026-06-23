@@ -1,5 +1,5 @@
 [noisetorch]
-source = "github"
-github = "noisetorch/NoiseTorch"
+source = "git"
+git = "https://github.com/noisetorch/NoiseTorch.git"
 use_max_tag = true
 prefix = "v"

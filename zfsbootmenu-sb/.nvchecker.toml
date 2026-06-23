@@ -1,3 +1,2 @@
 [zfsbootmenu-sb]
-source = "git"
-git = "https://github.com/KorewaKiyo/zfsbootmenu-sb.git"
+source = "manual"

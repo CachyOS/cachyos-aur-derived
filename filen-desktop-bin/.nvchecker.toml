@@ -1,5 +1,4 @@
 [filen-desktop-bin]
-source = "github"
-github = "FilenCloudDienste/filen-desktop"
-use_latest_release = true
+source = "git"
+git = "https://github.com/FilenCloudDienste/filen-desktop.git"
 prefix = "v"

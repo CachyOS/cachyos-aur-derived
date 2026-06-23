@@ -1,5 +1,4 @@
 [legcord-bin]
-source = "github"
-github = "Legcord/Legcord"
-use_latest_release = true
+source = "git"
+git = "https://github.com/Legcord/Legcord.git"
 prefix = "v"

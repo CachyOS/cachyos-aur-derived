@@ -1,4 +1,3 @@
 [google-breakpad]
 source = "git"
 git = "https://chromium.googlesource.com/breakpad/breakpad"
-prefix = "v"

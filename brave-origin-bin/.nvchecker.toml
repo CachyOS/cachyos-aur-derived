@@ -1,5 +1,4 @@
 [brave-origin-bin]
-source = "github"
-github = "brave/brave-browser"
-use_latest_release = true
+source = "git"
+git = "https://github.com/brave/brave-browser.git"
 prefix = "v"

@@ -1,3 +1,2 @@
 [hummingbird]
-source = "git"
-git = "https://gitlab.com/AirVPN/AirVPN-Suite.git"
+source = "manual"

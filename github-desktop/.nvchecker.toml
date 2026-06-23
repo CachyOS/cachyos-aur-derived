@@ -1,6 +1,6 @@
 [github-desktop]
-source = "github"
-github = "shiftkey/desktop"
+source = "git"
+git = "https://github.com/shiftkey/desktop.git"
 include_regex = 'release-\d+\.\d+\.\d+-linux\d+'
 from_pattern = 'release-(\d+\.\d+\.\d+)-linux\d+'
 to_pattern = '\1'

@@ -1,5 +1,5 @@
 [http-parser]
-source = "github"
-github = "nodejs/http-parser"
+source = "git"
+git = "https://github.com/nodejs/http-parser.git"
 prefix = "v"
 use_max_tag = true

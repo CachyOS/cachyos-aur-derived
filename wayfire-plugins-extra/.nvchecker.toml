@@ -1,5 +1,4 @@
 [wayfire-plugins-extra]
-source = 'github'
-github = 'WayfireWM/wayfire-plugins-extra'
-use_latest_release = true
-prefix = 'v'
+source = "git"
+git = "https://github.com/WayfireWM/wayfire-plugins-extra.git"
+prefix = "v"
