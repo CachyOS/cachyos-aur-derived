@@ -1,0 +1,93 @@
+name: AUR package updates
+
+on:
+  schedule:
+    - cron: "17 */6 * * *"
+  workflow_dispatch:
+    inputs:
+      package:
+        description: "Optional package directory/pkgbase to check"
+        required: false
+        type: string
+      update_limit:
+        description: "Maximum number of PRs to open in one run"
+        required: false
+        default: "10"
+        type: string
+      verify_source:
+        description: "Run makepkg --verifysource after updating"
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: aur-package-updates
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    container:
+      image: archlinux:base-devel
+
+    env:
+      BASE_BRANCH: ${{ github.ref_name }}
+      GH_TOKEN: ${{ github.token }}
+      UPDATE_LIMIT: ${{ inputs.update_limit || '10' }}
+      PACKAGE_FILTER: ${{ inputs.package || '' }}
+      VERIFY_SOURCE: ${{ inputs.verify_source || 'false' }}
+      BATCH_SLEEP: "2"
+
+    steps:
+      - name: Install checkout dependency
+        run: pacman -Syu --noconfirm git
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Arch packaging tools
+        run: |
+          pacman -Syu --noconfirm
+          pacman -S --noconfirm devtools pacman-contrib github-cli jq nvchecker sudo
+
+      - name: Configure build user
+        run: |
+          useradd -m builder
+          printf 'builder ALL=(ALL) NOPASSWD: ALL\n' >/etc/sudoers.d/builder
+          chmod 0440 /etc/sudoers.d/builder
+          chown -R builder:builder "$GITHUB_WORKSPACE"
+
+      - name: Configure nvchecker credentials
+        run: |
+          install -dm700 /home/builder/.config/nvchecker
+          cat >/home/builder/.config/nvchecker/keyfile.toml <<EOF
+          [github]
+          token = "$GH_TOKEN"
+          EOF
+          chown -R builder:builder /home/builder/.config
+
+      - name: Check for updates
+        run: |
+          if [[ -n "$PACKAGE_FILTER" ]]; then
+            sudo -u builder -E bash ci/check-updates.sh "$PACKAGE_FILTER"
+          else
+            sudo -u builder -E bash ci/check-updates.sh
+          fi
+
+      - name: Open update pull requests
+        run: sudo -u builder -E bash ci/open-update-prs.sh
+
+      - name: Upload update report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: aur-update-report
+          path: |
+            .ci/update-check/
+            .ci/pr-bodies/
