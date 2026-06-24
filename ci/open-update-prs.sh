@@ -27,6 +27,12 @@ git config --global --add safe.directory "$repo_root"
 git fetch origin "$base_branch"
 
 mkdir -p .ci/pr-bodies
+: >.ci/update-check/update-failures.txt
+
+reset_to_base() {
+  git checkout -B "$base_branch" "origin/$base_branch"
+  git reset --hard "origin/$base_branch"
+}
 
 count=0
 while IFS= read -r pkg; do
@@ -44,16 +50,18 @@ while IFS= read -r pkg; do
   printf 'Updating %s: %s -> %s\n' "$pkg" "$old_version" "$new_version"
 
   git checkout -B "$branch" "origin/$base_branch"
+  git reset --hard "origin/$base_branch"
 
   if ! ci/update-one.sh "$pkg"; then
     printf 'update failed: %s\n' "$pkg" >>.ci/update-check/update-failures.txt
-    git checkout -B "$base_branch" "origin/$base_branch"
+    printf 'Update failed for %s\n' "$pkg" >&2
+    reset_to_base
     continue
   fi
 
   if git diff --quiet -- "$pkg"; then
     printf 'No diff after update for %s\n' "$pkg"
-    git checkout -B "$base_branch" "origin/$base_branch"
+    reset_to_base
     continue
   fi
 
@@ -81,4 +89,4 @@ while IFS= read -r pkg; do
   count=$((count + 1))
 done <"$outdated_file"
 
-git checkout -B "$base_branch" "origin/$base_branch"
+reset_to_base
