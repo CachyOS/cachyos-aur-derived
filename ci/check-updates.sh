@@ -76,5 +76,7 @@ jq -r '.[] | select(.status != "success") | [.pkgbase, (.message // "unknown fai
 } >.ci/update-check/summary.md
 
 if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]]; then
-  cat .ci/update-check/summary.md >>"$GITHUB_STEP_SUMMARY"
+  if ! { cat .ci/update-check/summary.md >>"$GITHUB_STEP_SUMMARY"; } 2>/dev/null; then
+    printf 'warning: unable to write GitHub step summary: %s\n' "$GITHUB_STEP_SUMMARY" >&2
+  fi
 fi
