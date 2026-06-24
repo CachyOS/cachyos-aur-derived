@@ -3,3 +3,5 @@
 !.SRCINFO
 !LICENSE.aic94xx
 !.gitignore
+
+!.nvchecker.toml

@@ -1,0 +1,4 @@
+[downgrade]
+source = "git"
+git = "https://github.com/archlinux-downgrade/downgrade.git"
+prefix = "v"

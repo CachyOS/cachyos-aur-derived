@@ -1,0 +1,4 @@
+[extremetuxracer]
+source = "regex"
+url = "https://sourceforge.net/projects/extremetuxracer/files/releases/"
+regex = 'etr-(\d+(?:\.\d+)+)\.tar\.xz'

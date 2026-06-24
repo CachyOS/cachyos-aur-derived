@@ -1,0 +1,4 @@
+[shader-slang]
+source = "git"
+git = "https://github.com/shader-slang/slang.git"
+prefix = "v"

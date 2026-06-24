@@ -1,0 +1,4 @@
+[wayland-pipewire-idle-inhibit]
+source = "git"
+git = "https://github.com/rafaelrc7/wayland-pipewire-idle-inhibit.git"
+prefix = "v"

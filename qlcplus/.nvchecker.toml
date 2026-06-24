@@ -1,0 +1,3 @@
+[qlcplus]
+source = "git"
+git = "https://github.com/mcallegari/qlcplus.git"

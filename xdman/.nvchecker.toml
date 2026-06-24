@@ -1,0 +1,3 @@
+[xdman]
+source = "git"
+git = "https://github.com/subhra74/xdm.git"

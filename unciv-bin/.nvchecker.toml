@@ -1,0 +1,3 @@
+[unciv-bin]
+source = "git"
+git = "https://github.com/yairm210/Unciv.git"

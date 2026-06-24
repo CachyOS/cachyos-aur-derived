@@ -1,0 +1,4 @@
+[hhd]
+source = "git"
+git = "https://github.com/hhd-dev/hhd.git"
+prefix = "v"

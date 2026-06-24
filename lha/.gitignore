@@ -4,3 +4,5 @@
 !PKGBUILD
 !lha.man.en
 !LICENSE
+
+!.nvchecker.toml

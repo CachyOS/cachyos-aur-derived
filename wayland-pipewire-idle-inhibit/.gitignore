@@ -3,3 +3,5 @@
 !/PKGBUILD
 !/.SRCINFO
 
+
+!.nvchecker.toml

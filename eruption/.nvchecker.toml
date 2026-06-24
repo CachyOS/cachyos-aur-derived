@@ -1,0 +1,4 @@
+[eruption]
+source = "git"
+git = "https://github.com/eruption-project/eruption.git"
+prefix = "v"

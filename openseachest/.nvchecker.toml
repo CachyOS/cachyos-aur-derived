@@ -1,0 +1,4 @@
+[openseachest]
+source = "git"
+git = "https://github.com/Seagate/openSeaChest.git"
+prefix = "v"

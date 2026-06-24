@@ -1,0 +1,4 @@
+[tty-clock]
+source = "git"
+git = "https://github.com/xorg62/tty-clock.git"
+prefix = "v"

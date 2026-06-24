@@ -1,0 +1,4 @@
+[ddcci-driver-linux-dkms]
+source = "git"
+git = "https://gitlab.com/ddcci-driver-linux/ddcci-driver-linux.git"
+prefix = "v"

@@ -3,3 +3,5 @@
 !qlcplus.install
 !.SRCINFO
 !.gitignore
+
+!.nvchecker.toml

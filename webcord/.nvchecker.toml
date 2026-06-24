@@ -1,0 +1,4 @@
+[webcord]
+source = "git"
+git = "https://github.com/SpacingBat3/WebCord.git"
+prefix = "v"

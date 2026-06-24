@@ -1,0 +1,3 @@
+[lha]
+source = "git"
+git = "https://github.com/jca02266/lha.git"

@@ -6,3 +6,5 @@
 !vscodium-uri-handler.desktop
 !vscodium-wayland.desktop
 !vscodium.desktop
+
+!.nvchecker.toml

@@ -67,8 +67,8 @@ jobs:
         run: |
           install -dm700 /home/builder/.config/nvchecker
           cat >/home/builder/.config/nvchecker/keyfile.toml <<EOF
-          [github]
-          token = "$GH_TOKEN"
+          [keys]
+          github = "$GH_TOKEN"
           EOF
           chown -R builder:builder /home/builder/.config
 

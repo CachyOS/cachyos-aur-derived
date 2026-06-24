@@ -1,0 +1,4 @@
+[gnome-shell-extension-no-overview]
+source = "git"
+git = "https://github.com/fthx/no-overview.git"
+prefix = "v"

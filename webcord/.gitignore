@@ -5,3 +5,5 @@
 !webcord.desktop
 !buildInfo.json
 !webcord.sh
+
+!.nvchecker.toml

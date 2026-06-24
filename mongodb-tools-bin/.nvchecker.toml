@@ -1,0 +1,3 @@
+[mongodb-tools-bin]
+source = "git"
+git = "https://github.com/mongodb/mongo-tools.git"

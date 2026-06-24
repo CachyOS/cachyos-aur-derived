@@ -1,0 +1,7 @@
+[qbittorrent-qt5]
+source = "git"
+git = "https://github.com/qbittorrent/qBittorrent.git"
+use_max_tag = true
+include_regex = 'release-4\.6\.\d+'
+from_pattern = 'release-(.+)'
+to_pattern = '\1'

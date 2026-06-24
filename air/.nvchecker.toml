@@ -1,0 +1,4 @@
+[air]
+source = "git"
+git = "https://github.com/cosmtrek/air.git"
+prefix = "v"
