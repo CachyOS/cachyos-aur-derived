@@ -83,12 +83,18 @@ jobs:
             VERIFY_SOURCE="$VERIFY_SOURCE"
             BATCH_SLEEP="$BATCH_SLEEP"
             GITHUB_REF_NAME="$GITHUB_REF_NAME"
-            GITHUB_STEP_SUMMARY="${GITHUB_STEP_SUMMARY:-}"
           )
           if [[ -n "$PACKAGE_FILTER" ]]; then
             "${run_as_builder[@]}" bash ci/check-updates.sh "$PACKAGE_FILTER"
           else
             "${run_as_builder[@]}" bash ci/check-updates.sh
+          fi
+
+      - name: Publish update summary
+        if: always()
+        run: |
+          if [[ -n "${GITHUB_STEP_SUMMARY:-}" && -f .ci/update-check/summary.md ]]; then
+            cat .ci/update-check/summary.md >>"$GITHUB_STEP_SUMMARY"
           fi
 
       - name: Open update pull requests
