@@ -74,14 +74,34 @@ jobs:
 
       - name: Check for updates
         run: |
+          run_as_builder=(
+            sudo -u builder -H env
+            BASE_BRANCH="$BASE_BRANCH"
+            GH_TOKEN="$GH_TOKEN"
+            UPDATE_LIMIT="$UPDATE_LIMIT"
+            PACKAGE_FILTER="$PACKAGE_FILTER"
+            VERIFY_SOURCE="$VERIFY_SOURCE"
+            BATCH_SLEEP="$BATCH_SLEEP"
+            GITHUB_REF_NAME="$GITHUB_REF_NAME"
+            GITHUB_STEP_SUMMARY="${GITHUB_STEP_SUMMARY:-}"
+          )
           if [[ -n "$PACKAGE_FILTER" ]]; then
-            sudo -u builder -E bash ci/check-updates.sh "$PACKAGE_FILTER"
+            "${run_as_builder[@]}" bash ci/check-updates.sh "$PACKAGE_FILTER"
           else
-            sudo -u builder -E bash ci/check-updates.sh
+            "${run_as_builder[@]}" bash ci/check-updates.sh
           fi
 
       - name: Open update pull requests
-        run: sudo -u builder -E bash ci/open-update-prs.sh
+        run: |
+          sudo -u builder -H env \
+            BASE_BRANCH="$BASE_BRANCH" \
+            GH_TOKEN="$GH_TOKEN" \
+            UPDATE_LIMIT="$UPDATE_LIMIT" \
+            VERIFY_SOURCE="$VERIFY_SOURCE" \
+            GITHUB_REF_NAME="$GITHUB_REF_NAME" \
+            GIT_AUTHOR_NAME="${GIT_AUTHOR_NAME:-}" \
+            GIT_AUTHOR_EMAIL="${GIT_AUTHOR_EMAIL:-}" \
+            bash ci/open-update-prs.sh
 
       - name: Upload update report
         if: always()
