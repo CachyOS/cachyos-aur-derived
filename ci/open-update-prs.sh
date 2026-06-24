@@ -19,9 +19,16 @@ fi
 
 base_branch="${BASE_BRANCH:-${GITHUB_REF_NAME:-master}}"
 update_limit="${UPDATE_LIMIT:-10}"
+git_author_name="${GIT_AUTHOR_NAME:-cachyos-update-bot}"
+git_author_email="${GIT_AUTHOR_EMAIL:-cachyos-update-bot@users.noreply.github.com}"
 
-git config user.name "${GIT_AUTHOR_NAME:-cachyos-update-bot}"
-git config user.email "${GIT_AUTHOR_EMAIL:-cachyos-update-bot@users.noreply.github.com}"
+export GIT_AUTHOR_NAME="$git_author_name"
+export GIT_AUTHOR_EMAIL="$git_author_email"
+export GIT_COMMITTER_NAME="${GIT_COMMITTER_NAME:-$git_author_name}"
+export GIT_COMMITTER_EMAIL="${GIT_COMMITTER_EMAIL:-$git_author_email}"
+
+git config user.name "$git_author_name"
+git config user.email "$git_author_email"
 git config --global --add safe.directory "$repo_root"
 
 git fetch origin "$base_branch"
