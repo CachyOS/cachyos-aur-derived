@@ -1,3 +1,6 @@
 [jitsi]
 source = "git"
 git = "https://github.com/jitsi/jitsi.git"
+include_regex = '^\d+$'
+from_pattern = '^(\d+)$'
+to_pattern = '2.11.\1'
