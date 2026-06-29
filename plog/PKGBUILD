@@ -1,14 +1,14 @@
 # Maintainer: Edoardo Morassutto <edoardo.morassutto@gmail.com>
 
 pkgname=plog
-pkgver=1.1.9
+pkgver=1.1.11
 pkgrel=1
 pkgdesc='Portable, simple and extensible C++ logging library'
 arch=('any')
 url='https://github.com/SergiusTheBest/plog'
 license=('MIT')
 source=("https://github.com/SergiusTheBest/plog/archive/${pkgver}.zip")
-sha256sums=('42905ee0d0f5e29396f11670c0ca91a03c92779ed685cc8edb4ef086fd47bedd')
+sha256sums=('da9106d57780b266583c3f802bfb9af3f7182228f395e0b5127955634fca7d72')
 
 package() {
     cd "${srcdir}/plog-${pkgver}"
