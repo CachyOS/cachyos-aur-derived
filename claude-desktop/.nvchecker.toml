@@ -1,0 +1,4 @@
+[claude-desktop]
+source = "regex"
+url = "https://downloads.claude.ai/claude-desktop/apt/stable/dists/stable/main/binary-amd64/Packages"
+regex = 'Version: ([0-9][0-9.]+)'

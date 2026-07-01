@@ -1,0 +1,45 @@
+# Maintainer: Kevin <github@kev314.dev>
+
+pkgname=claude-desktop
+pkgver=1.17377.0
+pkgrel=1
+pkgdesc="Official Anthropic Claude.ai desktop app"
+arch=('x86_64' 'aarch64')
+url="https://claude.ai/download"
+license=('LicenseRef-Proprietary')
+depends=('gtk3' 'nss' 'nspr' 'alsa-lib' 'libcups' 'at-spi2-core' 'libxkbcommon'
+  'libdrm' 'mesa' 'libnotify' 'libsecret' 'libxtst' 'util-linux-libs'
+  'xdg-utils' 'xdg-desktop-portal' 'libx11' 'libxcb' 'libxcomposite'
+  'libxdamage' 'libxext' 'libxfixes' 'libxrandr' 'cairo' 'pango' 'dbus'
+  'glib2' 'expat' 'systemd-libs' 'hicolor-icon-theme')
+# recommended from .deb
+optdepends=('xdg-desktop-portal-gtk: portal backend on GNOME and other GTK desktops'
+  'xdg-desktop-portal-kde: portal backend on KDE Plasma'
+  'libayatana-appindicator: system tray / indicator icon'
+  'gnome-keyring: secret storage backend'
+  'kwallet: secret storage backend on KDE'
+  'gvfs: trash support and file-manager integration'
+  'sqlite: project detection (avoids periodic ENOENT log spam)'
+  'nodejs: system Node.js for MCP extensions that need a specific version'
+  'qemu-base: Cowork sandboxed VM feature'
+  'edk2-ovmf: UEFI firmware for the Cowork VM'
+  'virtiofsd: shared-folder daemon for the Cowork VM')
+options=('!strip' '!debug')
+
+_repo="https://downloads.claude.ai/claude-desktop/apt/stable/pool/main/c/claude-desktop"
+source_x86_64=("claude-desktop-${pkgver}.deb::${_repo}/claude-desktop_${pkgver}_amd64.deb")
+source_aarch64=("claude-desktop-${pkgver}.deb::${_repo}/claude-desktop_${pkgver}_arm64.deb")
+sha256sums_x86_64=('563c8df8ee3b957ca234115980386e960007ed8cfc8cc04c77d58a8d43f6c018')
+sha256sums_aarch64=('563c8df8ee3b957ca234115980386e960007ed8cfc8cc04c77d58a8d43f6c018')
+
+package() {
+  cd "$srcdir"
+
+  bsdtar xf "claude-desktop-${pkgver}.deb" data.tar.xz
+  bsdtar xpf data.tar.xz -C "$pkgdir"
+
+  install -Dm644 "$pkgdir/usr/share/doc/claude-desktop/copyright" \
+    "$pkgdir/usr/share/licenses/$pkgname/copyright"
+
+  rm -rf "$pkgdir/usr/share/lintian"
+}
