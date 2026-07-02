@@ -1,8 +1,8 @@
 # Maintainer: Alexandre Bouvier <contact@amb.tf>
 _pkgname=fmt
 pkgname=${_pkgname}9
-pkgver=9.1.0
-pkgrel=6
+pkgver=12.2.0
+pkgrel=1
 pkgdesc="Open-source formatting library for C++"
 arch=('aarch64' 'armv7h' 'i486' 'i686' 'pentium4' 'x86_64')
 url="https://fmt.dev/"
@@ -11,7 +11,7 @@ depends=('glibc')
 makedepends=('cmake' 'git' 'libgcc' 'libstdc++')
 provides=('libfmt.so')
 source=("$_pkgname::git+https://github.com/fmtlib/fmt.git#tag=$pkgver")
-b2sums=('5a26a3545833033833302b1ad2a6fb2c0b53c5fe95114faa254affabf226dadb1cb319f05f1ceb1cdb100706045fbc11e3c162f95df517173af424b4e2c03965')
+b2sums=('e095e1d8e2d95a08f8d6430360e76e9b24a4e213ee83adeeeabf93de09dde325c8e2c4bbbab0907d79f77a21ef5db55ca25f836173f3cd94aecb0cc214fc596d')
 
 prepare() {
 	cd $_pkgname
