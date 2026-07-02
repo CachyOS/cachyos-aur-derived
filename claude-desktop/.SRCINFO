@@ -1,6 +1,6 @@
 pkgbase = claude-desktop
 	pkgdesc = Official Anthropic Claude.ai desktop app
-	pkgver = 1.17377.1
+	pkgver = 1.17377.2
 	pkgrel = 1
 	url = https://claude.ai/download
 	arch = x86_64
@@ -48,9 +48,9 @@ pkgbase = claude-desktop
 	optdepends = virtiofsd: shared-folder daemon for the Cowork VM
 	options = !strip
 	options = !debug
-	source_x86_64 = claude-desktop-1.17377.1.deb::https://downloads.claude.ai/claude-desktop/apt/stable/pool/main/c/claude-desktop/claude-desktop_1.17377.1_amd64.deb
-	sha256sums_x86_64 = f4bd78545200877b591179838de7ad7a577df6ed2e845969dd25690efc5c85c7
-	source_aarch64 = claude-desktop-1.17377.1.deb::https://downloads.claude.ai/claude-desktop/apt/stable/pool/main/c/claude-desktop/claude-desktop_1.17377.1_arm64.deb
-	sha256sums_aarch64 = f4bd78545200877b591179838de7ad7a577df6ed2e845969dd25690efc5c85c7
+	source_x86_64 = claude-desktop-1.17377.2.deb::https://downloads.claude.ai/claude-desktop/apt/stable/pool/main/c/claude-desktop/claude-desktop_1.17377.2_amd64.deb
+	sha256sums_x86_64 = ec08d41aa7988d2d3a3f5f4ffdf38d207b412e662639f40d7a265b8afae212ab
+	source_aarch64 = claude-desktop-1.17377.2.deb::https://downloads.claude.ai/claude-desktop/apt/stable/pool/main/c/claude-desktop/claude-desktop_1.17377.2_arm64.deb
+	sha256sums_aarch64 = ec08d41aa7988d2d3a3f5f4ffdf38d207b412e662639f40d7a265b8afae212ab
 
 pkgname = claude-desktop
