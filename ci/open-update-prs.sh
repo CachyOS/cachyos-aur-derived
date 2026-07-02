@@ -36,6 +36,54 @@ git fetch origin "$base_branch"
 mkdir -p .ci/pr-bodies
 : >.ci/update-check/update-failures.txt
 
+close_superseded_update_prs() {
+  local pkg="$1"
+  local current_branch="$2"
+  local new_version="$3"
+  local current_pr_number="$4"
+  local pr_limit="${SUPERSEDED_PR_LIMIT:-200}"
+  local open_prs_json
+  local replacement
+  local pr
+  local superseded_prs=()
+
+  if [[ -n "$current_pr_number" ]]; then
+    replacement="#${current_pr_number}"
+  else
+    replacement="$current_branch"
+  fi
+
+  if ! open_prs_json="$(
+    gh pr list \
+      --state open \
+      --limit "$pr_limit" \
+      --json number,headRefName,title
+  )"; then
+    printf 'warning: unable to list open PRs while checking superseded updates for %s\n' "$pkg" >&2
+    return 0
+  fi
+
+  mapfile -t superseded_prs < <(
+    jq -r \
+      --arg pkg "$pkg" \
+      --arg current_branch "$current_branch" \
+      '.[] | select(.headRefName != $current_branch) | select(.headRefName | startswith("bot/update/")) | select(.title | startswith($pkg + ": update to ")) | [.number, .headRefName] | @tsv' \
+      <<<"$open_prs_json"
+  )
+
+  for pr in "${superseded_prs[@]}"; do
+    local pr_number="${pr%%$'\t'*}"
+    local pr_branch="${pr#*$'\t'}"
+
+    printf 'Closing superseded PR #%s for %s from branch %s\n' "$pr_number" "$pkg" "$pr_branch"
+    if ! gh pr close "$pr_number" \
+      --comment "Superseded by ${replacement} for ${pkg} ${new_version}." \
+      --delete-branch; then
+      printf 'warning: failed to close superseded PR #%s for %s\n' "$pr_number" "$pkg" >&2
+    fi
+  done
+}
+
 reset_to_base() {
   git checkout -B "$base_branch" "origin/$base_branch"
   git reset --hard "origin/$base_branch"
@@ -91,7 +139,10 @@ while IFS= read -r pkg; do
       --body-file "$body_file" \
       --base "$base_branch" \
       --head "$branch"
+    pr_number="$(gh pr list --head "$branch" --state open --json number --jq '.[0].number // empty')"
   fi
+
+  close_superseded_update_prs "$pkg" "$branch" "$new_version" "$pr_number"
 
   count=$((count + 1))
 done <"$outdated_file"
