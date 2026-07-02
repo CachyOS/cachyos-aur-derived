@@ -2,7 +2,7 @@
 # Contributor: MatMoul <matmoul at the google email domain which is .com>
 
 pkgname=qt-sudo
-pkgver=2.3.0
+pkgver=2.4.0
 pkgrel=1
 pkgdesc='A clone of LXQt sudo tool, without LXQt libs'
 arch=('x86_64')
@@ -19,7 +19,7 @@ makedepends=(
   'qt6-tools'
 )
 source=("git+https://github.com/aarnt/qt-sudo.git#tag=v${pkgver}")
-sha256sums=('SKIP')
+sha256sums=('e8adc845fa68d17c3ed666f78397b8e6aec76c56924beb43c480a4a507f6c38a')
 
 build() {
   cd qt-sudo
