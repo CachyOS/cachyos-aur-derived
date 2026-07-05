@@ -3,43 +3,80 @@
 pkgname=claude-desktop
 pkgver=1.18286.0
 pkgrel=1
-pkgdesc="Official Anthropic Claude.ai desktop app"
+pkgdesc="Official Claude AI desktop app from Anthropic"
 arch=('x86_64' 'aarch64')
 url="https://claude.ai/download"
 license=('LicenseRef-Proprietary')
-depends=('gtk3' 'nss' 'nspr' 'alsa-lib' 'libcups' 'at-spi2-core' 'libxkbcommon'
-  'libdrm' 'mesa' 'libnotify' 'libsecret' 'libxtst' 'util-linux-libs'
-  'xdg-utils' 'xdg-desktop-portal' 'libx11' 'libxcb' 'libxcomposite'
-  'libxdamage' 'libxext' 'libxfixes' 'libxrandr' 'cairo' 'pango' 'dbus'
-  'glib2' 'expat' 'systemd-libs' 'hicolor-icon-theme')
+
+depends=('alsa-lib'
+         'at-spi2-core'
+         'cairo'
+         'dbus'
+         'expat'
+         'gcc-libs'
+         'glib2'
+         'glibc'
+         'gtk3'
+         'hicolor-icon-theme'
+         'libcap-ng'
+         'libcups'
+         'libdrm'
+         'libnotify'
+         'libseccomp'
+         'libsecret'
+         'libx11'
+         'libxcb'
+         'libxcomposite'
+         'libxdamage'
+         'libxext'
+         'libxfixes'
+         'libxkbcommon'
+         'libxrandr'
+         'libxtst'
+         'mesa'
+         'nspr'
+         'nss'
+         'pango'
+         'socat'
+         'systemd-libs'
+         'util-linux-libs'
+         'virtiofsd'
+         'xdg-desktop-portal'
+         'xdg-utils')
+depends_x86_64=('qemu-system-x86' 'edk2-ovmf')
+depends_aarch64=('qemu-system-aarch64' 'edk2-aarch64')
+
 # recommended from .deb
-optdepends=('xdg-desktop-portal-gtk: portal backend on GNOME and other GTK desktops'
-  'xdg-desktop-portal-kde: portal backend on KDE Plasma'
-  'libayatana-appindicator: system tray / indicator icon'
-  'gnome-keyring: secret storage backend'
-  'kwallet: secret storage backend on KDE'
-  'gvfs: trash support and file-manager integration'
-  'sqlite: project detection (avoids periodic ENOENT log spam)'
-  'nodejs: system Node.js for MCP extensions that need a specific version'
-  'qemu-base: Cowork sandboxed VM feature'
-  'edk2-ovmf: UEFI firmware for the Cowork VM'
-  'virtiofsd: shared-folder daemon for the Cowork VM')
+optdepends=('gnome-keyring: credential storage via Secret Service (GNOME)'
+            'kwallet: credential storage (KDE Plasma)'
+            'libayatana-appindicator: system tray icon'
+            'xdg-desktop-portal-gtk: portal backend for GTK desktops'
+            'xdg-desktop-portal-kde: portal backend for KDE Plasma')
 options=('!strip' '!debug')
 
-_repo="https://downloads.claude.ai/claude-desktop/apt/stable/pool/main/c/claude-desktop"
-source_x86_64=("claude-desktop-${pkgver}.deb::${_repo}/claude-desktop_${pkgver}_amd64.deb")
-source_aarch64=("claude-desktop-${pkgver}.deb::${_repo}/claude-desktop_${pkgver}_arm64.deb")
+_baseurl="https://downloads.claude.ai/claude-desktop/apt/stable/pool/main/c/claude-desktop"
+source_x86_64=("${_baseurl}/${pkgname}_${pkgver}_amd64.deb")
+source_aarch64=("${_baseurl}/${pkgname}_${pkgver}_arm64.deb")
 sha256sums_x86_64=('8f314ad1a80aab52711a8eaabc06aae48fb341f0adea4a0d7264db5cab9d0536')
-sha256sums_aarch64=('8f314ad1a80aab52711a8eaabc06aae48fb341f0adea4a0d7264db5cab9d0536')
+sha256sums_aarch64=('4820b989a9e4333956b6cbeaee2732dd2b49904fba540b472963c8003c8086c7')
 
 package() {
-  cd "$srcdir"
+  tar -xf data.tar.xz -C "$pkgdir"
 
-  bsdtar xf "claude-desktop-${pkgver}.deb" data.tar.xz
-  bsdtar xpf data.tar.xz -C "$pkgdir"
+  chmod 4755 "$pkgdir/usr/lib/claude-desktop/chrome-sandbox"
+
+  rm -r "$pkgdir/usr/share/lintian"
+
+  # The app hardcodes Debian's filesystem paths for the Cowork VM stack
+  ln -s ../lib/virtiofsd "$pkgdir/usr/bin/virtiofsd"
+
+  # the app opens /usr/share/OVMF/OVMF_CODE_4M.fd
+  if [[ $CARCH == x86_64 ]]; then
+    install -d "$pkgdir/usr/share/edk2"
+    ln -s x64/OVMF_CODE.4m.fd "$pkgdir/usr/share/edk2/OVMF_CODE_4M.fd"
+    ln -s x64/OVMF_VARS.4m.fd "$pkgdir/usr/share/edk2/OVMF_VARS_4M.fd"
+  fi
 
   install -Dm644 "$pkgdir/usr/share/doc/claude-desktop/copyright" \
-    "$pkgdir/usr/share/licenses/$pkgname/copyright"
-
-  rm -rf "$pkgdir/usr/share/lintian"
+    "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
 }
