@@ -1,7 +1,7 @@
 # Maintainer: Kevin <github@kev314.dev>
 
 pkgname=claude-desktop
-pkgver=1.17377.1
+pkgver=1.18286.0
 pkgrel=1
 pkgdesc="Official Anthropic Claude.ai desktop app"
 arch=('x86_64' 'aarch64')
@@ -29,8 +29,8 @@ options=('!strip' '!debug')
 _repo="https://downloads.claude.ai/claude-desktop/apt/stable/pool/main/c/claude-desktop"
 source_x86_64=("claude-desktop-${pkgver}.deb::${_repo}/claude-desktop_${pkgver}_amd64.deb")
 source_aarch64=("claude-desktop-${pkgver}.deb::${_repo}/claude-desktop_${pkgver}_arm64.deb")
-sha256sums_x86_64=('f4bd78545200877b591179838de7ad7a577df6ed2e845969dd25690efc5c85c7')
-sha256sums_aarch64=('f4bd78545200877b591179838de7ad7a577df6ed2e845969dd25690efc5c85c7')
+sha256sums_x86_64=('8f314ad1a80aab52711a8eaabc06aae48fb341f0adea4a0d7264db5cab9d0536')
+sha256sums_aarch64=('8f314ad1a80aab52711a8eaabc06aae48fb341f0adea4a0d7264db5cab9d0536')
 
 package() {
   cd "$srcdir"
