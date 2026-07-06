@@ -14,6 +14,7 @@ pkgbase = shader-slang
 	makedepends = unordered_dense
 	makedepends = vulkan-headers
 	makedepends = vulkan-icd-loader
+	makedepends = vulkan-tools
 	depends = glslang
 	depends = libx11
 	depends = llvm

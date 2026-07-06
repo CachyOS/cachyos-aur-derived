@@ -27,6 +27,7 @@ makedepends=(
 	unordered_dense
 	vulkan-headers
 	vulkan-icd-loader
+	vulkan-tools
 )
 depends=(
 	glslang
