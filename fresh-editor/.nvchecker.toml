@@ -1,4 +1,0 @@
-[fresh-editor]
-source = "git"
-git = "https://github.com/sinelaw/fresh.git"
-prefix = "v"
