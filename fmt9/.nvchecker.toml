@@ -1,4 +1,0 @@
-[fmt9]
-source = "git"
-git = "https://github.com/fmtlib/fmt.git"
-prefix = "v"
