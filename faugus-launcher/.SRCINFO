@@ -1,6 +1,6 @@
 pkgbase = faugus-launcher
 	pkgdesc = A simple and lightweight app for running Windows games using UMU-Launcher
-	pkgver = 1.22.7
+	pkgver = 1.22.8
 	pkgrel = 1
 	url = https://github.com/Faugus/faugus-launcher
 	arch = any
@@ -21,7 +21,7 @@ pkgbase = faugus-launcher
 	depends = vulkan-tools
 	provides = faugus-launcher
 	conflicts = faugus-launcher
-	source = https://github.com/Faugus/faugus-launcher/archive/refs/tags/1.22.7.tar.gz
-	sha256sums = 06a393aca815d5bc170549e18473fbfe99c3972b6b83477ec9bb0039c9766a7e
+	source = https://github.com/Faugus/faugus-launcher/archive/refs/tags/1.22.8.tar.gz
+	sha256sums = fe879f01617232125576b194cbac0ca6995cd65a5649daf7fe33d0a8a583d1a3
 
 pkgname = faugus-launcher
