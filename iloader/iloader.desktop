@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=iloader
+Comment=User-friendly sideloader
+Exec=iloader
+Icon=iloader
+Terminal=false
+Categories=Utility;
+Keywords=ios;iphone;ipad;sideload;
