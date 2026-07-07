@@ -46,7 +46,7 @@ package() {
 
   for i in 32x32 128x128 128x128@2x; do
     install -Dm644 "src-tauri/icons/${i}.png" \
-      "$pkgdir/usr/share/icons/hicolor/${i/@2x/}/apps/$pkgname.png"
+      "$pkgdir/usr/share/icons/hicolor/${i/@2x/@2}/apps/$pkgname.png"
   done
 
   install -Dm644 src-tauri/icons/icon.png \
