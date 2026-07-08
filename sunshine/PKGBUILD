@@ -9,7 +9,7 @@
 : "${_commit:=14ffa6fdaa53f7b51512be2b3d24f3939695403c}"
 
 pkgname='sunshine'
-pkgver=2026.516.143833
+pkgver=2026.704.34109
 pkgrel=1
 pkgdesc="Self-hosted game stream host for Moonlight"
 arch=('x86_64' 'aarch64')
@@ -81,7 +81,7 @@ provides=()
 conflicts=()
 
 source=("$pkgname::git+https://github.com/LizardByte/Sunshine.git#commit=${_commit}")
-sha256sums=('SKIP')
+sha256sums=('7513055d9e0f32da48cc45b91bcdffbcabdbd005482e3458ebcbcdda3c1fa170')
 
 # Options Handling
 if [[ "${_use_cuda::1}" == "d" ]] && pacman -Qi cuda &> /dev/null; then
