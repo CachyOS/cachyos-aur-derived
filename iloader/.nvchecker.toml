@@ -1,0 +1,4 @@
+[iloader]
+source = "git"
+git = "https://github.com/nab138/iloader.git"
+prefix = "v"

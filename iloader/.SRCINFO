@@ -1,0 +1,26 @@
+pkgbase = iloader
+	pkgdesc = User-friendly sideloader
+	pkgver = 2.2.6
+	pkgrel = 1
+	url = https://github.com/nab138/iloader
+	arch = x86_64
+	arch = aarch64
+	license = MIT
+	license = custom
+	makedepends = bun
+	makedepends = cargo
+	depends = gtk3
+	depends = hicolor-icon-theme
+	depends = libsoup3
+	depends = usbmuxd
+	depends = webkit2gtk-4.1
+	optdepends = libayatana-appindicator: system tray icon support
+	conflicts = iloader-appimage
+	conflicts = iloader-bin
+	options = !lto
+	source = iloader-2.2.6.tar.gz::https://github.com/nab138/iloader/archive/refs/tags/v2.2.6.tar.gz
+	source = iloader.desktop
+	sha256sums = 5bcc04ce58c7db3a1db5025c646cc2de45498c60fa303e5680e483b0303d3de5
+	sha256sums = 755768d09b767b37df904b2afd092c9e52263d5a9752780a1b054f6229d8fa92
+
+pkgname = iloader
