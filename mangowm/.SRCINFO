@@ -18,6 +18,7 @@ pkgbase = mangowm
 	depends = libwlroots-0.20.so
 	depends = scenefx0.5
 	depends = cjson
+	depends = pango
 	provides = wayland-compositor
 	provides = mangowc
 	replaces = mangowc
