@@ -10,7 +10,7 @@ license=('GPL-3.0-only')
 depends=(
     mpv libmpv.so
     wayland libwayland-client.so libwayland-egl.so
-    libglvnd libegl.so
+    libglvnd libEGL.so
 )
 makedepends=(
     meson
