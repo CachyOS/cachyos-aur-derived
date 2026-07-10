@@ -112,6 +112,20 @@ jobs:
             TERM=xterm-256color \
             bash ci/open-update-prs.sh
 
+      - name: Publish pull request failures
+        if: always()
+        run: |
+          failure_file=.ci/update-check/update-failures.txt
+          if [[ -n "${GITHUB_STEP_SUMMARY:-}" && -s "$failure_file" ]]; then
+            {
+              printf '\n## Pull request update failures\n\n'
+              printf 'These outdated packages could not be updated and did not receive a pull request:\n\n'
+              printf '```text\n'
+              cat "$failure_file"
+              printf '```\n'
+            } >>"$GITHUB_STEP_SUMMARY"
+          fi
+
       - name: Upload update report
         if: always()
         uses: actions/upload-artifact@v4

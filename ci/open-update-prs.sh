@@ -102,6 +102,12 @@ while IFS= read -r pkg; do
   safe_version="$(printf '%s' "$new_version" | tr -c 'A-Za-z0-9._-' '-')"
   branch="bot/update/${pkg}-${safe_version}"
 
+  pr_number="$(gh pr list --head "$branch" --state open --json number --jq '.[0].number // empty')"
+  if [[ -n "$pr_number" ]]; then
+    printf 'PR #%s is already open for %s; skipping\n' "$pr_number" "$pkg"
+    continue
+  fi
+
   printf 'Updating %s: %s -> %s\n' "$pkg" "$old_version" "$new_version"
 
   git checkout -B "$branch" "origin/$base_branch"
@@ -127,7 +133,8 @@ while IFS= read -r pkg; do
   git commit -m "${pkg}: update to ${new_version}"
   git push --force-with-lease origin "$branch"
 
-  pr_number="$(gh pr list --head "$branch" --json number --jq '.[0].number // empty')"
+  created_pr=false
+  pr_number="$(gh pr list --head "$branch" --state open --json number --jq '.[0].number // empty')"
   if [[ -n "$pr_number" ]]; then
     gh pr edit "$pr_number" \
       --title "${pkg}: update to ${new_version}" \
@@ -139,12 +146,15 @@ while IFS= read -r pkg; do
       --body-file "$body_file" \
       --base "$base_branch" \
       --head "$branch"
+    created_pr=true
     pr_number="$(gh pr list --head "$branch" --state open --json number --jq '.[0].number // empty')"
   fi
 
   close_superseded_update_prs "$pkg" "$branch" "$new_version" "$pr_number"
 
-  count=$((count + 1))
+  if [[ "$created_pr" == "true" ]]; then
+    count=$((count + 1))
+  fi
 done <"$outdated_file"
 
 reset_to_base
