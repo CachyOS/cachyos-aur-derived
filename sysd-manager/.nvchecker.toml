@@ -1,0 +1,3 @@
+[sysd-manager]
+source = "git"
+git = "https://github.com/plrigaux/sysd-manager.git"
