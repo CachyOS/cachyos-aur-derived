@@ -1,4 +1,0 @@
-[filen-desktop-bin]
-source = "git"
-git = "https://github.com/FilenCloudDienste/filen-desktop.git"
-prefix = "v"
