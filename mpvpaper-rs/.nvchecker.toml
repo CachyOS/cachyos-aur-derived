@@ -1,0 +1,3 @@
+[mpvpaper-rs]
+source = "git"
+git = "https://github.com/BitYoungjae/mpvpaper-rs.git"
