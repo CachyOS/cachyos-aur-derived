@@ -85,11 +85,7 @@ jobs:
             GITHUB_REF_NAME="$GITHUB_REF_NAME"
             TERM=xterm-256color
           )
-          if [[ -n "$PACKAGE_FILTER" ]]; then
-            "${run_as_builder[@]}" bash ci/check-updates.sh "$PACKAGE_FILTER"
-          else
-            "${run_as_builder[@]}" bash ci/check-updates.sh
-          fi
+          "${run_as_builder[@]}" bash ci/check-updates.sh "$PACKAGE_FILTER"
 
       - name: Publish update summary
         if: always()
