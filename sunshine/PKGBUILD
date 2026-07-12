@@ -9,8 +9,8 @@
 : "${_commit:=14ffa6fdaa53f7b51512be2b3d24f3939695403c}"
 
 pkgname='sunshine'
-pkgver=2026.709.11046
-pkgrel=2
+pkgver=2026.712.43005
+pkgrel=1
 pkgdesc="Self-hosted game stream host for Moonlight"
 arch=('x86_64' 'aarch64')
 url=https://app.lizardbyte.dev/Sunshine
