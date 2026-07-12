@@ -1,0 +1,4 @@
+[fluxer-canary]
+source = "jq"
+url = "https://api.fluxer.app/dl/desktop/canary/linux/x64/versions?limit=1"
+filter = ".versions[0].version"
