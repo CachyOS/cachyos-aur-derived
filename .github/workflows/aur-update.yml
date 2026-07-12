@@ -52,10 +52,9 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Install Arch packaging tools
+      - name: Install depends
         run: |
-          pacman -Syu --noconfirm
-          pacman -S --noconfirm devtools pacman-contrib github-cli jq nvchecker sudo
+          pacman -Syu --noconfirm devtools pacman-contrib github-cli jq python-jq nvchecker sudo
 
       - name: Configure build user
         run: |
