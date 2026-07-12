@@ -66,6 +66,7 @@ makedepends=(
   'nodejs'
   'npm'
   'python-jinja'  # required by the glad OpenGL/EGL loader generator
+  'python-pkg_resources'  # required by glad with setuptools >= 81
   'python-setuptools'  # required for glad OpenGL/EGL loader generated, v2.0.0
   'shaderc'
 )
