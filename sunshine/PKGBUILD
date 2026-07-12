@@ -4,13 +4,13 @@
 ## options
 : "${_run_unit_tests:=false}"  # if set to true; unit tests will be executed post build; useful in CI
 : "${_support_headless_testing:=false}"
-: "${_use_cuda:=detect}" # nvenc
+: "${_use_cuda:=true}" # nvenc; set to false to build without CUDA support
 
 : "${_commit:=14ffa6fdaa53f7b51512be2b3d24f3939695403c}"
 
 pkgname='sunshine'
 pkgver=2026.709.11046
-pkgrel=1
+pkgrel=2
 pkgdesc="Self-hosted game stream host for Moonlight"
 arch=('x86_64' 'aarch64')
 url=https://app.lizardbyte.dev/Sunshine
@@ -58,6 +58,7 @@ makedepends=(
   'appstream'
   'appstream-glib'
   'cmake'
+  'cuda'
   'desktop-file-utils'
   "gcc${_gcc_dep_suffix}"
   'git'
