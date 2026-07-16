@@ -1,0 +1,3 @@
+[qt6ct-kde]
+source = 'git'
+git = 'https://www.opencode.net/trialuser/qt6ct'
