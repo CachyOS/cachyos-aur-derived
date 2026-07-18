@@ -36,6 +36,7 @@ depends=(
 	lz4
 	miniz
 	spirv-tools
+	fast_float
 )
 
 prepare() {
