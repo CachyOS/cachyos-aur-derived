@@ -20,9 +20,12 @@ pkgbase = jay
 	optdepends = sqlite: session management
 	optdepends = xdg-desktop-portal: portal support
 	optdepends = xorg-xwayland: X11 support
+	optdepends = uwsm: systemd support
 	provides = wayland-compositor
 	options = !lto
 	source = jay-1.14.0.tar.gz::https://github.com/mahkoh/jay/archive/v1.14.0.tar.gz
+	source = jay-uwsm.desktop
 	sha512sums = 20e434a84b48b8bf9fa8142e4acec2115be12504cd21bb9f81574cdca4336f5b35752a27a6bf1d1ea4741807290cc65860744a553afcf990c20b94434e515faf
+	sha512sums = 10f480c65d25085b98944cb1ecdef57d6f6ab3d303116c2290374c7308f2da5829d309e1a84786a8976bc58aaf4d0a9a710edcff73f308c06db8c9577402bc00
 
 pkgname = jay
