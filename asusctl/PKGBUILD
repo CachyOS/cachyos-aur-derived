@@ -62,7 +62,6 @@ package_asusctl() {
     'acpi_call: fan control'
     'asusctltray: tray profile switcher'
     'rog-control-center: app to control asusctl'
-    'supergfxctl: hybrid GPU control'
   )
 
   cd "${pkgbase}"
