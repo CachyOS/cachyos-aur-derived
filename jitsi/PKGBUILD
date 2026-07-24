@@ -2,7 +2,7 @@
 # Contributors: Keshav P R, atommix aka Aleks Lifey, Xavion, Ananda Samaddar, Dan Serban, Xyne, Joan Figueras
 
 pkgname=jitsi
-pkgver=2.11.5633
+pkgver=5633
 _pkgver=5633
 pkgrel=1
 pkgdesc="An audio/video SIP VoIP phone and instant messenger written in Java (formerly SIP-Communicator)"
