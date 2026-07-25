@@ -4,12 +4,12 @@ pkgname=amneziawg-dkms
 pkgdesc="AmneziaWG is a contemporary version of the popular VPN protocol, WireGuard."
 url="https://github.com/amnezia-vpn/amneziawg-linux-kernel-module"
 arch=("x86_64")
-pkgver=1.0.20260611
+pkgver=1.0.20260725
 pkgrel=1
 license=('GPLv2')
 provides=("AMNEZIAWG-MODULE=${pkgver}")
 source=("$pkgname-$pkgver.tar.gz::https://github.com/amnezia-vpn/amneziawg-linux-kernel-module/archive/refs/tags/v${pkgver}.tar.gz")
-sha512sums=('3a99b7812b86087aa6f2c0af02a1c43aa6f540d025a1613d484930a99d3589c4ba2e6c2fb7f1b941357bf13855a56a220ff7c0688b22359f954b4dc689db0fdc')
+sha512sums=('6b6facf6721bd59e09ea9fa4599328476e5b9b7e31bb00a5002690d3fd2cb504c93f210379840645578b4b2341b4896c3edf7917a9cbbb1f70b6366554806013')
 
 prepare() {
 cd "${srcdir}/amneziawg-linux-kernel-module-${pkgver}/src"
