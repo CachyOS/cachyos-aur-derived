@@ -1,6 +1,6 @@
 pkgbase = amneziawg-tools
 	pkgdesc = AmneziaWG is a contemporary version of the popular VPN protocol, WireGuard.
-	pkgver = 1.0.20260618
+	pkgver = 3.0.20260730
 	pkgrel = 1
 	url = https://github.com/amnezia-vpn/amneziawg-tools
 	arch = x86_64
@@ -8,7 +8,7 @@ pkgbase = amneziawg-tools
 	depends = bash
 	optdepends = amneziawg-go: go implementation of amneziawg
 	optdepends = resolvconf: if you are controling DNS via AmneziaWG
-	source = amneziawg-tools-1.0.20260618.tar.gz::https://github.com/amnezia-vpn/amneziawg-tools/archive/refs/tags/v1.0.20260618.tar.gz
-	sha512sums = b4e74e2427cec827ea2349cf972ee24a2e7457df5a19b6b5129ed34f48a2481648d36fa915e00fc31a89930b1b9de18a032dd1431f8d51576e4a001a8cebe76d
+	source = amneziawg-tools-3.0.20260730.tar.gz::https://github.com/amnezia-vpn/amneziawg-tools/archive/refs/tags/v3.0.20260730.tar.gz
+	sha512sums = fe719da017a61a5b042a68f74be30e45cc545e147ad9eacc31d7a50246ea7db1f8077eb1dddd63a578bce1dd17d79e9f33303f7e5b2600dd247b28356aef3ef0
 
 pkgname = amneziawg-tools
