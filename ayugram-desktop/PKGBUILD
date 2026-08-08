@@ -1,8 +1,8 @@
 # Use environment variable MAKEPKG_AYUGRAM_API_ID and MAKEPKG_AYUGRAM_API_HASH to override default values
 
 pkgname=ayugram-desktop
-pkgver=6.7.8
-pkgrel=5
+pkgver=7.0.9
+pkgrel=1
 pkgdesc="Desktop Telegram client with good customization and Ghost mode."
 arch=("x86_64" "aarch64")
 url="https://github.com/AyuGram/AyuGramDesktop"
@@ -68,7 +68,7 @@ source=("AyuGram-$pkgver-full.tar.gz::https://github.com/AyuGram/AyuGramDesktop/
         "0001-force-minizip-includes.diff"
         "0002-fix-missing-cstdint.diff")
 
-sha256sums=('c8de66c5568dfc3e4e309275cc858e84a61f781fe93ed967290c31b70c770b00'
+sha256sums=('79b78388e9f583582835362f3ae0694857216e4436c1f07231606105945eb2d6'
             'f2c6b92533ba41a024b9fdb86d346c8bfc876d5961738ad463effbd844d61405'
             '1ff58d023daa8882e952d2322c7b119e31f98ddecea32473bd8079d93295e7b6'
             '566920c751e0f599411ff914649ffbf1f19e26a0ead368d9c4a18cbf760406e1')
