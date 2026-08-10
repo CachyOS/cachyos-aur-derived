@@ -1,0 +1,35 @@
+pkgbase = niri-focused-booster
+	pkgdesc = dmem cgroup boosting for focused windows on Niri
+	pkgver = 0.3.0
+	pkgrel = 1
+	url = https://github.com/1Naim/niri-focused-booster
+	arch = x86_64
+	license = GPL-3.0-or-later
+	makedepends = cargo
+	makedepends = git
+	depends = dmemcg-booster
+	depends = glibc
+	depends = libgcc
+	depends = systemd
+	source = niri-focused-booster::git+https://github.com/1Naim/niri-focused-booster.git#tag=0.3.0
+	sha256sums = 5635ca55eaf8807ddb8a7bc49b947880ded5fb6389a434c5f420a91141921c32
+
+pkgname = niri-focused-booster
+pkgbase = niri-focused-booster
+	pkgdesc = dmem cgroup boosting for focused windows on Niri
+	pkgver = 0.3.0
+	pkgrel = 1
+	url = https://github.com/1Naim/niri-focused-booster
+	arch = x86_64
+	license = GPL-3.0-or-later
+	makedepends = cargo
+	makedepends = git
+	depends = dmemcg-booster
+	depends = glibc
+	depends = libgcc
+	depends = systemd
+	depends = libxcb
+	source = niri-focused-booster::git+https://github.com/1Naim/niri-focused-booster.git#tag=0.3.0
+	sha256sums = 5635ca55eaf8807ddb8a7bc49b947880ded5fb6389a434c5f420a91141921c32
+
+pkgname = niri-focused-booster
