@@ -1,6 +1,6 @@
 pkgbase = protonplus
 	pkgdesc = A modern compatibility tools manager
-	pkgver = 0.6.0
+	pkgver = 0.6.2
 	pkgrel = 1
 	url = https://github.com/Vysp3r/ProtonPlus
 	arch = x86_64
@@ -14,7 +14,7 @@ pkgbase = protonplus
 	depends = libarchive
 	depends = libgee
 	depends = libsoup3
-	source = protonplus-0.6.0.tar.gz::https://github.com/Vysp3r/ProtonPlus/archive/refs/tags/v0.6.0.tar.gz
-	sha256sums = 95156880b041f3824567f9b50e76bbf1df081e5f6489033b571bc0ab02ba21d4
+	source = protonplus-0.6.2.tar.gz::https://github.com/Vysp3r/ProtonPlus/archive/refs/tags/v0.6.2.tar.gz
+	sha256sums = 1adfc7892510da0d017d1186b43e41ea0138ca164cf6b1e0468d71b223181b48
 
 pkgname = protonplus
