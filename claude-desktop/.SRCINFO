@@ -1,6 +1,6 @@
 pkgbase = claude-desktop
 	pkgdesc = Official Claude AI desktop app from Anthropic
-	pkgver = 1.26832.0
+	pkgver = 1.28929.0
 	pkgrel = 1
 	url = https://claude.ai/download
 	arch = x86_64
@@ -48,13 +48,13 @@ pkgbase = claude-desktop
 	optdepends = xdg-desktop-portal-kde: portal backend for KDE Plasma
 	options = !strip
 	options = !debug
-	source_x86_64 = https://downloads.claude.ai/claude-desktop/apt/stable/pool/main/c/claude-desktop/claude-desktop_1.26832.0_amd64.deb
+	source_x86_64 = https://downloads.claude.ai/claude-desktop/apt/stable/pool/main/c/claude-desktop/claude-desktop_1.28929.0_amd64.deb
 	depends_x86_64 = qemu-system-x86
 	depends_x86_64 = edk2-ovmf
-	sha256sums_x86_64 = 2bc6f0d4109bb43b307696e1128df53fbf393ef98f947a7869948642450245d7
-	source_aarch64 = https://downloads.claude.ai/claude-desktop/apt/stable/pool/main/c/claude-desktop/claude-desktop_1.26832.0_arm64.deb
+	sha256sums_x86_64 = 3ceb391268bde9a7fec32520d349b704043166204cdd571c62d1e950701f48fc
+	source_aarch64 = https://downloads.claude.ai/claude-desktop/apt/stable/pool/main/c/claude-desktop/claude-desktop_1.28929.0_arm64.deb
 	depends_aarch64 = qemu-system-aarch64
 	depends_aarch64 = edk2-aarch64
-	sha256sums_aarch64 = c2810fd68b2410f8326e80a45573d2f3e7bcd51aaf810d9ae92d3c0978a1d553
+	sha256sums_aarch64 = 7a5b8bd5fcda0a6b1a6b3711e0142704662e44938a94683068fd90c398c7394d
 
 pkgname = claude-desktop
