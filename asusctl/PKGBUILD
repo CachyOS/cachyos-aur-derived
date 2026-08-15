@@ -6,7 +6,7 @@ pkgname=(
   asusctl
   rog-control-center
 )
-pkgver=6.3.11
+pkgver=6.4.0
 pkgrel=1
 pkgdesc="A control daemon, tools, and a collection of crates for interacting with ASUS ROG laptops"
 arch=('x86_64')
@@ -27,7 +27,7 @@ makedepends=(
   systemd
 )
 source=("git+https://github.com/OpenGamingCollective/asusctl.git#tag=$pkgver")
-b2sums=('4aa456fb56a8dcc4f43a5cbf627453199d30a78c85d0926948f4d5ee71a9d9daddc81acde9d4aacad4aa6ac6fb6ab35f6b294bb0f9cd2dc4b7ca890197920ecc')
+b2sums=('0cfdc7f792fc6499cde9e4c9c6d82e484605e1b2878bb9f3a0e0696f5910b9ba7898f124fecd5fb3f39a0787f81e5163721606290099d757365dc3d6715a1bcf')
 
 prepare() {
   cd "${pkgbase}"
