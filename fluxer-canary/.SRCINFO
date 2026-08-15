@@ -1,6 +1,6 @@
 pkgbase = fluxer-canary
 	pkgdesc = A free and open source group chat, video, and voice calling app
-	pkgver = 2026.814.215154
+	pkgver = 2026.815.125342
 	pkgrel = 1
 	url = https://canary.fluxer.app
 	arch = x86_64
@@ -12,9 +12,9 @@ pkgbase = fluxer-canary
 	depends = libnotify
 	depends = nspr
 	options = !strip
-	source = fluxer-canary-2026.814.215154-x64.tar.gz::https://api.fluxer.app/dl/desktop/canary/linux/x64/2026.814.215154/tar_gz
+	source = fluxer-canary-2026.815.125342-x64.tar.gz::https://api.fluxer.app/dl/desktop/canary/linux/x64/2026.815.125342/tar_gz
 	source = fluxer-canary.desktop
-	sha256sums = 914e8c4d5e4018a344c97abf49ad107289262be466c6476511922c01de374103
+	sha256sums = 0f9e4f7b5883c88138077f1815eb4b97ae25a1cc1dce389215a48d3ac9e1d1d9
 	sha256sums = 5869bf60c8bc53494fa7dc29eaeda36273f2d1054ac1edd1bf0e90589c7e90b8
 
 pkgname = fluxer-canary
