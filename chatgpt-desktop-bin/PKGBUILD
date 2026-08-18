@@ -2,7 +2,7 @@
 # Releases: https://persistent.oaistatic.com/codex-app-prod/linux/deb/dists/stable/main/binary-amd64/Packages
 
 pkgname=chatgpt-desktop-bin
-pkgver=26.810.52044
+pkgver=26.814.41957
 pkgrel=1
 pkgdesc="Official ChatGPT desktop app for Linux"
 arch=('x86_64')
@@ -71,7 +71,7 @@ source_x86_64=(
 source=('chatgpt-launcher.sh')
 noextract=("chatgpt_${pkgver}_amd64.deb")
 sha256sums=('aab6b1105d7273443234e77412fbaa35ff9e04098ac63c2f73ae8e87afb43bd2')
-sha256sums_x86_64=('708a15a1bb76e2bb7f0e376e5145391fa277ad3a64057c1d32537bdc2a1b4e6e')
+sha256sums_x86_64=('4778b26a7abd08647214d5b05c17bd3ebe2d9688d146dabf017c1a2faf93ac7d')
 
 package() {
   bsdtar -xOf "${srcdir}/chatgpt_${pkgver}_amd64.deb" data.tar.xz |
