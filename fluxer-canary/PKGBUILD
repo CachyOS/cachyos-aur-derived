@@ -1,7 +1,7 @@
 # Maintainer: witchlliee <witchlliee@tuta.io>
 
 pkgname=fluxer-canary
-pkgver=2026.816.172808
+pkgver=2026.820.154932
 pkgrel=1
 pkgdesc="A free and open source group chat, video, and voice calling app"
 arch=('x86_64')
@@ -13,7 +13,7 @@ source=(
   "fluxer-canary-${pkgver}-x64.tar.gz::https://api.fluxer.app/dl/desktop/canary/linux/x64/${pkgver}/tar_gz"
   "fluxer-canary.desktop"
 )
-sha256sums=('757bd3ddb5f91f115dc4f20aabda799b43c77cae4030de9aa141a95e7719586f'
+sha256sums=('5a612c4f2c3e973c5ebab199cc8955481ee3818fbb4db295fc8767828fdf272a'
             '5869bf60c8bc53494fa7dc29eaeda36273f2d1054ac1edd1bf0e90589c7e90b8')
 
 package() {
