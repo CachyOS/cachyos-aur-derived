@@ -1,0 +1,22 @@
+pkgname=kio-snapshot
+pkgver=1.0.0
+pkgrel=1
+pkgdesc='Integration of Btrfs filesystem snapshots for KDE applications'
+arch=('x86_64')
+url='https://invent.kde.org/system/kio-snapshot'
+license=('LGPL-2.0-or-later')
+depends=('btrfs-progs' 'kio')
+makedepends=('cmake' 'extra-cmake-modules' 'qt6-base')
+source=("$url/-/archive/v$pkgver/$pkgname-v$pkgver.tar.gz")
+sha256sums=('56b908d20ba1c866d266c03a4fbe779448ee4e7d0ae6a5389b7043fe97317746')
+
+build() {
+  cmake -B build -S "$pkgname-v$pkgver" \
+    -DCMAKE_BUILD_TYPE=None \
+    -DCMAKE_INSTALL_PREFIX=/usr
+  cmake --build build
+}
+
+package() {
+  DESTDIR="$pkgdir" cmake --install build
+}
