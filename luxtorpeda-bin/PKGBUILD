@@ -1,0 +1,20 @@
+_pkgbase='luxtorpeda'
+pkgname="${_pkgbase}-bin"
+pkgver=v77.1.0
+pkgrel=1
+pkgdesc='Steam Play compatibility tool to run games using native Linux engines'
+arch=('x86_64')
+url='https://codeberg.org/luxtorpeda/luxtorpeda'
+license=('GPL2')
+depends=()
+optdepends=('steam: The Steam client')
+provides=("${pkgname}" "${_pkgbase}")
+conflicts=("${pkgname}" "${_pkgbase}" "${_pkgbase}-git")
+source=("${url}/releases/download/${pkgver}/${_pkgbase}-${pkgver}.tar.xz")
+sha512sums=('f014328dd356da1f2fc357da30b68e335c8d18e52aeab293aecca4414c6cc199ed316518a0e925734f089386b7902afcd0e5482c199d31883c95ee01b7984f82')
+
+package() {
+  cd "${srcdir}/${_pkgbase}"
+  mkdir -p "${pkgdir}/usr/share/steam/compatibilitytools.d"
+  cp -r "${srcdir}/${_pkgbase}" "${pkgdir}/usr/share/steam/compatibilitytools.d/"
+}
