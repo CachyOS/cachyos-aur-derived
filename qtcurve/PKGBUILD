@@ -1,32 +1,47 @@
-# Maintainer: Maxim Devaev <mdevaev@gmail.com>
+# Maintainer: Wyn <Wyn@CachyOS>
 
-_commit=84f1ebe188fb0405c259d153c570daa4d3f48a67
+_commit=519f04b08d7a1029b62b871cc8cf408d6fbefc1f
 pkgname=qtcurve
-pkgver=20240511
+pkgver=20260812
 pkgrel=1
-pkgdesc="A configurable set of widget styles for KDE and Gtk (Qt6 fork)"
+pkgdesc="A configurable set of widget styles for Qt6, KDE Frameworks 6 and GTK 2"
 arch=(x86_64)
 url="https://invent.kde.org/system/qtcurve"
-license=(GPL)
+license=(LGPL-2.1-only LGPL-3.0-only MIT)
 groups=(qtcurve)
 depends=(
-	qt5-base
-	qt5-svg
-	qt5-x11extras
+	cairo
+	frameworkintegration
+	gdk-pixbuf2
+	glib2
+	glibc
+	gtk2
+	karchive
+	kcolorscheme
+	kcompletion
+	kconfig
+	kconfigwidgets
+	kcoreaddons
+	kguiaddons
+	ki18n
+	kiconthemes
+	kio
+	kwidgetsaddons
+	kwindowsystem
+	kxmlgui
+	libgcc
+	libstdc++
+	libx11
+	libxcb
+	pango
+	perl
 	qt6-base
 	qt6-svg
-	libxcb
-	gtk2
-	libx11
-	gcc-libs
-	frameworkintegration
 )
 makedepends=(
-	git
 	cmake
 	extra-cmake-modules
-	kio
-	kconfig
+	git
 )
 conflicts=(
 	qtcurve-gtk2
@@ -34,23 +49,62 @@ conflicts=(
 	qtcurve-qt5
 	qtcurve-utils
 )
-source=("git+https://invent.kde.org/system/qtcurve.git#commit=$_commit")
-md5sums=(SKIP)
+source=(
+	"git+https://invent.kde.org/system/qtcurve.git#commit=$_commit"
+	qt6-child-layout-margin.patch
+	qt6-dolphin-small-status-bar.patch
+)
+sha256sums=(
+	SKIP
+	44b0763fb321cc8a1ab6db1135d8ddb7804f5de8094547955c5fa757c85eec39
+	a745aeddaadb1569aee8d109c0d7188187b6c842b60029b4cfface86d98e814b
+)
 
+prepare() {
+	# Upstream commit a501c957 made the Qt 6 style return the window margin
+	# for child layouts too. Dolphin then squeezes the free space bar in its
+	# status bar.
+	patch -Np1 -d "$pkgname" -i "$srcdir/qt6-child-layout-margin.patch"
+	# Dolphin 26.08 sizes the label of its small status bar against
+	# PM_SplitterWidth. The patch returns the Breeze value for that widget
+	# only. Drop the patch when Dolphin stops scaling the bar with this
+	# metric.
+	patch -Np1 -d "$pkgname" -i "$srcdir/qt6-dolphin-small-status-bar.patch"
+}
 
 build() {
-	cd "$srcdir/$pkgname"
-	rm -rf build
-	mkdir build
-	cd build
-	cmake .. \
+	# Upstream log macros embed __FILE__. Map the source path so that the
+	# binaries do not contain $srcdir.
+	export CFLAGS+=" -fmacro-prefix-map=$srcdir/$pkgname=$pkgname"
+	export CXXFLAGS+=" -fmacro-prefix-map=$srcdir/$pkgname=$pkgname"
+	# The build directory sits inside the checkout. Upstream stamps the version
+	# with a bare "git describe" that runs in the build directory.
+	cmake -S "$pkgname" -B "$pkgname/build" \
+		-DCMAKE_BUILD_TYPE=None \
 		-DCMAKE_INSTALL_PREFIX=/usr \
-		-DENABLE_QT5=ON \
-		-DENABLE_QT6=ON
-	make
+		-DCMAKE_INSTALL_LIBDIR=lib \
+		-DENABLE_QT4=OFF \
+		-DENABLE_QT5=OFF \
+		-DENABLE_QT6=ON \
+		-DQTC_QT6_ENABLE_KDE=ON \
+		-DENABLE_GTK2=ON \
+		-DBUILD_TESTING=ON
+	cmake --build "$pkgname/build"
+}
+
+check() {
+	# test-printf asserts that realloc() moves a small heap buffer when the
+	# buffer grows.
+	# glibc can grow the buffer in place, so the result depends on the heap layout.
+	ctest --test-dir "$pkgname/build" --output-on-failure --no-tests=error -E '^test-printf$'
 }
 
 package() {
-	cd "$srcdir/$pkgname/build"
-	make DESTDIR="$pkgdir/" install
+	DESTDIR="$pkgdir" cmake --install "$pkgname/build"
+	# The Oxygen-derived helpers in qt6/style carry an MIT notice. The build
+	# fails when the notice is not found.
+	sed -n '/^\/\/ Copyright (c) 2010 Hugo/,/IN THE SOFTWARE\./p' "$pkgname/qt6/style/shadowhelper.cpp" |
+		sed 's|^// \?||' |
+		install -Dm644 /dev/stdin "$pkgdir/usr/share/licenses/$pkgname/MIT"
+	test -s "$pkgdir/usr/share/licenses/$pkgname/MIT"
 }

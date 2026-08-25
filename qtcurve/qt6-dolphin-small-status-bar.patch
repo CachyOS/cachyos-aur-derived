@@ -1,0 +1,38 @@
+Return a narrow splitter width for the Dolphin status bar
+
+Dolphin 26.08 derives the geometry of its small status bar from the style
+in src/statusbar/dolphinstatusbar.cpp. The status bar reads
+PM_SplitterWidth. It computes a clipping amount of 2 + 2 times that value.
+The layout margins consume three clipping amounts. The width budget
+reserves the text width, two clipping amounts, and one average character
+width. The label therefore loses one clipping amount minus one average
+character width. Breeze returns 1 pixel, so the label keeps a small
+reserve. QtCurve returns 7 pixels by default, or 6 for the other splitter
+line styles. The label then loses up to 9 pixels and Dolphin elides its
+text. For example "1 folder, 5 files (1.1 MiB)" turns into
+"1 folder, 5…s (1.1 MiB)". The clipping amount also sets the minimum
+height of the bar. The bar sheds that surplus and matches the Breeze
+geometry. Return the Breeze value for the Dolphin status bar. Splitter
+handles and dock separators keep their own width.
+
+diff --git a/qt6/style/qtcurve_api.cpp b/qt6/style/qtcurve_api.cpp
+index cb030b41..bd090e25 100644
+--- a/qt6/style/qtcurve_api.cpp
++++ b/qt6/style/qtcurve_api.cpp
+@@ -1685,8 +1685,15 @@ Style::pixelMetric(PixelMetric metric, const QStyleOption *option,
+         return 4;
+     // case PM_DockWindowHandleExtent:
+     //     return 10;
+-    case PM_DockWidgetSeparatorExtent:
+     case PM_SplitterWidth:
++        // Dolphin subtracts this metric from the width that it leaves for
++        // the label in its small status bar. A wide handle makes Dolphin
++        // elide that label. Only the Dolphin status bar sees the narrow
++        // Breeze value.
++        if (qtcCheckType(widget, "DolphinStatusBar"))
++            return 1;
++        QTC_FALLTHROUGH();
++    case PM_DockWidgetSeparatorExtent:
+         return LINE_1DOT==opts.splitters ? 7 : 6;
+     case PM_ToolBarHandleExtent:
+         return LINE_1DOT==opts.handles ? 7 : 8;
