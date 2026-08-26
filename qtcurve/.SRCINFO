@@ -52,9 +52,11 @@ pkgbase = qtcurve
 	source = qt6-child-layout-margin.patch
 	source = qt6-dolphin-small-status-bar.patch
 	source = prefer-kf6-translations.patch
+	source = qt6-wayland-shadows.patch
 	sha256sums = SKIP
 	sha256sums = 46bf69df85965eef43a05304b7be62d908260e68efaf7114079872b2efb7fe56
 	sha256sums = e4219281d09f042bac722d7ab6a6784b9b56ea34129e8b877942c91770d9a912
 	sha256sums = 276fb104d13f35920e24ab8e92907d0ef482a651bb41b46f8fbbfa998ed94dd4
+	sha256sums = 5318a47c5e5c6356d4a8acbf6c642d3368dbf1fc529f4f0d924e9757ef1962ff
 
 pkgname = qtcurve
