@@ -9,7 +9,7 @@
 : "${_commit:=14ffa6fdaa53f7b51512be2b3d24f3939695403c}"
 
 pkgname='sunshine'
-pkgver=2026.824.30334
+pkgver=2026.826.1804
 pkgrel=1
 pkgdesc="Self-hosted game stream host for Moonlight"
 arch=('x86_64' 'aarch64')
