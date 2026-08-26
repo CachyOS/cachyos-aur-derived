@@ -1,14 +1,14 @@
 # Maintainer: Wyn <Wyn@CachyOS>
+# Contributor: Maxim Devaev <mdevaev@gmail.com>
 
 _commit=519f04b08d7a1029b62b871cc8cf408d6fbefc1f
 pkgname=qtcurve
 pkgver=20260812
 pkgrel=1
-pkgdesc="A configurable set of widget styles for Qt6, KDE Frameworks 6 and GTK 2"
+pkgdesc="A configurable set of widget styles for Qt5, Qt6, KDE Frameworks 6 and GTK 2"
 arch=(x86_64)
 url="https://invent.kde.org/system/qtcurve"
 license=(LGPL-2.1-only LGPL-3.0-only MIT)
-groups=(qtcurve)
 depends=(
 	cairo
 	frameworkintegration
@@ -35,6 +35,9 @@ depends=(
 	libxcb
 	pango
 	perl
+	qt5-base
+	qt5-svg
+	qt5-x11extras
 	qt6-base
 	qt6-svg
 )
@@ -43,68 +46,76 @@ makedepends=(
 	extra-cmake-modules
 	git
 )
+
 conflicts=(
 	qtcurve-gtk2
 	qtcurve-kde
 	qtcurve-qt5
 	qtcurve-utils
 )
+replaces=("${conflicts[@]}")
 source=(
 	"git+https://invent.kde.org/system/qtcurve.git#commit=$_commit"
 	qt6-child-layout-margin.patch
 	qt6-dolphin-small-status-bar.patch
+	prefer-kf6-translations.patch
 )
 sha256sums=(
 	SKIP
-	44b0763fb321cc8a1ab6db1135d8ddb7804f5de8094547955c5fa757c85eec39
-	a745aeddaadb1569aee8d109c0d7188187b6c842b60029b4cfface86d98e814b
+	46bf69df85965eef43a05304b7be62d908260e68efaf7114079872b2efb7fe56
+	e4219281d09f042bac722d7ab6a6784b9b56ea34129e8b877942c91770d9a912
+	276fb104d13f35920e24ab8e92907d0ef482a651bb41b46f8fbbfa998ed94dd4
 )
 
+pkgver() {
+	git -C "$pkgname" log -1 --format=%cd --date=format:%Y%m%d
+}
+
 prepare() {
-	# Upstream commit a501c957 made the Qt 6 style return the window margin
-	# for child layouts too. Dolphin then squeezes the free space bar in its
-	# status bar.
+	# The patch keeps the free space bar at full height in Dolphin.
 	patch -Np1 -d "$pkgname" -i "$srcdir/qt6-child-layout-margin.patch"
-	# Dolphin 26.08 sizes the label of its small status bar against
-	# PM_SplitterWidth. The patch returns the Breeze value for that widget
-	# only. Drop the patch when Dolphin stops scaling the bar with this
-	# metric.
+	# The patch keeps the whole status text in Dolphin.
 	patch -Np1 -d "$pkgname" -i "$srcdir/qt6-dolphin-small-status-bar.patch"
+	# The patch takes the translation files from KF6, and not from KF5.
+	patch -Np1 -d "$pkgname" -i "$srcdir/prefer-kf6-translations.patch"
 }
 
 build() {
-	# Upstream log macros embed __FILE__. Map the source path so that the
-	# binaries do not contain $srcdir.
 	export CFLAGS+=" -fmacro-prefix-map=$srcdir/$pkgname=$pkgname"
 	export CXXFLAGS+=" -fmacro-prefix-map=$srcdir/$pkgname=$pkgname"
-	# The build directory sits inside the checkout. Upstream stamps the version
-	# with a bare "git describe" that runs in the build directory.
+
 	cmake -S "$pkgname" -B "$pkgname/build" \
 		-DCMAKE_BUILD_TYPE=None \
 		-DCMAKE_INSTALL_PREFIX=/usr \
 		-DCMAKE_INSTALL_LIBDIR=lib \
 		-DENABLE_QT4=OFF \
-		-DENABLE_QT5=OFF \
+		-DENABLE_QT5=ON \
+		-DQTC_QT5_ENABLE_KDE=OFF \
 		-DENABLE_QT6=ON \
 		-DQTC_QT6_ENABLE_KDE=ON \
 		-DENABLE_GTK2=ON \
 		-DBUILD_TESTING=ON
 	cmake --build "$pkgname/build"
+
+	grep -qF "\"$(git -C "$pkgname" describe)\"" "$pkgname/build/version.cpp"
 }
 
 check() {
-	# test-printf asserts that realloc() moves a small heap buffer when the
-	# buffer grows.
-	# glibc can grow the buffer in place, so the result depends on the heap layout.
 	ctest --test-dir "$pkgname/build" --output-on-failure --no-tests=error -E '^test-printf$'
 }
 
 package() {
 	DESTDIR="$pkgdir" cmake --install "$pkgname/build"
-	# The Oxygen-derived helpers in qt6/style carry an MIT notice. The build
-	# fails when the notice is not found.
+	# The style helpers that QtCurve took from Oxygen carry an MIT notice. The
+	# notice names the copyright holder, so the package must ship the text.
+	# Upstream keeps no MIT licence file. Take the text from the comment block
+	# in qt6/style/shadowhelper.cpp.
 	sed -n '/^\/\/ Copyright (c) 2010 Hugo/,/IN THE SOFTWARE\./p' "$pkgname/qt6/style/shadowhelper.cpp" |
 		sed 's|^// \?||' |
 		install -Dm644 /dev/stdin "$pkgdir/usr/share/licenses/$pkgname/MIT"
+
 	test -s "$pkgdir/usr/share/licenses/$pkgname/MIT"
+	test -f "$pkgdir/usr/lib/qt/plugins/styles/qtcurve.so"
+	test -f "$pkgdir/usr/lib/qt6/plugins/styles/qtcurve.so"
+	readelf -d "$pkgdir/usr/lib/qt/plugins/styles/qtcurve.so" | grep -q libQt5X11Extras
 }

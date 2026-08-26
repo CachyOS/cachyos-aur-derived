@@ -1,22 +1,40 @@
 Restore the child layout margin in the Qt 6 style
 
-Commit fbadbbf3 copied the Qt 5 style to qt6/. Commit a501c957
+Commit fbadbbf3 ("copy qt5 to qt6") copied qt5/ to qt6/. Commit a501c957
 ("PM_DefaultTopLevelMargin, PM_DefaultChildMargin removed") then deleted
-the two metrics that Qt 6 dropped and returned 9 pixels for every layout.
-The Qt 5 style returns 9 pixels for a window and 6 pixels for a child
-layout. Breeze returns 6 pixels for a child layout as well.
+the cases for the two metrics that Qt 6 no longer defines. The four
+layout margin cases now return 9 pixels for every widget. The Qt 5 style
+returns 9 pixels for a window and 6 pixels for a child layout. It returns
+2 pixels when OpenOffice asks without a widget.
 
-Dolphin gives the space widget in its status bar a fixed height, 30 pixels
-with the default font. That widget takes the style margin above and below
-the free space bar. A 9 pixel margin leaves 12 pixels for the bar. The bar
-asks for the font height, 18 pixels with the default font. The label then
-almost touches the top and the bottom of the bar.
+Dolphin 26.08 sets the height of the StatusBarSpaceInfo widget in
+src/statusbar/dolphinstatusbar.cpp. Line 126 takes the greatest of the
+font height, the minimum zoom slider height, and the stop button height.
+Dolphin hides that button at line 97, and adds it to the layout at line
+149. The button therefore keeps the default geometry of a child widget,
+which is 30 pixels high. With a 10 point font the other two values are
+16 and 23 pixels. Line 135 then makes 30 pixels the fixed height of the
+space widget.
+
+Line 39 of src/statusbar/statusbarspaceinfo.cpp passes -1 for the top and
+the bottom margin of the layout, so the style sets both. A 9 pixel margin
+leaves 12 pixels for the contents. The free space bar asks for the
+greater of the font height and its 12 pixel bar. A 16 pixel font
+therefore costs the bar 4 pixels of height. The button beside the bar
+holds the free space text, and cuts it at the top and at the bottom.
 
 Restore the Qt 5 logic. Qt 6 has no PM_DefaultTopLevelMargin and no
-PM_DefaultChildMargin, so this patch writes the values into the case.
+PM_DefaultChildMargin, so the case for the layout margins holds the
+values. A window keeps the 9 pixel margin. The space widget gets a
+6 pixel margin, and 18 pixels for its contents. Breeze gives the same
+18 pixels. The Qt 5 style still has the two metrics at
+qt5/style/qtcurve_api.cpp:1584, and needs no change.
+
+Drop this patch when upstream restores the child layout margin in the
+Qt 6 style.
 
 diff --git a/qt6/style/qtcurve_api.cpp b/qt6/style/qtcurve_api.cpp
-index 0d3a2fb7..cb030b41 100644
+index 0d3a2fb7..faf4880f 100644
 --- a/qt6/style/qtcurve_api.cpp
 +++ b/qt6/style/qtcurve_api.cpp
 @@ -1589,7 +1589,13 @@ Style::pixelMetric(PixelMetric metric, const QStyleOption *option,
@@ -25,8 +43,8 @@ index 0d3a2fb7..cb030b41 100644
      case PM_LayoutBottomMargin:
 -        return 9;
 +        // Qt 6 has no PM_DefaultTopLevelMargin and no PM_DefaultChildMargin.
-+        // Keep the Qt 5 values: 9 pixels for a window, 2 for an OpenOffice
-+        // widget, 6 for any other child layout.
++        // Keep the Qt 5 values. A window gets 9 pixels. Any other layout
++        // gets 6 pixels, or 2 pixels when OpenOffice asks without a widget.
 +        if ((option && (option->state & State_Window)) ||
 +            (widget && widget->isWindow()))
 +            return 9;

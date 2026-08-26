@@ -1,0 +1,56 @@
+Take the KF version from the style that has KDE support
+
+The QTC_INSTALL_PO block selects a KF major version. The block then
+requires the I18n component of that version. Two separate if() blocks
+make the choice. The Qt 6 block sets 6, and the Qt 5 block sets 5. The
+Qt 5 block runs last, so a build with both Qt versions selects KF5.
+
+Such a build then needs the KF5 I18n framework. The Qt 5 style finds
+KF5 only when QTC_QT5_ENABLE_KDE is on. A build with that option off
+therefore needs KF5 for the translation files alone.
+
+Make the choice an if/elseif chain, and test the KDE support of each
+style first. A style that has KDE support finds its own KF version
+with the I18n component. The translation files then need no further
+framework.
+
+Each KDE test also keeps its ENABLE_QT option. A KDE option can stay on
+when the build drops its style. qt5/CMakeLists.txt can turn ENABLE_QT5
+off when it does not find Qt 5. The same file turns QTC_QT5_ENABLE_KDE
+off in its own scope alone, so that option stays on in this block.
+
+The chain takes KF6 only where the Qt 6 style has KDE support, or
+where no style has KDE support. The upstream default build keeps KF5,
+because it builds the Qt 5 style with KDE support. A build with KDE 6
+support and no KDE 5 support selects KF6, and needs no KF5. A build
+with no KDE support follows the two Qt options, where Qt 6 now comes
+before Qt 5. Such a build with both Qt versions moves from KF5 to KF6.
+
+Drop this patch when upstream takes the KF version from the style
+that has KDE support.
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 66e2dbfe..347c7c90 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -253,10 +253,17 @@ if(QTC_INSTALL_PO)
+   find_package(ECM 1.2.0 REQUIRED NO_MODULE)
+   set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${ECM_MODULE_PATH})
+ 
+-  if (ENABLE_QT6)
++  # Take a framework version that the build already needs. A style that
++  # has KDE support finds its own KF version and the I18n component.
++  # Each KDE branch also tests its ENABLE_QT option, because
++  # qt5/CMakeLists.txt can turn ENABLE_QT5 off when it does not find Qt 5.
++  if (ENABLE_QT6 AND QTC_QT6_ENABLE_KDE)
+     set(KF_MAJOR_VERSION 6)
+-  endif()
+-  if (ENABLE_QT5)
++  elseif (ENABLE_QT5 AND QTC_QT5_ENABLE_KDE)
++    set(KF_MAJOR_VERSION 5)
++  elseif (ENABLE_QT6)
++    set(KF_MAJOR_VERSION 6)
++  elseif (ENABLE_QT5)
+     set(KF_MAJOR_VERSION 5)
+   endif()
+   find_package(KF${KF_MAJOR_VERSION} REQUIRED COMPONENTS
