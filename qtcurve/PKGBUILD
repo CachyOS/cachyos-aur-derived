@@ -17,11 +17,13 @@ depends=(
 	glibc
 	gtk2
 	karchive
+	kcmutils
 	kcolorscheme
 	kcompletion
 	kconfig
 	kconfigwidgets
 	kcoreaddons
+	kdecoration
 	kguiaddons
 	ki18n
 	kiconthemes
@@ -45,6 +47,8 @@ makedepends=(
 	cmake
 	extra-cmake-modules
 	git
+	kcmutils
+	kdecoration
 )
 
 conflicts=(
@@ -60,6 +64,8 @@ source=(
 	qt6-dolphin-small-status-bar.patch
 	prefer-kf6-translations.patch
 	qt6-wayland-shadows.patch
+	qt6-kdecoration3.patch
+	qt6-kdecoration3-kcm.patch
 )
 sha256sums=(
 	SKIP
@@ -67,6 +73,8 @@ sha256sums=(
 	e4219281d09f042bac722d7ab6a6784b9b56ea34129e8b877942c91770d9a912
 	276fb104d13f35920e24ab8e92907d0ef482a651bb41b46f8fbbfa998ed94dd4
 	5318a47c5e5c6356d4a8acbf6c642d3368dbf1fc529f4f0d924e9757ef1962ff
+	d1966ba638583193ac5012e2137a64df2030a2783029d4a831bb6f92ea062477
+	78857034a7012516a2a22ab2cb08ee9f8fbee4635776bdc6967089fcf22f39cf
 )
 
 pkgver() {
@@ -82,6 +90,10 @@ prepare() {
 	patch -Np1 -d "$pkgname" -i "$srcdir/prefer-kf6-translations.patch"
 	# The patch draws menu and tooltip shadows on Wayland as well as on X11.
 	patch -Np1 -d "$pkgname" -i "$srcdir/qt6-wayland-shadows.patch"
+	# The patch draws the window frame of Plasma 6 in the QtCurve look.
+	patch -Np1 -d "$pkgname" -i "$srcdir/qt6-kdecoration3.patch"
+	# The patch adds the settings module of the Plasma 6 window frame.
+	patch -Np1 -d "$pkgname" -i "$srcdir/qt6-kdecoration3-kcm.patch"
 }
 
 build() {
@@ -97,6 +109,7 @@ build() {
 		-DQTC_QT5_ENABLE_KDE=OFF \
 		-DENABLE_QT6=ON \
 		-DQTC_QT6_ENABLE_KDE=ON \
+		-DQTC_QT6_ENABLE_KDECORATION=ON \
 		-DENABLE_GTK2=ON \
 		-DBUILD_TESTING=ON
 	cmake --build "$pkgname/build"
@@ -121,5 +134,7 @@ package() {
 	test -s "$pkgdir/usr/share/licenses/$pkgname/MIT"
 	test -f "$pkgdir/usr/lib/qt/plugins/styles/qtcurve.so"
 	test -f "$pkgdir/usr/lib/qt6/plugins/styles/qtcurve.so"
+	test -f "$pkgdir/usr/lib/qt6/plugins/org.kde.kdecoration3/org.kde.qtcurve.so"
+	test -f "$pkgdir/usr/lib/qt6/plugins/org.kde.kdecoration3.kcm/kcm_qtcurvedecoration.so"
 	readelf -d "$pkgdir/usr/lib/qt/plugins/styles/qtcurve.so" | grep -q libQt5X11Extras
 }
