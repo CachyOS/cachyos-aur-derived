@@ -1,0 +1,4 @@
+[ps_mem]
+source = "git"
+git = "https://github.com/pixelb/ps_mem.git"
+prefix = "v"
