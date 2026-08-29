@@ -1,4 +1,4 @@
 [mpc-qt]
 source = "git"
-github = "https://github.com/mpc-qt/mpc-qt"
+git = "https://github.com/mpc-qt/mpc-qt"
 prefix = "v"
