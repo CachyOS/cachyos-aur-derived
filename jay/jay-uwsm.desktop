@@ -1,0 +1,7 @@
+[Desktop Entry]
+Name=Jay (with UWSM)
+Comment=A Wayland compositor
+Exec=uwsm start -e -D jay jay.desktop
+TryExec=uwsm
+DesktopNames=jay
+Type=Application
