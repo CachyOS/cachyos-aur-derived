@@ -1,0 +1,752 @@
+Add a button size option to the window decoration
+
+The KDecoration3 decoration takes the button side from the title bar alone.
+buttonSize() in qt6/kdecoration/qtcurvedecoration.cpp gives the height of the
+title bar, less the gap above a button and the gap below it. That height comes
+from the caption font and from the TitleBarPad key of the kwinqtcurverc file. A
+user who wants a larger button must therefore raise the font or the pad, and
+both moves change the caption as well. The settings module of the decoration
+names no button size, and neither does the KWin page of the QtCurve style. The
+Breeze decoration gives such an option today.
+
+The patch adds the ButtonSize key to the General group of the kwinqtcurverc
+file. DecorationConfig in qt6/kdecoration/qtcurvedecorationconfig.h gains the
+ButtonSize enumeration, the buttonSize() reader and the name table of the key.
+The five names are the names of kcm_breezedecoration: ButtonTiny, ButtonSmall,
+ButtonDefault, ButtonLarge and ButtonVeryLarge. readButtonSize() gives an absent
+key and an unknown name the default size, as readShade() gives an unknown shade
+the no shade value.
+
+Decoration::targetButtonSize() in qt6/kdecoration/qtcurvedecoration.cpp holds
+the size math. Each size takes a multiple of the grid unit. The five
+multiples are one, one and one half, two, two and one half, and three and one
+half. buttonSize() in kdecoration/breezedecoration.cpp of Breeze uses the same
+five multiples. KDecoration3::DecorationSettings::gridUnit() reports the unit in
+pixels, and that unit follows the caption font. The old default side of the
+caption font no longer sets any button size.
+
+The decoration takes each product to the nearest odd number of pixels, so a
+glyph keeps a centre pixel. A product at the same distance from two odd numbers
+takes the larger one. The side of Breeze differs from the side here, because
+Breeze draws the bare product. At a grid unit of 10 pixels Breeze draws 10, 15,
+20, 25 and 35 pixels. This decoration draws 11, 15, 21, 25 and 35 pixels.
+
+minButtonSide in qt6/kdecoration/qtcurvedecoration.cpp holds every side at 11
+pixels or more. The decoration drew no button under 11 pixels before this patch.
+A button under 11 pixels changes the line art. Button::paint() gives a button of
+9 pixels a line art of 3 pixels. drawGlyph() then draws each stroke 1 pixel
+wide, and not 2 pixels wide.
+
+The order of the five sizes never falls: Tiny, Small, Normal, Large, Very Large.
+The floor is the only cause of a tie in that order. The Tiny size and the Small
+size tie at a grid unit of 7 pixels or less. A smaller grid unit ties more
+sizes.
+
+titleBarHeight() takes the larger of the default title bar height and the height
+that the button needs, as bordersFor() of Breeze does. defaultTitleBarHeight()
+adds the caption font height, the room for the caption shadow and the
+TitleBarPad value at the top and at the bottom. The larger sizes therefore raise
+the title bar, and updateButtonsGeometry() centres a smaller button in that bar.
+The TitleBarPad key still grows the title bar, and it leaves every button side
+as it is.
+
+The default render changes, and the change is deliberate. The Normal size now
+takes two grid units. The previous patch took the title bar height, less the gap
+above the button and the gap below it. At DejaVu Sans 10 pt with no pad the close
+button goes from 15 pixels to 21 pixels. The title bar goes from 21 pixels to 27
+pixels. An unchanged kwinqtcurverc file therefore draws a changed window.
+
+Decoration::init() connects the fontChanged signal of the settings object to
+updateButtonsGeometryDelayed(). The grid unit follows the caption font, and the
+title bar does not always follow it. A font change can leave every border as it
+is, and the bordersChanged signal then stays silent. The connection moves the
+buttons in that case.
+
+minGlyphSide in qt6/kdecoration/qtcurvedecorationbutton.cpp now holds 1 pixel,
+which is the smallest side that draws. The rule of Button::paint() then sets the
+line art alone. That rule takes three sevenths of the button side. It rounds the
+number to a whole number of pixels, and it then drops an even number by 1 pixel.
+The old floor of 5 pixels gave the same line art at every button side from 11
+pixels up.
+
+The settings module gains the row. DecorationSettings in
+qt6/kdecoration/config/qtcurvedecorationsettings.h gains the buttonSize member,
+and defaults(), load(), save() and operator== all hold it. save() writes the
+name of the size, and not the number.
+
+The combination box "Button size:" sits on the General tab, under the "Borders:"
+row. It holds five entries in the order of kcm_breezedecoration. Breeze names
+the middle entry Medium, and this module names it Normal. The help text of the
+box states the multiple of each entry, and it states the floor of 11 pixels. The
+Defaults button resets the box to Normal. A save asks KWin to reload its
+configuration, so every open window changes at once without a restart.
+
+The patch rewrites the help text of the "Titlebar text padding:" box in two
+files. qt6/kdecoration/config/ui/qtcurvedecorationconfigui.ui holds the copy of
+the settings module, and qt6/kwinconfig/qtcurvekwinconfigwidget.ui holds the
+copy of the KWin page of the style dialog. The new sentence states that the pad
+changes the height of the title bar, and not the buttons.
+
+These settings stay outside the patch:
+
+* a size for one button alone.
+* a size for the window icon. paintTitleBar() keeps the caption font as the cap
+  of that icon.
+* the title alignment option of Breeze.
+
+What the tests show:
+
+* The golden report of the harness differs from the report of the previous patch
+  in two places. The size of the two plugin files changed, and the four probe
+  lines changed. Every other line matches, and the probe lines carry the new
+  default render.
+* DejaVu Sans at 8 pt, the five sizes in order: button side 11, 13, 17, 21 and
+  29 pixels. The title bar height is 17, 19, 23, 27 and 35 pixels.
+* DejaVu Sans at 10 pt, the five sizes in order: button side 11, 15, 21, 25 and
+  35 pixels. The title bar height is 21, 21, 27, 31 and 41 pixels.
+* DejaVu Sans at 14 pt, the five sizes in order: button side 15, 21, 29, 35 and
+  49 pixels. The title bar height is 27, 27, 35, 41 and 55 pixels.
+* TitleBarPad=10 at 10 pt gives the same five button sides as no pad: 11, 15,
+  21, 25 and 35 pixels. The title bar height is 41 pixels at every size.
+* TitleBarPad=-5 at 10 pt gives the same five button sides. The title bar height
+  is 17, 21, 27, 31 and 41 pixels. The pad moves no button at either value.
+* The Breeze plugin at 10 pt gives 10, 15, 20, 25 and 35 pixels for the same
+  five entries. The odd rule and the floor make the two ladders differ at the
+  Tiny entry and at the Normal entry.
+* Every side is odd, and every button sits at the centre of the title bar.
+* A probe changes the caption font of the settings object after init(), from
+  15 pt to 16 pt, with ButtonSize=ButtonTiny and TitleBarPad=10. The title bar
+  stays at 49 pixels, so no border moves. The button side goes from 15 pixels to
+  17 pixels, and every button rectangle matches a fresh run at 16 pt.
+* The build of the decoration and of the settings module gives no warning at
+  -Wall -Wextra.
+
+The change sits on the branch work/kdecoration3 of the local tree, as the third
+commit. Merge request !9 on system/qtcurve holds that branch. The merge request
+takes the third commit at the next push of the branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/qt6/kdecoration/config/qtcurvedecorationkcm.cpp b/qt6/kdecoration/config/qtcurvedecorationkcm.cpp
+index 75b404c5..f201b0ef 100644
+--- a/qt6/kdecoration/config/qtcurvedecorationkcm.cpp
++++ b/qt6/kdecoration/config/qtcurvedecorationkcm.cpp
+@@ -65,6 +65,31 @@ insertShadeEntries(QComboBox *combo)
+     combo->insertItem(DecorationConfig::SHADE_SHADOW, i18n("Shadow"));
+ }
+ 
++//! fill a combination box with the names of the button sizes
++/*! The entry number is the DecorationConfig::ButtonSize value. The order is
++    the order of kcm_breezedecoration. That module names the middle entry
++    Medium, and this module names it Normal.
++    \param combo the combination box. */
++void
++insertButtonSizeEntries(QComboBox *combo)
++{
++    using QtCurve::DecorationConfig;
++    // insertSizeEntries() in qt6/kwinconfig/qtcurvekwinconfig.cpp gives four
++    // border sizes the names Tiny, Normal, Large and Very Large. The context
++    // keeps the translation of a button size apart from the translation of a
++    // border size. kcm_breezedecoration holds the same context string.
++    combo->insertItem(DecorationConfig::BUTTON_TINY,
++                      i18nc("@item:inlistbox Button size:", "Tiny"));
++    combo->insertItem(DecorationConfig::BUTTON_SMALL,
++                      i18nc("@item:inlistbox Button size:", "Small"));
++    combo->insertItem(DecorationConfig::BUTTON_DEFAULT,
++                      i18nc("@item:inlistbox Button size:", "Normal"));
++    combo->insertItem(DecorationConfig::BUTTON_LARGE,
++                      i18nc("@item:inlistbox Button size:", "Large"));
++    combo->insertItem(DecorationConfig::BUTTON_VERY_LARGE,
++                      i18nc("@item:inlistbox Button size:", "Very Large"));
++}
++
+ }
+ 
+ namespace QtCurve {
+@@ -75,6 +100,7 @@ DecorationKCM::DecorationKCM(QObject *parent, const KPluginMetaData &data)
+ {
+     m_ui.setupUi(widget());
+ 
++    insertButtonSizeEntries(m_ui.buttonSize);
+     insertShadeEntries(m_ui.outerBorder);
+     insertShadeEntries(m_ui.innerBorder);
+     insertColorEntries(m_ui.activeShadowColorType);
+@@ -95,6 +121,10 @@ DecorationKCM::DecorationKCM(QObject *parent, const KPluginMetaData &data)
+ 
+     connect(m_ui.roundBottom, &QCheckBox::toggled, this,
+             &DecorationKCM::updateChanged);
++    // The button size box drives no other widget, so it needs no call of
++    // setWidgetStates().
++    connect(m_ui.buttonSize, &QComboBox::currentIndexChanged, this,
++            &DecorationKCM::updateChanged);
+     for (QSpinBox *box : {m_ui.titleBarPad, m_ui.edgePad,
+                           m_ui.activeShadowSize, m_ui.activeShadowHOffset,
+                           m_ui.activeShadowVOffset, m_ui.inactiveShadowSize,
+@@ -108,8 +138,9 @@ DecorationKCM::DecorationKCM(QObject *parent, const KPluginMetaData &data)
+         connect(button, &KColorButton::changed, this,
+                 &DecorationKCM::updateChanged);
+     }
+-    // setWidgetStates() reads the custom shadow box and every combination
+-    // box, so those widgets get a handler that calls it first.
++    // setWidgetStates() reads the custom shadow box, the two border boxes
++    // and the two shadow colour boxes. Those widgets therefore get a
++    // handler that calls it first.
+     connect(m_ui.useShadows, &QCheckBox::toggled, this, [this] {
+         setWidgetStates();
+         updateChanged();
+@@ -172,6 +203,7 @@ DecorationKCM::setWidgets(const DecorationSettings &settings)
+     m_ui.useShadows->setChecked(settings.customShadows);
+     m_ui.titleBarPad->setValue(settings.titleBarPad);
+     m_ui.edgePad->setValue(settings.edgePad);
++    m_ui.buttonSize->setCurrentIndex(settings.buttonSize);
+ 
+     m_ui.activeShadowSize->setValue(settings.activeShadow.size);
+     m_ui.activeShadowHOffset->setValue(settings.activeShadow.hOffset);
+@@ -198,6 +230,7 @@ DecorationKCM::readWidgets(DecorationSettings &settings) const
+     settings.customShadows = m_ui.useShadows->isChecked();
+     settings.titleBarPad = m_ui.titleBarPad->value();
+     settings.edgePad = m_ui.edgePad->value();
++    settings.buttonSize = m_ui.buttonSize->currentIndex();
+ 
+     settings.activeShadow.size = m_ui.activeShadowSize->value();
+     settings.activeShadow.hOffset = m_ui.activeShadowHOffset->value();
+diff --git a/qt6/kdecoration/config/qtcurvedecorationsettings.cpp b/qt6/kdecoration/config/qtcurvedecorationsettings.cpp
+index efdb7377..21fedd77 100644
+--- a/qt6/kdecoration/config/qtcurvedecorationsettings.cpp
++++ b/qt6/kdecoration/config/qtcurvedecorationsettings.cpp
+@@ -128,6 +128,7 @@ DecorationSettings::defaults()
+     customShadows = DecorationConfig::DEFAULT_CUSTOM_SHADOWS;
+     titleBarPad = DecorationConfig::DEFAULT_PAD;
+     edgePad = DecorationConfig::DEFAULT_PAD;
++    buttonSize = DecorationConfig::DEFAULT_BUTTON_SIZE;
+     activeShadow.defaults();
+     inactiveShadow.defaults();
+ }
+@@ -140,6 +141,7 @@ DecorationSettings::operator==(const DecorationSettings &other) const
+             roundBottom == other.roundBottom &&
+             customShadows == other.customShadows &&
+             titleBarPad == other.titleBarPad && edgePad == other.edgePad &&
++            buttonSize == other.buttonSize &&
+             activeShadow == other.activeShadow &&
+             inactiveShadow == other.inactiveShadow);
+ }
+@@ -166,6 +168,7 @@ DecorationSettings::load(const KConfig *cfg)
+         edgePad > DecorationConfig::MAX_EDGE_PAD) {
+         edgePad = def.edgePad;
+     }
++    buttonSize = readButtonSize(entries, "ButtonSize");
+     activeShadow.load(cfg);
+     inactiveShadow.load(cfg);
+ }
+@@ -182,6 +185,9 @@ DecorationSettings::save(KConfig *cfg) const
+     entries.writeEntry("CustomShadows", customShadows);
+     entries.writeEntry("TitleBarPad", titleBarPad);
+     entries.writeEntry("EdgePad", edgePad);
++    // The key holds the name of the size, as kcm_breezedecoration writes it.
++    entries.writeEntry("ButtonSize",
++                       QString::fromLatin1(buttonSizeName(buttonSize)));
+     activeShadow.save(cfg);
+     inactiveShadow.save(cfg);
+ }
+diff --git a/qt6/kdecoration/config/qtcurvedecorationsettings.h b/qt6/kdecoration/config/qtcurvedecorationsettings.h
+index 89f2e13e..09612a24 100644
+--- a/qt6/kdecoration/config/qtcurvedecorationsettings.h
++++ b/qt6/kdecoration/config/qtcurvedecorationsettings.h
+@@ -153,6 +153,10 @@ public:
+     int titleBarPad;
+     //! the extra width of the side border and of the bottom border, in pixels
+     int edgePad;
++    //! the wanted side of a button, as a DecorationConfig::ButtonSize value
++    /*! The value covers every button of a title bar. The file holds the name
++        of the size, and not the number. */
++    int buttonSize;
+     //! the shadow of an active window
+     ShadowSettings activeShadow;
+     //! the shadow of an inactive window
+diff --git a/qt6/kdecoration/config/ui/qtcurvedecorationconfigui.ui b/qt6/kdecoration/config/ui/qtcurvedecorationconfigui.ui
+index 46ffc1c6..47ece889 100644
+--- a/qt6/kdecoration/config/ui/qtcurvedecorationconfigui.ui
++++ b/qt6/kdecoration/config/ui/qtcurvedecorationconfigui.ui
+@@ -41,13 +41,30 @@
+           </widget>
+          </item>
+          <item row="1" column="0">
++          <widget class="QLabel" name="buttonSizeLabel">
++           <property name="text">
++            <string>Button size:</string>
++           </property>
++          </widget>
++         </item>
++         <item row="1" column="1">
++          <widget class="QComboBox" name="buttonSize">
++           <property name="whatsThis">
++            <string>Sets the size of the titlebar buttons. Each entry takes a fixed number of grid units, as the Breeze decoration does, and the grid unit follows the titlebar font. Tiny takes one unit, Small one and a half, Normal two, Large two and a half, and Very Large three and a half. The titlebar grows when the buttons need more room than the titlebar text. No button goes under 11 pixels, so at a very small titlebar font Tiny and Small can give the same button.</string>
++           </property>
++           <property name="sizeAdjustPolicy">
++            <enum>QComboBox::AdjustToContents</enum>
++           </property>
++          </widget>
++         </item>
++         <item row="2" column="0">
+           <widget class="QLabel" name="outerBorderLabel">
+            <property name="text">
+             <string>Outer border:</string>
+            </property>
+           </widget>
+          </item>
+-         <item row="1" column="1">
++         <item row="2" column="1">
+           <widget class="QComboBox" name="outerBorder">
+            <property name="whatsThis">
+             <string>Adds 1 pixel border around the outside of windows. This is useful if you are not using desktop effects.</string>
+@@ -57,14 +74,14 @@
+            </property>
+           </widget>
+          </item>
+-         <item row="2" column="0">
++         <item row="3" column="0">
+           <widget class="QLabel" name="innerBorderLabel">
+            <property name="text">
+             <string>Inner border:</string>
+            </property>
+           </widget>
+          </item>
+-         <item row="2" column="1">
++         <item row="3" column="1">
+           <widget class="QComboBox" name="innerBorder">
+            <property name="whatsThis">
+             <string>Adds a 1 pixel dark border between the window contents and the decoration. This is useful if you are using transparent decorations. The inner border needs an outer border.</string>
+@@ -74,31 +91,31 @@
+            </property>
+           </widget>
+          </item>
+-         <item row="3" column="0">
++         <item row="4" column="0">
+           <widget class="QLabel" name="titleBarPadLabel">
+            <property name="text">
+             <string>Titlebar text padding:</string>
+            </property>
+           </widget>
+          </item>
+-         <item row="3" column="1">
++         <item row="4" column="1">
+           <widget class="QSpinBox" name="titleBarPad">
+            <property name="whatsThis">
+-            <string>Controls the amount of extra padding added to the top and bottom of the titlebar text height. Changing this will affect the height of the titlebar and its buttons. </string>
++            <string>Controls the amount of extra padding added to the top and bottom of the titlebar text height. Changing this will only affect the height of the titlebar, and not the buttons. </string>
+            </property>
+            <property name="suffix">
+             <string>px</string>
+            </property>
+           </widget>
+          </item>
+-         <item row="4" column="0">
++         <item row="5" column="0">
+           <widget class="QLabel" name="edgePadLabel">
+            <property name="text">
+             <string>Titlebar border padding:</string>
+            </property>
+           </widget>
+          </item>
+-         <item row="4" column="1">
++         <item row="5" column="1">
+           <widget class="QSpinBox" name="edgePad">
+            <property name="whatsThis">
+             <string>Controls the amount of extra padding added to the titlebar border. Changing this will only affect the height of the titlebar, and not the buttons. </string>
+@@ -358,6 +375,7 @@
+  <tabstops>
+   <tabstop>tabWidget</tabstop>
+   <tabstop>roundBottom</tabstop>
++  <tabstop>buttonSize</tabstop>
+   <tabstop>outerBorder</tabstop>
+   <tabstop>innerBorder</tabstop>
+   <tabstop>titleBarPad</tabstop>
+diff --git a/qt6/kdecoration/qtcurvedecoration.cpp b/qt6/kdecoration/qtcurvedecoration.cpp
+index 1d42d70f..f4f029d8 100644
+--- a/qt6/kdecoration/qtcurvedecoration.cpp
++++ b/qt6/kdecoration/qtcurvedecoration.cpp
+@@ -71,6 +71,38 @@ const qreal buttonVerticalPad = 3.0;
+ //! the gap between two buttons, in pixels
+ const qreal buttonSpacing = 2.0;
+ 
++//! the number of grid units that each button size asks for
++/*! buttonSize() in kdecoration/breezedecoration.cpp of the Breeze decoration
++    gives each size a multiple of the grid unit. This table holds the same five
++    multiples. The entry number is the DecorationConfig::ButtonSize value.
++
++    KDecoration3::DecorationSettings::gridUnit() reports the grid unit in
++    pixels, and that unit follows the caption font. The side that this
++    decoration draws differs from the product, and from the side of Breeze,
++    which draws the product. targetButtonSize() takes the product to an odd
++    number of pixels, and minButtonSide then raises a small result. At a grid
++    unit of 10 pixels the five sides are 11, 15, 21, 25 and 35 pixels, and
++    Breeze gives 10, 15, 20, 25 and 35 pixels. */
++const qreal
++buttonSizeGridUnits[QtCurve::DecorationConfig::BUTTON_VERY_LARGE + 1] = {
++    1.0, 1.5, 2.0, 2.5, 3.5
++};
++
++//! the smallest button side that the ButtonSize option gives, in pixels
++/*! The decoration drew no smaller button before this option. The floor of
++    fitTitleBarHeight() gives a title bar of 17 pixels. A button of 11 pixels
++    fits that bar, with the gap above it and the gap below it.
++
++    A smaller button changes the line art. Button::paint() gives a button of 9
++    pixels a line art of 3 pixels. drawGlyph() then draws each stroke 1 pixel
++    wide, and not 2 pixels wide.
++
++    targetButtonSize() applies this floor to each of the five sizes. The order
++    of the five sizes never falls at any grid unit. This floor is the only
++    cause of a tie in that order. The Tiny size and the Small size tie at a
++    grid unit of 7 pixels or less. A smaller grid unit ties more sizes. */
++const int minButtonSide = 11;
++
+ //! the gap between the caption and a button group, in pixels
+ const qreal captionPad = 4.0;
+ 
+@@ -133,6 +165,34 @@ std::shared_ptr<KDecoration3::DecorationShadow> activeShadow;
+ /*! The shadow does not depend on the window, so one shadow serves them all. */
+ std::shared_ptr<KDecoration3::DecorationShadow> inactiveShadow;
+ 
++//! the title bar height that the decoration draws for a wanted height
++/*! \param height the wanted height, in pixels.
++    \return the height, which is never less than titleBarMinHeight. The value
++    is odd, as in the KDE4 decoration. An odd height gives an odd button side,
++    and an odd glyph side then has a centre pixel. */
++int
++fitTitleBarHeight(int height)
++{
++    height = qMax(height, titleBarMinHeight);
++    if (height % 2 == 0) {
++        height++;
++    }
++    return height;
++}
++
++//! the button side that the decoration draws for a wanted side
++/*! \param side the wanted side, in pixels.
++    \return the nearest odd number of pixels, and never less than 1 pixel. An
++    odd side keeps a centre pixel for the glyph, as an odd title bar height
++    does. A side at the same distance from two odd numbers takes the larger
++    one. */
++int
++fitButtonSide(qreal side)
++{
++    const int odd = int(std::lround((side - 1) / 2)) * 2 + 1;
++    return qMax(1, odd);
++}
++
+ //! find the button at one end of a button group that takes a click
+ /*! DecorationButtonGroup::updateLayout() puts the buttons from the left under
+     a left to right layout, and from the right under a right to left layout.
+@@ -403,24 +463,47 @@ Decoration::titleBarAppearance() const
+ qreal
+ Decoration::buttonSize() const
+ {
+-    return qMax(1.0, titleBarHeight() - 2 * buttonVerticalPad);
++    // The wanted side needs no cut here. titleBarHeightFor() grows the title
++    // bar until it holds the wanted side, the gap above the button and the gap
++    // below it. updateButtonsGeometry() centres the button in that bar. A
++    // taller bar therefore leaves a wider gap above the button and below it.
++    return targetButtonSize();
+ }
+ 
+ qreal
+ Decoration::titleBarHeight() const
++{
++    return titleBarHeightFor(targetButtonSize());
++}
++
++qreal
++Decoration::titleBarHeightFor(qreal target) const
++{
++    // A button that the height of the caption and the pad cannot hold raises
++    // the title bar. A smaller button leaves the bar as it is.
++    const int wanted = int(std::ceil(target + 2 * buttonVerticalPad));
++    return fitTitleBarHeight(qMax(defaultTitleBarHeight(), wanted));
++}
++
++int
++Decoration::defaultTitleBarHeight() const
+ {
+     const QFontMetricsF metrics(settings()->font());
+-    int height = int(std::ceil(metrics.height() + titleBarTextPad));
++    const int height = int(std::ceil(metrics.height() + titleBarTextPad));
+     // A negative TitleBarPad value shrinks the title bar, so the floor applies
+     // after the pad and not before it.
+-    height += 2 * DecorationConfig::instance().titleBarPad();
+-    height = qMax(height, titleBarMinHeight);
+-    // The KDE4 decoration keeps an odd height. An odd height gives an odd
+-    // button side, and an odd glyph side then has a centre pixel.
+-    if (height % 2 == 0) {
+-        height++;
+-    }
+-    return height;
++    return fitTitleBarHeight(height +
++                             2 * DecorationConfig::instance().titleBarPad());
++}
++
++qreal
++Decoration::targetButtonSize() const
++{
++    const DecorationConfig::ButtonSize wanted =
++        DecorationConfig::instance().buttonSize();
++    return qMax(minButtonSide,
++                fitButtonSide(settings()->gridUnit() *
++                              buttonSizeGridUnits[wanted]));
+ }
+ 
+ qreal
+@@ -656,6 +739,12 @@ Decoration::init()
+             this, &Decoration::updateButtonsGeometryDelayed);
+     connect(config.get(), &KDecoration3::DecorationSettings::reconfigured,
+             this, &Decoration::updateButtonsGeometryDelayed);
++    // The grid unit follows the caption font, and targetButtonSize() takes the
++    // button side from that unit. A font change can leave every border as it
++    // is, and bordersChanged then stays silent, so the button geometry needs
++    // this connection.
++    connect(config.get(), &KDecoration3::DecorationSettings::fontChanged,
++            this, &Decoration::updateButtonsGeometryDelayed);
+ 
+     auto *decorated = window();
+     connect(decorated, &KDecoration3::DecoratedWindow::activeChanged,
+diff --git a/qt6/kdecoration/qtcurvedecoration.h b/qt6/kdecoration/qtcurvedecoration.h
+index 69d40729..65311c58 100644
+--- a/qt6/kdecoration/qtcurvedecoration.h
++++ b/qt6/kdecoration/qtcurvedecoration.h
+@@ -101,6 +101,14 @@ public:
+     EAppearance titleBarAppearance() const;
+ 
+     //! the length of one side of a square title bar button, in pixels
++    /*! The ButtonSize key of the kwinqtcurverc file selects a number of grid
++        units, and the grid unit of KDecoration3 follows the caption font. No
++        size goes under 11 pixels, which is the smallest side that the
++        decoration drew before the option. Two sizes can therefore give the
++        same side. At a grid unit of 10 pixels the five sizes give 11, 15, 21,
++        25 and 35 pixels. The TitleBarPad key changes the title bar and not the
++        button.
++        \return the side, which is odd, so the glyph keeps a centre pixel. */
+     qreal buttonSize() const;
+ 
+ public Q_SLOTS:
+@@ -152,14 +160,43 @@ private:
+     void paintTitleBar(QPainter *painter, const QRectF &repaintRegion);
+ 
+     //! the height of the title bar, in pixels
++    /*! The value comes from defaultTitleBarHeight(). A ButtonSize value that
++        asks for a button that this height cannot hold grows the title bar to
++        that button.
++        \return the height, which is never less than 16 pixels. The value is
++        odd, as in the KDE4 decoration, so a button and a glyph both keep a
++        centre pixel. */
++    qreal titleBarHeight() const;
++
++    //! the height of the title bar for a wanted button side, in pixels
++    /*! titleBarHeight() gives the value of targetButtonSize() to this method.
++        \param target the wanted button side, in pixels.
++        \return the height, which is never less than 16 pixels, and never less
++        than the wanted side plus 6 pixels. The 6 pixels hold the gap above the
++        button and the gap below it. The value is odd, as in the KDE4
++        decoration, so a button and a glyph both keep a centre pixel. */
++    qreal titleBarHeightFor(qreal target) const;
++
++    //! the height of the title bar for the caption and the pad, in pixels
+     /*! The value holds the height of the caption font, room for the caption
+         shadow, and two times the TitleBarPad value of the kwinqtcurverc file.
+         A negative pad value drives the sum down, so the floor applies after
+-        the pad.
++        the pad. The ButtonSize key does not change this height.
+         \return the height, which is never less than 16 pixels. The value is
+         odd, as in the KDE4 decoration, so a button and a glyph both keep a
+         centre pixel. */
+-    qreal titleBarHeight() const;
++    int defaultTitleBarHeight() const;
++
++    //! the wanted side of a square title bar button, in pixels
++    /*! The ButtonSize key of the kwinqtcurverc file selects a number of grid
++        units, and DecorationSettings::gridUnit() reports the grid unit of the
++        caption font. The Breeze decoration uses the same five multiples.
++        \return the product of the two numbers, at the nearest odd number of
++        pixels. A product at the same distance from two odd numbers takes the
++        larger one. An odd side keeps a centre pixel for the glyph.
++        minButtonSide holds the value at 11 pixels or more, so the value is
++        always above zero. */
++    qreal targetButtonSize() const;
+ 
+     //! the width of the side border and of the bottom border, in pixels
+     /*! \param bottom true for the bottom border, false for a side border.
+diff --git a/qt6/kdecoration/qtcurvedecorationbutton.cpp b/qt6/kdecoration/qtcurvedecorationbutton.cpp
+index 78656be3..2f4e41b1 100644
+--- a/qt6/kdecoration/qtcurvedecorationbutton.cpp
++++ b/qt6/kdecoration/qtcurvedecorationbutton.cpp
+@@ -35,7 +35,31 @@
+ namespace {
+ 
+ //! the smallest side of the line art of a button, in pixels
+-const qreal minGlyphSide = 5.0;
++/*! The smallest side that draws is 1 pixel. Button::paint() draws no button
++    under 2 pixels of side, and its rule gives 1 pixel of line art there. This
++    floor therefore never raises the side, and the rule sets it alone. The rule
++    takes three sevenths of the button side. It rounds that number to a whole
++    number of pixels, and it then drops an even number by 1 pixel.
++
++    The smallest button that the decoration draws is 11 pixels, and the rule
++    gives 5 pixels of line art there. minButtonSide in
++    qt6/kdecoration/qtcurvedecoration.cpp holds that floor, and it covers every
++    value of the ButtonSize option.
++
++    Warning: two paths of paint() move the line art. paint() draws the line
++    art of a pressed button 1 pixel down and 1 pixel right. It also draws a
++    second copy of the line art, in the colour of the title bar effect. The
++    shadow effect moves that copy 1 pixel down and 1 pixel right, and every
++    other effect moves it 1 pixel down.
++
++    paint() draws that copy for a button that is not pressed and not faded.
++    A button fades while the pointer misses it and titlebarButtons holds
++    TITLEBAR_BUTTON_HOVER_SYMBOL. The default titlebarButtons value of 5
++    holds that flag. A titlebarEffect value of EFFECT_NONE gives no second
++    copy. qtcDefaultSettings() in qt6/common/config_file.cpp gives the shadow
++    effect as the default. The drawn copy reaches the frame ring at a button
++    side of 11 pixels. */
++const qreal minGlyphSide = 1.0;
+ 
+ //! the entry of the titlebarButtonColors key for one button type
+ /*! \param type the button type of the decoration framework.
+diff --git a/qt6/kdecoration/qtcurvedecorationconfig.cpp b/qt6/kdecoration/qtcurvedecorationconfig.cpp
+index a9b9c196..a258f172 100644
+--- a/qt6/kdecoration/qtcurvedecorationconfig.cpp
++++ b/qt6/kdecoration/qtcurvedecorationconfig.cpp
+@@ -156,6 +156,7 @@ DecorationConfig::reload()
+     if (m_edgePad < MIN_EDGE_PAD || m_edgePad > MAX_EDGE_PAD) {
+         m_edgePad = DEFAULT_PAD;
+     }
++    m_buttonSize = readButtonSize(group, "ButtonSize");
+ 
+     m_activeShadow.load(&cfg);
+     m_inactiveShadow.load(&cfg);
+diff --git a/qt6/kdecoration/qtcurvedecorationconfig.h b/qt6/kdecoration/qtcurvedecorationconfig.h
+index 52fe3b6f..d6a8a353 100644
+--- a/qt6/kdecoration/qtcurvedecorationconfig.h
++++ b/qt6/kdecoration/qtcurvedecorationconfig.h
+@@ -193,6 +193,27 @@ public:
+         SHADE_SHADOW = 3
+     };
+ 
++    //! the wanted side of a title bar button, as a number of grid units
++    /*! The values are the ButtonSize values of the Breeze decoration, and the
++        ButtonSize key of the kwinqtcurverc file holds the name of one of them.
++        The grid unit of KDecoration3 follows the caption font. The decoration
++        takes each product to the nearest odd number of pixels, and a product
++        at the same distance from two odd numbers takes the larger one. The
++        decoration holds every side at 11 pixels or more, so two values can
++        give the same side. */
++    enum ButtonSize {
++        //! one grid unit
++        BUTTON_TINY = 0,
++        //! one and one half grid units
++        BUTTON_SMALL = 1,
++        //! two grid units, and the value of an absent key
++        BUTTON_DEFAULT = 2,
++        //! two and one half grid units
++        BUTTON_LARGE = 3,
++        //! three and one half grid units
++        BUTTON_VERY_LARGE = 4
++    };
++
+     //! the default of the RoundBottom key
+     static constexpr bool DEFAULT_ROUND_BOTTOM = true;
+     //! the default of the CustomShadows key
+@@ -207,6 +228,8 @@ public:
+     static constexpr int MIN_EDGE_PAD = 0;
+     //! the largest EdgePad value that the reader accepts, in pixels
+     static constexpr int MAX_EDGE_PAD = 10;
++    //! the default of the ButtonSize key
++    static constexpr ButtonSize DEFAULT_BUTTON_SIZE = BUTTON_DEFAULT;
+ 
+     //! the single configuration of this process
+     /*! The first call reads both files.
+@@ -256,6 +279,11 @@ public:
+     /*! \return the value of the EdgePad key, from 0 to 10. */
+     int edgePad() const { return m_edgePad; }
+ 
++    //! the wanted side of a title bar button, as a number of grid units
++    /*! \return the value of the ButtonSize key, or BUTTON_DEFAULT for an
++        absent key and for an unknown name. */
++    ButtonSize buttonSize() const { return m_buttonSize; }
++
+     //! the drop shadow settings of one window state
+     /*! \param active true for the active window, false for an inactive
+         window. */
+@@ -285,6 +313,8 @@ private:
+     int m_titleBarPad;
+     //! the extra width of the side border and of the bottom border, in pixels
+     int m_edgePad;
++    //! the wanted side of a title bar button, as a number of grid units
++    ButtonSize m_buttonSize;
+     //! the number of reads of the two files
+     unsigned m_generation = 0;
+ };
+@@ -315,6 +345,50 @@ readShade(const KConfigGroup &group, const char *key)
+     return DecorationConfig::SHADE_NONE;
+ }
+ 
++//! the names that the ButtonSize key holds, in the order of the sizes
++/*! kcm_breezedecoration writes the same names to the breezerc file. This
++    plugin reads them from the kwinqtcurverc file. The entry number is the
++    DecorationConfig::ButtonSize value. */
++inline constexpr const char *
++buttonSizeNames[DecorationConfig::BUTTON_VERY_LARGE + 1] = {
++    "ButtonTiny", "ButtonSmall", "ButtonDefault", "ButtonLarge",
++    "ButtonVeryLarge"
++};
++
++//! the name that the ButtonSize key holds for one button size
++/*! \param size a DecorationConfig::ButtonSize value.
++    \return the name of that size, or the name of the default size for a value
++    outside the enumeration. */
++inline const char*
++buttonSizeName(int size)
++{
++    if (size < DecorationConfig::BUTTON_TINY ||
++        size > DecorationConfig::BUTTON_VERY_LARGE) {
++        return buttonSizeNames[DecorationConfig::DEFAULT_BUTTON_SIZE];
++    }
++    return buttonSizeNames[size];
++}
++
++//! read a button size key
++/*! The reader takes the names of kcm_breezedecoration, as readShade() takes
++    the numbers of the KDE4 settings module.
++    \param group the group that holds the key.
++    \param key the name of the key.
++    \return the size of the name, or DecorationConfig::DEFAULT_BUTTON_SIZE for
++    an absent key, for an empty value and for an unknown name. */
++inline DecorationConfig::ButtonSize
++readButtonSize(const KConfigGroup &group, const char *key)
++{
++    const QString entry = group.readEntry(key, QString());
++    for (int size = DecorationConfig::BUTTON_TINY;
++         size <= DecorationConfig::BUTTON_VERY_LARGE; ++size) {
++        if (entry == QLatin1String(buttonSizeNames[size])) {
++            return DecorationConfig::ButtonSize(size);
++        }
++    }
++    return DecorationConfig::DEFAULT_BUTTON_SIZE;
++}
++
+ //! the shade factor of one entry of the shade table of the style
+ /*! shadeColors() in qt6/style/qtcurve.cpp reads the same table.
+     \param opts the settings of the style.
+diff --git a/qt6/kwinconfig/qtcurvekwinconfigwidget.ui b/qt6/kwinconfig/qtcurvekwinconfigwidget.ui
+index 0419d89f..856ea60b 100644
+--- a/qt6/kwinconfig/qtcurvekwinconfigwidget.ui
++++ b/qt6/kwinconfig/qtcurvekwinconfigwidget.ui
+@@ -131,7 +131,7 @@
+          <item row="6" column="1">
+           <widget class="QSpinBox" name="titleBarPad">
+            <property name="whatsThis">
+-            <string>Controls the amount of extra padding added to the top and bottom of the titlebar text height. Changing this will affect the height of the titlebar and its buttons. </string>
++            <string>Controls the amount of extra padding added to the top and bottom of the titlebar text height. Changing this will only affect the height of the titlebar, and not the buttons. </string>
+            </property>
+            <property name="suffix">
+             <string>px</string>
