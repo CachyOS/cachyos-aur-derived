@@ -1,217 +1,30 @@
 Add a button size option to the window decoration
 
-The KDecoration3 decoration takes the button side from the title bar alone.
-buttonSize() in qt6/kdecoration/qtcurvedecoration.cpp gives the height of the
-title bar, less the gap above a button and the gap below it. That height comes
-from the caption font and from the TitleBarPad key of the kwinqtcurverc file. A
-user who wants a larger button must therefore raise the font or the pad, and
-both moves change the caption as well. The settings module of the decoration
-names no button size, and neither does the KWin page of the QtCurve style. The
-Breeze decoration gives such an option today.
+The decoration took the button side from the title bar height, so a larger
+button needed a larger caption font or a larger TitleBarPad value. Breeze
+offers a button size option, and this commit adds the same option.
 
-The patch adds the ButtonSize key to the General group of the kwinqtcurverc
-file. DecorationConfig in qt6/kdecoration/qtcurvedecorationconfig.h gains the
-ButtonSize enumeration, the buttonSize() reader and the name table of the key.
-The five names are the names of kcm_breezedecoration: ButtonTiny, ButtonSmall,
-ButtonDefault, ButtonLarge and ButtonVeryLarge. readButtonSize() gives an absent
-key and an unknown name the default size, as readShade() gives an unknown shade
-the no shade value.
+The ButtonSize key in the General group of kwinqtcurverc takes the five names
+of kcm_breezedecoration, and an absent or unknown value gives ButtonDefault.
+Each size takes the Breeze multiple of the KDecoration3 grid unit: 1, 1.5, 2,
+2.5 or 3.5 units. The decoration rounds the side to an odd number of pixels,
+so a glyph keeps a centre pixel. It holds every side at 11 pixels or more,
+where the glyph strokes stay 2 pixels wide. The title bar grows when a button
+needs more room than the caption, and TitleBarPad grows the title bar alone.
+At DejaVu Sans 10 pt with no pad the Normal button goes from 15 to 21 pixels.
 
-Decoration::targetButtonSize() in qt6/kdecoration/qtcurvedecoration.cpp holds
-the size math. Each size takes a multiple of the grid unit. The five
-multiples are one, one and one half, two, two and one half, and three and one
-half. buttonSize() in kdecoration/breezedecoration.cpp of Breeze uses the same
-five multiples. KDecoration3::DecorationSettings::gridUnit() reports the unit in
-pixels, and that unit follows the caption font. The old default side of the
-caption font no longer sets any button size.
+The glyph side rounds up to the next odd number, so Tiny and Small draw
+distinct line art wherever their button sides differ. The context help mark
+takes a round join at the four smallest sides, where its corner spike reached
+the frame ring.
 
-The decoration takes each product to the nearest odd number of pixels, so a
-glyph keeps a centre pixel. A product at the same distance from two odd numbers
-takes the larger one. The side of Breeze differs from the side here, because
-Breeze draws the bare product. At a grid unit of 10 pixels Breeze draws 10, 15,
-20, 25 and 35 pixels. This decoration draws 11, 15, 21, 25 and 35 pixels.
-
-minButtonSide in qt6/kdecoration/qtcurvedecoration.cpp holds every side at 11
-pixels or more. The decoration drew no button under 11 pixels before this patch.
-A button of 7 pixels or less changes the line art. Button::paint() gives such a
-button a line art of 3 pixels or less. drawGlyph() then draws each stroke 1
-pixel wide, and not 2 pixels wide.
-
-The order of the five sizes never falls: Tiny, Small, Normal, Large, Very Large.
-The floor is the only cause of a tie in that order. The Tiny size and the Small
-size tie at a grid unit of 7 pixels or less. A smaller grid unit ties more
-sizes.
-
-titleBarHeight() takes the larger of the default title bar height and the height
-that the button needs, as bordersFor() of Breeze does. defaultTitleBarHeight()
-adds the caption font height, the room for the caption shadow and the
-TitleBarPad value at the top and at the bottom. The larger sizes therefore raise
-the title bar, and updateButtonsGeometry() centres a smaller button in that bar.
-The TitleBarPad key still grows the title bar, and it leaves every button side
-as it is.
-
-The default render changes, and the change is deliberate. The Normal size now
-takes two grid units. The previous patch took the title bar height, less the
-gap above the button and the gap below it. At DejaVu Sans 10 pt with no pad the
-close button goes from 15 pixels to 21 pixels. The title bar goes from 21
-pixels to 27 pixels. An unchanged kwinqtcurverc file therefore draws a changed
-window.
-
-Decoration::init() connects the fontChanged signal of the settings object to
-updateButtonsGeometryDelayed(). The grid unit follows the caption font, and the
-title bar does not always follow it. A font change can leave every border as it
-is, and the bordersChanged signal then stays silent. The connection moves the
-buttons in that case.
-
-minGlyphSide in qt6/kdecoration/qtcurvedecorationbutton.cpp now holds 1 pixel,
-which is the smallest side that draws. The rule of Button::paint() then sets the
-line art alone. That rule takes three sevenths of the button side. It rounds
-that number up to a whole number of pixels, and it then adds 1 pixel to an even
-number. The old floor of 5 pixels never raised the line art at a button side of
-11 pixels or more.
-
-Both rounding steps go up. The previous patch rounded to the nearest whole
-number of pixels, and it took an even result down. That rule gives a button of
-11 pixels and a button of 15 pixels the same line art of 5 pixels. Those two
-sides are the Tiny size and the Small size at a grid unit of 10 pixels. The
-round up gives the Small size 7 pixels of line art, and it leaves the Tiny size
-at 5 pixels. Each result stays odd, so the line art keeps a centre pixel.
-
-The line art keeps the order of the five sizes, and two entries can still take
-the same value. At DejaVu Sans 8 pt the five sides are 11, 13, 17, 21 and 29
-pixels. The line art there is 5, 7, 9, 9 and 13 pixels. The Normal size and the
-Large size therefore tie at that font. The tie comes from the odd line art of a
-small button, and not from the floor.
-
-The question mark of the context help button now takes a round join at a small
-button. It takes the miter join of every other glyph at a large one. Two corners
-of the mark are sharp. The corner at rect.right() throws a miter spike to the
-right, and the apex corner at the centre of the top edge throws one upward. The
-spike runs 3 pixels past the right edge of the line art, and 2 pixels above the
-top edge.
-
-helpRoundJoinMargin in qt6/kdecoration/qtcurvedecorationbutton.cpp holds the
-rule. paint() gives the margin as half of the button side less the line art
-side. drawGlyph() takes the round join while that margin is 4 pixels or less.
-The rule therefore takes the round join at a button side of 11, 13, 15 and 17
-pixels. It takes the miter join at every larger side. A round join holds each
-spike to 1 pixel, and no pixel of the mark then falls on the ring.
-
-A control build that always miters puts 3 pixels of the mark on the ring at a
-side of 11 or 13 pixels. It puts 1 pixel there at a side of 15 or 17 pixels.
-A build of the old rounding rule puts 3 pixels of the mark on the ring at a
-side of 11 pixels. It puts 1 pixel there at a side of 13 pixels. The round up
-widened the line art, and it raised the contact at the last three of those four
-sides.
-
-The settings module gains the row. DecorationSettings in
-qt6/kdecoration/config/qtcurvedecorationsettings.h gains the buttonSize member,
-and defaults(), load(), save() and operator== all hold it. save() writes the
-name of the size, and not the number.
-
-The combination box "Button size:" sits on the General tab, under the "Borders:"
-row. It holds five entries in the order of kcm_breezedecoration. Breeze names
-the middle entry Medium, and this module names it Normal. The help text of the
-box states the multiple of each entry, and it states the floor of 11 pixels. The
-Defaults button resets the box to Normal. A save asks KWin to reload its
-configuration, so every open window changes at once without a restart.
-
-The patch rewrites the help text of the "Titlebar text padding:" box in two
-files. qt6/kdecoration/config/ui/qtcurvedecorationconfigui.ui holds the copy of
-the settings module, and qt6/kwinconfig/qtcurvekwinconfigwidget.ui holds the
-copy of the KWin page of the style dialog. The new sentence states that the pad
-changes the height of the title bar, and not the buttons.
-
-These settings stay outside the patch:
-
-* a size for one button alone.
-* a size for the window icon. paintTitleBar() keeps the caption font as the cap
-  of that icon.
-* the title alignment option of Breeze.
-
-What the tests show:
-
-* The golden report of the harness differs from the report of the previous patch
-  in two places. The size of the two plugin files changed, and the four probe
-  lines changed. Every other line matches, and the probe lines carry the new
-  default render.
-* DejaVu Sans at 8 pt, the five sizes in order: button side 11, 13, 17, 21 and
-  29 pixels. The title bar height is 17, 19, 23, 27 and 35 pixels.
-* DejaVu Sans at 10 pt, the five sizes in order: button side 11, 15, 21, 25 and
-  35 pixels. The title bar height is 21, 21, 27, 31 and 41 pixels.
-* DejaVu Sans at 14 pt, the five sizes in order: button side 15, 21, 29, 35 and
-  49 pixels. The title bar height is 27, 27, 35, 41 and 55 pixels.
-* The line art at DejaVu Sans 8 pt, the five sizes in order: 5, 7, 9, 9 and 13
-  pixels. The Normal size and the Large size tie at that font. The sides of 17
-  pixels and 21 pixels both take 9 pixels of odd line art.
-* The line art at DejaVu Sans 10 pt, the five sizes in order: 5, 7, 9, 11 and 15
-  pixels. The previous patch rounded to the nearest whole number of pixels, and
-  it took an even result down. That rule gives 5, 5, 9, 11 and 15 pixels there,
-  so the Small size is the one entry that changes.
-* The line art at DejaVu Sans 14 pt, the five sizes in order: 7, 9, 13, 15 and
-  21 pixels. The previous patch rounded to the nearest whole number of pixels,
-  and it took an even result down. That rule gives 5, 9, 11, 15 and 21 pixels
-  there.
-* The measurement of the line art takes the width of the bar of the minimize
-  button. That bar fills the line art box on the horizontal axis. Its width
-  matches the rule at every entry of the three ladders.
-* The side sweep runs the caption font DejaVu Sans from 5 pt to 40 pt, in steps
-  of one half point. It takes each of the five sizes. The sweep gives 43 button
-  sides, from 11 pixels to 141 pixels. The ButtonSize option sets no ceiling,
-  because the button side follows the caption font. Every side count of this
-  patch comes from that one sweep.
-* No pixel of the line art falls on the frame ring in the default state. That
-  state holds a button that is not pressed and carries no pointer. The check
-  covered nine button types, at every one of the 43 button sides of the sweep.
-  Those types are close, maximize, minimize, menu, application menu, shade,
-  context help, keep above and keep below.
-* The ring test sets titlebarAppearance, titlebarButtonAppearance and
-  sunkenAppearance to flat. The fill of a button then matches the fill of the
-  title bar, and a difference of two renders holds line work alone. That
-  precondition carries the method, because drawFrame() paints a gradient under
-  the border. A difference without the precondition holds the whole face of the
-  button.
-* The ring is the set of pixels that a render of the frame alone changes
-  against a render with no button. The line art is the set of pixels that a
-  render with no frame changes against the same render with no button. Every
-  ring figure of this patch comes from that one method.
-* A press and a hover put ink on the ring at a small button side. The
-  measurement of a state adds one render of that state. It takes the ink of
-  that state against the same render with no button.
-* The close button covers 7 pixels of the ring at a side of 11 pixels, and 9
-  pixels at a side of 13 pixels. It covers 2 pixels at a side of 15 pixels, and
-  4 pixels at a side of 17 pixels. Every other button covers 2 pixels or less,
-  at a side of 19 pixels or less. No button reaches the ring at a side of 21
-  pixels or more.
-* The help line art matches a build that takes the miter join at every side.
-  That match is byte for byte, at 39 of the 43 sides of the sweep. Those 39
-  sides run from 19 pixels to 141 pixels. The two builds differ at a side of 11,
-  13, 15 and 17 pixels alone.
-* The help line art matches a build of the old rounding rule, byte for byte, at
-  14 of the 43 sides of the sweep. Those sides are 21, 25, 35, 39, 49, 53, 63,
-  77, 81, 91, 95, 105, 119 and 133 pixels. Each of them is a side where the old
-  rule gives the same line art side, and where the margin is over 4 pixels. The
-  line art side and the join style are the only causes of a difference at any
-  other side.
-* TitleBarPad=10 at 10 pt gives the same five button sides as no pad: 11, 15,
-  21, 25 and 35 pixels. The title bar height is 41 pixels at every size.
-* TitleBarPad=-5 at 10 pt gives the same five button sides. The title bar
-  height is 17, 21, 27, 31 and 41 pixels. The pad changes no button side at
-  either value.
-* The Breeze plugin at 10 pt gives 10, 15, 20, 25 and 35 pixels for the same
-  five entries. The odd rule makes the two ladders differ at the Tiny entry and
-  at the Normal entry.
-* Every side is odd, and every button sits at the centre of the title bar.
-* A probe changes the caption font of the settings object after init(), from
-  15 pt to 16 pt, with ButtonSize=ButtonTiny and TitleBarPad=10. The title bar
-  stays at 49 pixels, so no border moves. The button side goes from 15 pixels to
-  17 pixels, and every button rectangle matches a fresh run at 16 pt.
-* The build of the decoration and of the settings module gives no warning at
-  -Wall -Wextra.
+The settings module gains a "Button size:" box on the General tab, and a save
+reloads KWin at once. The help text of "Titlebar text padding:" now states
+that the pad changes the title bar alone. Out of scope: a per button size, the
+window icon size and the title alignment option of Breeze.
 
 The change sits on the branch work/kdecoration3 of the local tree, as the third
-commit. Merge request !9 on system/qtcurve holds that branch. The merge request
-takes the third commit at the next push of the branch.
+commit. Merge request !9 on system/qtcurve holds that branch.
 
 Drop this patch when upstream merges the change.
 
