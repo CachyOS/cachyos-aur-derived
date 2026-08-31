@@ -85,8 +85,9 @@ The plugin honours these keys of the kwinqtcurverc file:
   normal width. A window with both borders and a small border size gains two
   pixels. The two keys also give the colour of the outer line and of the inner
   line. A key selects the light shade, the border shade, or the colour of the
-  drop shadow. The no shade value keeps the border shade for the outer line,
-  so a window always keeps a visible edge.
+  drop shadow. A window with the no shade value gets no outer line and no
+  light line, as in the KDE4 decoration. The border fill then reaches the
+  edge.
 * RoundBottom, TitleBarPad and EdgePad of the General group. The first selects
   a bottom corner radius of 6.0 pixels or 1.0 pixel. The second adds two times
   its value to the title bar height. The floor of the height applies after that
@@ -199,9 +200,8 @@ variable. The size is Normal where the variable is absent.
   bar colour. A file with shinyglass in the two keys moves the pixel at 264, 22
   to 227, 230, 234. A third appearance therefore gives a third title bar.
 * A file with round=slight moves the four corner radius values to zero. It also
-  moves the pixel at 0, 0 from 250, 250, 250 to 179, 185, 194. The first value
-  is the fill behind the round corner. The second value is the border line of a
-  square corner.
+  moves the pixel at 0, 0 from the harness fill of 250, 250, 250 to the fill of
+  the title bar. A square corner reaches that pixel.
 * The None border size gives borders of 0, 23, 0 and 0 pixels. It gives grab
   margins of 12 pixels on each side. It gives corner radius values of 8, 8, 6
   and 6 pixels. The NoSides border size gives borders of 0, 23, 0 and 4 pixels.
@@ -237,7 +237,7 @@ variable. The size is Normal where the variable is absent.
 Drop this patch when QtCurve ships a KDecoration3 decoration upstream.
 
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index 347c7c90..22230ccb 100644
+index 66e2dbfe..be3297ef 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
 @@ -46,6 +46,14 @@ qtc_option(ENABLE_QT5 "Building Qt5 theme." On)
@@ -374,10 +374,10 @@ index 00000000..df2ba096
 +}
 diff --git a/qt6/kdecoration/qtcurvedecoration.cpp b/qt6/kdecoration/qtcurvedecoration.cpp
 new file mode 100644
-index 00000000..4bf7ae7f
+index 00000000..99e98dc2
 --- /dev/null
 +++ b/qt6/kdecoration/qtcurvedecoration.cpp
-@@ -0,0 +1,984 @@
+@@ -0,0 +1,992 @@
 +/*****************************************************************************
 + *   Copyright 2003 - 2010 Craig Drummond <craig.p.drummond@gmail.com>       *
 + *   Copyright 2013 - 2015 Yichao Yu <yyc1992@gmail.com>                     *
@@ -1319,12 +1319,15 @@ index 00000000..4bf7ae7f
 +    const qreal top = topRadius();
 +    const qreal bottom = bottomRadius();
 +
-+    if (opts.windowBorder & WINDOW_BORDER_ADD_LIGHT_BORDER) {
++    // The light line follows the top edge and the two side edges of the title
++    // bar, one pixel inside the frame line. A window with the no shade value
++    // in the OuterBorder key gets no frame line and no light line, as in
++    // paintEvent() of qt6/kwin/qtcurveclient.cpp.
++    if ((opts.windowBorder & WINDOW_BORDER_ADD_LIGHT_BORDER) &&
++        config.outerBorder() != DecorationConfig::SHADE_NONE) {
 +        painter->save();
 +        painter->setRenderHint(QPainter::Antialiasing);
 +        painter->setBrush(Qt::NoBrush);
-+        // The light line follows the top edge and the two side edges of the
-+        // title bar, one pixel inside the border.
 +        painter->setClipRect(QRectF(0, 0, size().width(), borderTop()),
 +                             Qt::IntersectClip);
 +        painter->setPen(QPen(shade(base, shadeFactor(opts, 0), opts.shading),
@@ -1342,21 +1345,26 @@ index 00000000..4bf7ae7f
 +        painter->restore();
 +    }
 +
-+    painter->save();
-+    painter->setRenderHint(QPainter::Antialiasing);
-+    painter->setBrush(Qt::NoBrush);
-+    painter->setPen(QPen(borderColor(config.outerBorder()), 1.0));
-+    painter->drawPath(framedPath(rect().adjusted(0.5, 0.5, -0.5, -0.5),
-+                                 qMax(qreal(0), top - 0.5),
-+                                 qMax(qreal(0), bottom - 0.5)));
-+    if (config.outerBorder() != DecorationConfig::SHADE_NONE &&
-+        config.innerBorder() != DecorationConfig::SHADE_NONE) {
-+        painter->setPen(QPen(borderColor(config.innerBorder()), 1.0));
-+        painter->drawPath(framedPath(rect().adjusted(1.5, 1.5, -1.5, -1.5),
-+                                     qMax(qreal(0), top - 1.5),
-+                                     qMax(qreal(0), bottom - 1.5)));
++    // A window with the no shade value in the OuterBorder key gets no frame
++    // line, as paintEvent() in qt6/kwin/qtcurveclient.cpp draws none. The fill
++    // above covers the whole window, so the border keeps the fill colour to
++    // the edge without the line.
++    if (config.outerBorder() != DecorationConfig::SHADE_NONE) {
++        painter->save();
++        painter->setRenderHint(QPainter::Antialiasing);
++        painter->setBrush(Qt::NoBrush);
++        painter->setPen(QPen(borderColor(config.outerBorder()), 1.0));
++        painter->drawPath(framedPath(rect().adjusted(0.5, 0.5, -0.5, -0.5),
++                                     qMax(qreal(0), top - 0.5),
++                                     qMax(qreal(0), bottom - 0.5)));
++        if (config.innerBorder() != DecorationConfig::SHADE_NONE) {
++            painter->setPen(QPen(borderColor(config.innerBorder()), 1.0));
++            painter->drawPath(framedPath(rect().adjusted(1.5, 1.5, -1.5, -1.5),
++                                         qMax(qreal(0), top - 1.5),
++                                         qMax(qreal(0), bottom - 1.5)));
++        }
++        painter->restore();
 +    }
-+    painter->restore();
 +}
 +
 +}
@@ -1364,7 +1372,7 @@ index 00000000..4bf7ae7f
 +#include "qtcurvedecoration.moc"
 diff --git a/qt6/kdecoration/qtcurvedecoration.h b/qt6/kdecoration/qtcurvedecoration.h
 new file mode 100644
-index 00000000..c63f68ef
+index 00000000..855d805c
 --- /dev/null
 +++ b/qt6/kdecoration/qtcurvedecoration.h
 @@ -0,0 +1,204 @@
@@ -1556,11 +1564,11 @@ index 00000000..c63f68ef
 +
 +    //! the colour of one window border line
 +    /*! \param shadeType the shade that the OuterBorder key or the InnerBorder
-+        key holds.
++        key holds. paint() draws no line for the no shade value, and it makes
++        no call with that value.
 +        \return the light shade of the title bar colour, the border shade of
-+        the title bar colour, or the colour of the drop shadow. The border
-+        shade also answers the no shade value, so a window keeps a visible
-+        edge. */
++        the title bar colour, or the colour of the drop shadow. The no shade
++        value also gives the border shade. */
 +    QColor borderColor(DecorationConfig::Shade shadeType) const;
 +
 +    //! the buttons at the left end of the title bar

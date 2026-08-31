@@ -1447,7 +1447,7 @@ index df2ba096..03d607cd 100644
          "blur": false,
          "recommendedBorderSize": "Normal"
 diff --git a/qt6/kdecoration/qtcurvedecoration.cpp b/qt6/kdecoration/qtcurvedecoration.cpp
-index 4bf7ae7f..1d42d70f 100644
+index 99e98dc2..5ecd43f5 100644
 --- a/qt6/kdecoration/qtcurvedecoration.cpp
 +++ b/qt6/kdecoration/qtcurvedecoration.cpp
 @@ -363,7 +363,8 @@ fillGradient(QPainter *painter, const QPainterPath &path, const QColor &base,
@@ -1499,7 +1499,7 @@ index 4bf7ae7f..1d42d70f 100644
  Decoration::updateShadow()
  {
 diff --git a/qt6/kdecoration/qtcurvedecoration.h b/qt6/kdecoration/qtcurvedecoration.h
-index c63f68ef..69d40729 100644
+index 855d805c..32ca4da7 100644
 --- a/qt6/kdecoration/qtcurvedecoration.h
 +++ b/qt6/kdecoration/qtcurvedecoration.h
 @@ -111,6 +111,15 @@ public Q_SLOTS:
@@ -1519,7 +1519,7 @@ index c63f68ef..69d40729 100644
      /*! The border size of the settings, the maximized state of the window and
          the screen edges beside the window select the three values. */
 @@ -193,6 +202,12 @@ private:
-         edge. */
+         value also gives the border shade. */
      QColor borderColor(DecorationConfig::Shade shadeType) const;
  
 +    //! the copy of DecorationConfig::generation() of the last reconfigure()

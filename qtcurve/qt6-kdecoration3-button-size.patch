@@ -262,7 +262,7 @@ index 46ffc1c6..47ece889 100644
    <tabstop>innerBorder</tabstop>
    <tabstop>titleBarPad</tabstop>
 diff --git a/qt6/kdecoration/qtcurvedecoration.cpp b/qt6/kdecoration/qtcurvedecoration.cpp
-index 1d42d70f..3334ebc6 100644
+index 5ecd43f5..aefac0b3 100644
 --- a/qt6/kdecoration/qtcurvedecoration.cpp
 +++ b/qt6/kdecoration/qtcurvedecoration.cpp
 @@ -71,6 +71,26 @@ const qreal buttonVerticalPad = 3.0;
@@ -397,7 +397,7 @@ index 1d42d70f..3334ebc6 100644
      auto *decorated = window();
      connect(decorated, &KDecoration3::DecoratedWindow::activeChanged,
 diff --git a/qt6/kdecoration/qtcurvedecoration.h b/qt6/kdecoration/qtcurvedecoration.h
-index 69d40729..ee73d75c 100644
+index 32ca4da7..8eb04f83 100644
 --- a/qt6/kdecoration/qtcurvedecoration.h
 +++ b/qt6/kdecoration/qtcurvedecoration.h
 @@ -101,6 +101,11 @@ public:
