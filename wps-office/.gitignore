@@ -1,7 +1,0 @@
-src
-pkg
-*.src.tar.gz
-*.part
-*.pkg.tar.*
-*.deb
-*.log
