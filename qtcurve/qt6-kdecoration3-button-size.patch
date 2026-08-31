@@ -33,9 +33,9 @@ Breeze draws the bare product. At a grid unit of 10 pixels Breeze draws 10, 15,
 
 minButtonSide in qt6/kdecoration/qtcurvedecoration.cpp holds every side at 11
 pixels or more. The decoration drew no button under 11 pixels before this patch.
-A button under 11 pixels changes the line art. Button::paint() gives a button of
-9 pixels a line art of 3 pixels. drawGlyph() then draws each stroke 1 pixel
-wide, and not 2 pixels wide.
+A button of 7 pixels or less changes the line art. Button::paint() gives such a
+button a line art of 3 pixels or less. drawGlyph() then draws each stroke 1
+pixel wide, and not 2 pixels wide.
 
 The order of the five sizes never falls: Tiny, Small, Normal, Large, Very Large.
 The floor is the only cause of a tie in that order. The Tiny size and the Small
@@ -51,10 +51,11 @@ The TitleBarPad key still grows the title bar, and it leaves every button side
 as it is.
 
 The default render changes, and the change is deliberate. The Normal size now
-takes two grid units. The previous patch took the title bar height, less the gap
-above the button and the gap below it. At DejaVu Sans 10 pt with no pad the close
-button goes from 15 pixels to 21 pixels. The title bar goes from 21 pixels to 27
-pixels. An unchanged kwinqtcurverc file therefore draws a changed window.
+takes two grid units. The previous patch took the title bar height, less the
+gap above the button and the gap below it. At DejaVu Sans 10 pt with no pad the
+close button goes from 15 pixels to 21 pixels. The title bar goes from 21
+pixels to 27 pixels. An unchanged kwinqtcurverc file therefore draws a changed
+window.
 
 Decoration::init() connects the fontChanged signal of the settings object to
 updateButtonsGeometryDelayed(). The grid unit follows the caption font, and the
@@ -64,10 +65,44 @@ buttons in that case.
 
 minGlyphSide in qt6/kdecoration/qtcurvedecorationbutton.cpp now holds 1 pixel,
 which is the smallest side that draws. The rule of Button::paint() then sets the
-line art alone. That rule takes three sevenths of the button side. It rounds the
-number to a whole number of pixels, and it then drops an even number by 1 pixel.
-The old floor of 5 pixels gave the same line art at every button side from 11
-pixels up.
+line art alone. That rule takes three sevenths of the button side. It rounds
+that number up to a whole number of pixels, and it then adds 1 pixel to an even
+number. The old floor of 5 pixels never raised the line art at a button side of
+11 pixels or more.
+
+Both rounding steps go up. The previous patch rounded to the nearest whole
+number of pixels, and it took an even result down. That rule gives a button of
+11 pixels and a button of 15 pixels the same line art of 5 pixels. Those two
+sides are the Tiny size and the Small size at a grid unit of 10 pixels. The
+round up gives the Small size 7 pixels of line art, and it leaves the Tiny size
+at 5 pixels. Each result stays odd, so the line art keeps a centre pixel.
+
+The line art keeps the order of the five sizes, and two entries can still take
+the same value. At DejaVu Sans 8 pt the five sides are 11, 13, 17, 21 and 29
+pixels. The line art there is 5, 7, 9, 9 and 13 pixels. The Normal size and the
+Large size therefore tie at that font. The tie comes from the odd line art of a
+small button, and not from the floor.
+
+The question mark of the context help button now takes a round join at a small
+button. It takes the miter join of every other glyph at a large one. Two corners
+of the mark are sharp. The corner at rect.right() throws a miter spike to the
+right, and the apex corner at the centre of the top edge throws one upward. The
+spike runs 3 pixels past the right edge of the line art, and 2 pixels above the
+top edge.
+
+helpRoundJoinMargin in qt6/kdecoration/qtcurvedecorationbutton.cpp holds the
+rule. paint() gives the margin as half of the button side less the line art
+side. drawGlyph() takes the round join while that margin is 4 pixels or less.
+The rule therefore takes the round join at a button side of 11, 13, 15 and 17
+pixels. It takes the miter join at every larger side. A round join holds each
+spike to 1 pixel, and no pixel of the mark then falls on the ring.
+
+A control build that always miters puts 3 pixels of the mark on the ring at a
+side of 11 or 13 pixels. It puts 1 pixel there at a side of 15 or 17 pixels.
+A build of the old rounding rule puts 3 pixels of the mark on the ring at a
+side of 11 pixels. It puts 1 pixel there at a side of 13 pixels. The round up
+widened the line art, and it raised the contact at the last three of those four
+sides.
 
 The settings module gains the row. DecorationSettings in
 qt6/kdecoration/config/qtcurvedecorationsettings.h gains the buttonSize member,
@@ -106,13 +141,66 @@ What the tests show:
   35 pixels. The title bar height is 21, 21, 27, 31 and 41 pixels.
 * DejaVu Sans at 14 pt, the five sizes in order: button side 15, 21, 29, 35 and
   49 pixels. The title bar height is 27, 27, 35, 41 and 55 pixels.
+* The line art at DejaVu Sans 8 pt, the five sizes in order: 5, 7, 9, 9 and 13
+  pixels. The Normal size and the Large size tie at that font. The sides of 17
+  pixels and 21 pixels both take 9 pixels of odd line art.
+* The line art at DejaVu Sans 10 pt, the five sizes in order: 5, 7, 9, 11 and 15
+  pixels. The previous patch rounded to the nearest whole number of pixels, and
+  it took an even result down. That rule gives 5, 5, 9, 11 and 15 pixels there,
+  so the Small size is the one entry that changes.
+* The line art at DejaVu Sans 14 pt, the five sizes in order: 7, 9, 13, 15 and
+  21 pixels. The previous patch rounded to the nearest whole number of pixels,
+  and it took an even result down. That rule gives 5, 9, 11, 15 and 21 pixels
+  there.
+* The measurement of the line art takes the width of the bar of the minimize
+  button. That bar fills the line art box on the horizontal axis. Its width
+  matches the rule at every entry of the three ladders.
+* The side sweep runs the caption font DejaVu Sans from 5 pt to 40 pt, in steps
+  of one half point. It takes each of the five sizes. The sweep gives 43 button
+  sides, from 11 pixels to 141 pixels. The ButtonSize option sets no ceiling,
+  because the button side follows the caption font. Every side count of this
+  patch comes from that one sweep.
+* No pixel of the line art falls on the frame ring in the default state. That
+  state holds a button that is not pressed and carries no pointer. The check
+  covered nine button types, at every one of the 43 button sides of the sweep.
+  Those types are close, maximize, minimize, menu, application menu, shade,
+  context help, keep above and keep below.
+* The ring test sets titlebarAppearance, titlebarButtonAppearance and
+  sunkenAppearance to flat. The fill of a button then matches the fill of the
+  title bar, and a difference of two renders holds line work alone. That
+  precondition carries the method, because drawFrame() paints a gradient under
+  the border. A difference without the precondition holds the whole face of the
+  button.
+* The ring is the set of pixels that a render of the frame alone changes
+  against a render with no button. The line art is the set of pixels that a
+  render with no frame changes against the same render with no button. Every
+  ring figure of this patch comes from that one method.
+* A press and a hover put ink on the ring at a small button side. The
+  measurement of a state adds one render of that state. It takes the ink of
+  that state against the same render with no button.
+* The close button covers 7 pixels of the ring at a side of 11 pixels, and 9
+  pixels at a side of 13 pixels. It covers 2 pixels at a side of 15 pixels, and
+  4 pixels at a side of 17 pixels. Every other button covers 2 pixels or less,
+  at a side of 19 pixels or less. No button reaches the ring at a side of 21
+  pixels or more.
+* The help line art matches a build that takes the miter join at every side.
+  That match is byte for byte, at 39 of the 43 sides of the sweep. Those 39
+  sides run from 19 pixels to 141 pixels. The two builds differ at a side of 11,
+  13, 15 and 17 pixels alone.
+* The help line art matches a build of the old rounding rule, byte for byte, at
+  14 of the 43 sides of the sweep. Those sides are 21, 25, 35, 39, 49, 53, 63,
+  77, 81, 91, 95, 105, 119 and 133 pixels. Each of them is a side where the old
+  rule gives the same line art side, and where the margin is over 4 pixels. The
+  line art side and the join style are the only causes of a difference at any
+  other side.
 * TitleBarPad=10 at 10 pt gives the same five button sides as no pad: 11, 15,
   21, 25 and 35 pixels. The title bar height is 41 pixels at every size.
-* TitleBarPad=-5 at 10 pt gives the same five button sides. The title bar height
-  is 17, 21, 27, 31 and 41 pixels. The pad moves no button at either value.
+* TitleBarPad=-5 at 10 pt gives the same five button sides. The title bar
+  height is 17, 21, 27, 31 and 41 pixels. The pad changes no button side at
+  either value.
 * The Breeze plugin at 10 pt gives 10, 15, 20, 25 and 35 pixels for the same
-  five entries. The odd rule and the floor make the two ladders differ at the
-  Tiny entry and at the Normal entry.
+  five entries. The odd rule makes the two ladders differ at the Tiny entry and
+  at the Normal entry.
 * Every side is odd, and every button sits at the centre of the title bar.
 * A probe changes the caption font of the settings object after init(), from
   15 pt to 16 pt, with ButtonSize=ButtonTiny and TitleBarPad=10. The title bar
@@ -362,7 +450,7 @@ index 46ffc1c6..47ece889 100644
    <tabstop>innerBorder</tabstop>
    <tabstop>titleBarPad</tabstop>
 diff --git a/qt6/kdecoration/qtcurvedecoration.cpp b/qt6/kdecoration/qtcurvedecoration.cpp
-index 1d42d70f..f4f029d8 100644
+index 1d42d70f..17ec6e70 100644
 --- a/qt6/kdecoration/qtcurvedecoration.cpp
 +++ b/qt6/kdecoration/qtcurvedecoration.cpp
 @@ -71,6 +71,38 @@ const qreal buttonVerticalPad = 3.0;
@@ -391,9 +479,9 @@ index 1d42d70f..f4f029d8 100644
 +    fitTitleBarHeight() gives a title bar of 17 pixels. A button of 11 pixels
 +    fits that bar, with the gap above it and the gap below it.
 +
-+    A smaller button changes the line art. Button::paint() gives a button of 9
-+    pixels a line art of 3 pixels. drawGlyph() then draws each stroke 1 pixel
-+    wide, and not 2 pixels wide.
++    A button of 7 pixels or less changes the line art. Button::paint() gives
++    such a button a line art of 3 pixels or less. drawGlyph() then draws each
++    stroke 1 pixel wide, and not 2 pixels wide.
 +
 +    targetButtonSize() applies this floor to each of the five sizes. The order
 +    of the five sizes never falls at any grid unit. This floor is the only
@@ -576,10 +664,10 @@ index 69d40729..65311c58 100644
      //! the width of the side border and of the bottom border, in pixels
      /*! \param bottom true for the bottom border, false for a side border.
 diff --git a/qt6/kdecoration/qtcurvedecorationbutton.cpp b/qt6/kdecoration/qtcurvedecorationbutton.cpp
-index 78656be3..2f4e41b1 100644
+index 78656be3..39cd57a0 100644
 --- a/qt6/kdecoration/qtcurvedecorationbutton.cpp
 +++ b/qt6/kdecoration/qtcurvedecorationbutton.cpp
-@@ -35,7 +35,31 @@
+@@ -35,7 +35,104 @@
  namespace {
  
  //! the smallest side of the line art of a button, in pixels
@@ -587,8 +675,14 @@ index 78656be3..2f4e41b1 100644
 +/*! The smallest side that draws is 1 pixel. Button::paint() draws no button
 +    under 2 pixels of side, and its rule gives 1 pixel of line art there. This
 +    floor therefore never raises the side, and the rule sets it alone. The rule
-+    takes three sevenths of the button side. It rounds that number to a whole
-+    number of pixels, and it then drops an even number by 1 pixel.
++    takes three sevenths of the button side. It rounds that number up to a
++    whole number of pixels, and it then adds 1 pixel to an even number.
++
++    Both steps go up, and not down. A different rule rounds to the nearest
++    whole number of pixels, and it takes an even result down. That rule gives
++    a button of 11 pixels and a button of 15 pixels the same line art of 5
++    pixels. Those two sides are the Tiny size and the Small size at a grid
++    unit of 10 pixels.
 +
 +    The smallest button that the decoration draws is 11 pixels, and the rule
 +    gives 5 pixels of line art there. minButtonSide in
@@ -606,12 +700,157 @@ index 78656be3..2f4e41b1 100644
 +    TITLEBAR_BUTTON_HOVER_SYMBOL. The default titlebarButtons value of 5
 +    holds that flag. A titlebarEffect value of EFFECT_NONE gives no second
 +    copy. qtcDefaultSettings() in qt6/common/config_file.cpp gives the shadow
-+    effect as the default. The drawn copy reaches the frame ring at a button
-+    side of 11 pixels. */
++    effect as the default.
++
++    The line art reaches no pixel of the frame ring in the default state. That
++    state holds a button that is not pressed and carries no pointer. The
++    measurement covers the close, maximize, minimize, menu, application menu,
++    shade, context help, keep above and keep below buttons.
++
++    The sweep runs the caption font DejaVu Sans from 5 pt to 40 pt, in steps of
++    one half point. It takes each of the five ButtonSize values. The sweep
++    gives 43 button sides, from 11 pixels to 141 pixels. The option sets no
++    ceiling, because the button side follows the caption font.
++
++    Each render of the measurement sets titlebarAppearance,
++    titlebarButtonAppearance and sunkenAppearance to flat. The fill of a button
++    then matches the fill of the title bar, and a difference of two renders
++    holds line work alone. That precondition carries the method. drawFrame()
++    paints a gradient under the border, so a difference without the
++    precondition holds the whole face of the button.
++
++    The ring is the set of pixels that a render of the frame alone changes
++    against a render with no button. The line art is the set of pixels that a
++    render with no frame changes against the same render with no button.
++
++    Warning: a press and a hover put ink on the ring at a small button side.
++    The moved line art of a press reaches the ring. The second copy of a hover
++    covers the same pixels at a side of 17 pixels or less. The measurement of a
++    state adds one render of that state. It takes the ink of the state against
++    the same render with no button.
++
++    The close button covers 7 pixels of the ring at a side of 11 pixels, and 9
++    pixels at a side of 13 pixels. It covers 2 pixels at a side of 15 pixels,
++    and 4 pixels at a side of 17 pixels. A side of 15 pixels is the Small size
++    at a caption font of DejaVu Sans 10 pt.
++
++    Every other button covers 2 pixels of the ring or less, at a side of 19
++    pixels or less. No button reaches the ring at a side of 21 pixels or more.
++    The second copy takes a mix of the title bar colour and the shadow colour
++    of the effect. That mix paints a weaker contrast than the line art. */
 +const qreal minGlyphSide = 1.0;
++
++//! the largest margin that gives the question mark a round join, in pixels
++/*! The margin is the room between one edge of the line art and the same edge
++    of the button square. Button::paint() gives it as (side - glyphSide) / 2.
++
++    drawGlyph() draws the question mark with a miter join, as it draws every
++    other glyph. That join throws a spike 3 pixels past the right edge of the
++    line art, and 2 pixels above the top edge. The spike therefore paints on
++    the frame ring while the margin is 4 pixels or less. A round join holds
++    each spike to 1 pixel. That join also blunts the mark, so the mark takes
++    it at a small margin alone.
++
++    A miter join puts 3 pixels of the mark on the ring at a button side of 11
++    or 13 pixels. It puts 1 pixel there at a side of 15 or 17 pixels. The mark
++    reaches no ring pixel at a larger side of the sweep. That sweep runs the
++    caption font DejaVu Sans from 5 pt to 40 pt, in steps of one half point.
++    Its largest button side is 141 pixels.
++
++    A control build gives each miter figure. That build drops the round join,
++    and it keeps every other line of drawGlyph(). Each render of the
++    measurement sets titlebarAppearance, titlebarButtonAppearance and
++    sunkenAppearance to flat, so the fill of a button matches the fill of the
++    title bar. Each render also sets titlebarEffect to none, so one mark alone
++    carries the ink.
++
++    The ring is the set of pixels that a render of the frame alone changes
++    against a render with no button. The mark is the set of pixels that a
++    render with no frame changes against the same render with no button. The
++    two spike figures take the edge of the mark against the edge of the line
++    art box, which paint() centres in the button. */
++const qreal helpRoundJoinMargin = 4.0;
  
  //! the entry of the titlebarButtonColors key for one button type
  /*! \param type the button type of the decoration framework.
+@@ -279,7 +376,7 @@ Button::drawFrame(QPainter *painter, const QRectF &rect) const
+ 
+ void
+ Button::drawGlyph(QPainter *painter, const QRectF &rect,
+-                  const QColor &color) const
++                  const QColor &color, qreal margin) const
+ {
+     const qreal side = qMin(rect.width(), rect.height());
+     // The three widths follow IconEngine::icon() of the KDE4 decoration. A
+@@ -348,6 +445,13 @@ Button::drawGlyph(QPainter *painter, const QRectF &rect,
+         // the centre. A dot closes the mark.
+         const qreal quarter = side / 4.0;
+         pen.setWidthF(frame > 1.0 ? frame : stroke);
++        // Two corners of the mark are sharp. The corner at rect.right()
++        // throws a miter spike to the right, and the apex corner at the top
++        // centre throws one upward. A round join holds each spike to 1 pixel,
++        // and it blunts the mark.
++        if (margin <= helpRoundJoinMargin) {
++            pen.setJoinStyle(Qt::RoundJoin);
++        }
+         painter->setPen(pen);
+         painter->setBrush(Qt::NoBrush);
+         QPainterPath mark;
+@@ -479,12 +583,17 @@ Button::paint(QPainter *painter, const QRectF &repaintRegion)
+     // away on each axis, then centres the line art in the rest.
+     const qreal side = qMin(area.width(), area.height());
+     int glyphSide = int(qMax(minGlyphSide,
+-                             std::round(side - 2.0 * (side / 3.5))));
+-    // IconEngine::icon() takes one pixel away from an even side, so the line
+-    // art keeps a centre pixel.
++                             std::ceil(side - 2.0 * (side / 3.5))));
++    // The rule rounds up, and an even result then gains 1 pixel. The two steps
++    // together keep a centre pixel for the line art. They also give a button of
++    // 11 pixels a smaller line art than a button of 15 pixels.
+     if (glyphSide % 2 == 0) {
+-        glyphSide--;
++        glyphSide++;
+     }
++    // The margin is the room between one edge of the line art and the same
++    // edge of the button square. drawGlyph() takes the join style of the
++    // question mark from it.
++    const qreal margin = (side - glyphSide) / 2.0;
+     QRectF glyph(0, 0, glyphSide, glyphSide);
+     glyph.moveCenter(area.center());
+     if (isPressed()) {
+@@ -505,9 +614,10 @@ Button::paint(QPainter *painter, const QRectF &repaintRegion)
+                   glyph.translated(opts.titlebarEffect == EFFECT_SHADOW ? 1 : 0,
+                                    1),
+                   qtcColorMix(&base, &edge,
+-                              WINDOW_TEXT_SHADOW_ALPHA(opts.titlebarEffect)));
++                              WINDOW_TEXT_SHADOW_ALPHA(opts.titlebarEffect)),
++                  margin);
+     }
+-    drawGlyph(painter, glyph, glyphColor());
++    drawGlyph(painter, glyph, glyphColor(), margin);
+     painter->restore();
+ }
+ 
+diff --git a/qt6/kdecoration/qtcurvedecorationbutton.h b/qt6/kdecoration/qtcurvedecorationbutton.h
+index c8659484..ae0300f5 100644
+--- a/qt6/kdecoration/qtcurvedecorationbutton.h
++++ b/qt6/kdecoration/qtcurvedecorationbutton.h
+@@ -102,9 +102,13 @@ private:
+     //! draw the line art of the button
+     /*! \param painter the painter to draw with.
+         \param rect the area of the glyph, which is smaller than the button.
+-        \param color the colour of the line art. */
++        \param color the colour of the line art.
++        \param margin the room between one edge of the glyph area and the same
++        edge of the button square, in pixels. The context help glyph takes a
++        round join at a small margin, and a miter join at a large one. Every
++        other glyph ignores this value. */
+     void drawGlyph(QPainter *painter, const QRectF &rect,
+-                   const QColor &color) const;
++                   const QColor &color, qreal margin) const;
+ 
+     //! the colour of the line art
+     /*! \return the button colour for the colour symbol flag, or the caption
 diff --git a/qt6/kdecoration/qtcurvedecorationconfig.cpp b/qt6/kdecoration/qtcurvedecorationconfig.cpp
 index a9b9c196..a258f172 100644
 --- a/qt6/kdecoration/qtcurvedecorationconfig.cpp
