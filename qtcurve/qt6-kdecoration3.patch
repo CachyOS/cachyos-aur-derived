@@ -374,10 +374,10 @@ index 00000000..df2ba096
 +}
 diff --git a/qt6/kdecoration/qtcurvedecoration.cpp b/qt6/kdecoration/qtcurvedecoration.cpp
 new file mode 100644
-index 00000000..99e98dc2
+index 00000000..8eca8b5e
 --- /dev/null
 +++ b/qt6/kdecoration/qtcurvedecoration.cpp
-@@ -0,0 +1,992 @@
+@@ -0,0 +1,990 @@
 +/*****************************************************************************
 + *   Copyright 2003 - 2010 Craig Drummond <craig.p.drummond@gmail.com>       *
 + *   Copyright 2013 - 2015 Yichao Yu <yyc1992@gmail.com>                     *
@@ -1345,10 +1345,8 @@ index 00000000..99e98dc2
 +        painter->restore();
 +    }
 +
-+    // A window with the no shade value in the OuterBorder key gets no frame
-+    // line, as paintEvent() in qt6/kwin/qtcurveclient.cpp draws none. The fill
-+    // above covers the whole window, so the border keeps the fill colour to
-+    // the edge without the line.
++    // The frame line follows the same rule. The fill above covers the whole
++    // window, so the border keeps the fill colour to the edge without the line.
 +    if (config.outerBorder() != DecorationConfig::SHADE_NONE) {
 +        painter->save();
 +        painter->setRenderHint(QPainter::Antialiasing);

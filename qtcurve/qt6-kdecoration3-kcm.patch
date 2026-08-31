@@ -1447,7 +1447,7 @@ index df2ba096..03d607cd 100644
          "blur": false,
          "recommendedBorderSize": "Normal"
 diff --git a/qt6/kdecoration/qtcurvedecoration.cpp b/qt6/kdecoration/qtcurvedecoration.cpp
-index 99e98dc2..5ecd43f5 100644
+index 8eca8b5e..41770d8f 100644
 --- a/qt6/kdecoration/qtcurvedecoration.cpp
 +++ b/qt6/kdecoration/qtcurvedecoration.cpp
 @@ -363,7 +363,8 @@ fillGradient(QPainter *painter, const QPainterPath &path, const QColor &base,
