@@ -29,9 +29,9 @@ The install paths do not move. The installed file list equals the one of the
 parent commit, name for name, size for size and component for component. The
 DT_NEEDED lists, the symbol counts and the disassembly also stay equal.
 
-The change sits on the branch work/build-warnings of the local tree. The push
-puts that branch on the fork wyn/qtcurve. The merge request on system/qtcurve
-follows that push.
+The change sits on the branch work/build-warnings of the local tree. The
+fork wyn/qtcurve holds that branch. Merge request !14 on system/qtcurve holds
+that branch as the source.
 
 Drop this patch when upstream merges the change.
 

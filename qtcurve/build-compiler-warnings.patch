@@ -31,9 +31,9 @@ pointer before the null test.
 A Qt 6 root gives the same golden report as the parent commit, byte for
 byte. ctest passes twelve of the thirteen tests before and after.
 
-The change sits on the branch work/build-warnings of the local tree. The push
-puts that branch on the fork wyn/qtcurve. The merge request on system/qtcurve
-follows that push.
+The change sits on the branch work/build-warnings of the local tree. The
+fork wyn/qtcurve holds that branch. Merge request !14 on system/qtcurve holds
+that branch as the source.
 
 Drop this patch when upstream merges the change.
 
