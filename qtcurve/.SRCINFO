@@ -1,7 +1,7 @@
 pkgbase = qtcurve
 	pkgdesc = A configurable set of widget styles for Qt5, Qt6, KDE Frameworks 6 and GTK 2
 	pkgver = 20260812
-	pkgrel = 2
+	pkgrel = 3
 	url = https://invent.kde.org/system/qtcurve
 	arch = x86_64
 	license = LGPL-2.1-only
@@ -64,6 +64,8 @@ pkgbase = qtcurve
 	source = qt6-deprecated-api.patch
 	source = qt6-preset-path.patch
 	source = qt5-deprecated-api.patch
+	source = build-cmake-warnings.patch
+	source = build-compiler-warnings.patch
 	sha256sums = d4db624ff455548fffb38277d7080a4380911bc25a12c63a1e653aa47660435f
 	sha256sums = 60d6c52289f3b6e7c0645bb9acaa96a769801f66e77f50cd5551b7e613611152
 	sha256sums = e4219281d09f042bac722d7ab6a6784b9b56ea34129e8b877942c91770d9a912
@@ -76,5 +78,7 @@ pkgbase = qtcurve
 	sha256sums = 3e8c93c4f8a38cb81a48aff2f43e300a945a842a61efb431937061acf5d08174
 	sha256sums = 4f437130cf4c8f1699061eba733b038804c76e417deb0c70b2885e83fb0037bf
 	sha256sums = 2b27c37159d083d9e8553c465ddbf5bd833ca2f0d35283517e9c31a64305efe6
+	sha256sums = d7fd0ec4eeb6a2312fb6064844b0664543c6528b45dfbafc9681cd38cb7b012f
+	sha256sums = 594e0371d563761b9fe50ee3ef7d841dc583b1f9ba7f9e86330efeb265c1ab21
 
 pkgname = qtcurve
