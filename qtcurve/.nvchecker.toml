@@ -1,3 +1,8 @@
+# The newest upstream tag is v1.9.0 from 2018. Upstream added the Qt 6 style
+# in 2024, so no tag holds it. This check follows the head commit of master.
+#
+# The check reports a commit hash. The hash never equals pkgver. Compare the
+# hash with _commit in the PKGBUILD. The date of that commit gives pkgver.
 [qtcurve]
 source = "git"
 git = "https://invent.kde.org/system/qtcurve.git"
