@@ -1,155 +1,40 @@
 Add the settings module of the KDecoration3 window decoration
 
-The KDecoration3 decoration of the previous patch reads the kwinqtcurverc file
-of the KDE4 decoration. Its plugin metadata names no configuration module, so
-the pencil button of System Settings > Window Decorations opens nothing.
-qt6/kwinconfig builds the standalone module for a Qt4 build alone, but
-qt6/config compiles the same page into kstyle_qtcurve6_config.so. The settings
-dialogue of the QtCurve style therefore writes the file today. That page sits
-behind the style, and not behind the window frame. The pencil button of the
-Window Decorations page still needs a target on the KWin side.
+The KDecoration3 decoration reads the kwinqtcurverc file of the KDE4
+decoration, and its plugin metadata names no configuration module. The pencil
+button of System Settings > Window Decorations therefore opens nothing. Only
+the settings dialogue of the QtCurve style writes the file today.
 
-The patch adds qt6/kdecoration/config, a KCMUtils plugin with the name
-kcm_qtcurvedecoration. kcoreaddons_add_plugin() installs the plugin in the
-org.kde.kdecoration3.kcm directory of the Qt plugin path, beside
-kcm_breezedecoration.so. kcmutils_generate_desktop_file() installs
-kcm_qtcurvedecoration.desktop, so the search of System Settings finds the page.
-qt6/kdecoration/qtcurve.json gets the X-KDE-ConfigModule key that breeze.json
-holds, and KWin opens the module from the pencil button.
+The commit adds qt6/kdecoration/config, a KCMUtils plugin with the name
+kcm_qtcurvedecoration. kcoreaddons_add_plugin() installs it in the
+org.kde.kdecoration3.kcm directory of the Qt plugin path, and
+kcmutils_generate_desktop_file() adds its desktop file. qtcurve.json gains
+X-KDE-ConfigModule, so KWin opens the module from the pencil button.
 
-Two pages write the file, and the design of this patch cannot drop either one.
-The page inside kstyle_qtcurve6_config.so writes a shadow key while the custom
-shadows box is on alone. It writes BorderSize, BorderlessMax, Grouping and the
-three opacity keys as well. The new module writes every shadow key on every
-save, except the ShadowType key and the Color key. It writes the Color key for
-the CT_CUSTOM colour type alone, and it removes that key for every other type.
+The module edits the keys of the kwinqtcurverc file that change the decoration.
+The General group holds OuterBorder, InnerBorder, RoundBottom, CustomShadows,
+TitleBarPad and EdgePad. The two shadow groups hold Size, HOffset, VOffset,
+ColorType and Color. The module writes Color for the CT_CUSTOM colour type
+alone, and it removes the key for every other type. It keeps every other key,
+and it edits no key of the file of the style. The colour buttons show the
+colour of the current type, and the custom shadow box drives them.
 
-The new module writes no ShadowType key. QtCurve::ShadowConfig reads the key,
-and the KWin page of kstyle_qtcurve6_config reads the value back into its own
-box. A user can hold both pages open, and the last save wins. load() reads the
-file again before it fills the widgets, so a save from the other page reaches an
-open module. The doc of kwinConfigFile, the class doc of DecorationKCM and the
-class doc of DecorationSettings carry the warning.
+Warning: the KWin page of the style writes the same file, and the last save
+wins. load() reads the file again before it fills the widgets.
 
-QtCurve::DecorationKCM is the KCModule. QtCurve::DecorationSettings and
-QtCurve::ShadowSettings read and write the file. The module edits the keys of
-the file that change the decoration:
+save() sends the reloadConfig signal of org.kde.KWin, so the page needs no
+restart of the compositor. Every decoration gets the reconfigured signal of
+KDecoration3. DecorationConfig gains a generation counter, so the first
+decoration of a signal does the read and the two shadow resets alone.
 
-* The General group holds OuterBorder, InnerBorder, RoundBottom, CustomShadows,
-  TitleBarPad and EdgePad.
-* The ActiveShadows group and the InactiveShadows group hold Size, HOffset,
-  VOffset, ColorType and Color.
+Out of scope: the BorderSize key, the two opacities, the opaque border and the
+window grouping, which the decoration never reads.
 
-The module writes the Color key for the CT_CUSTOM colour type alone, because the
-decoration reads the key for that type alone. It removes that key for every
-other type. The module keeps every other key
-of the file, so the keys of the KDE4 decoration stay: BorderSize, BorderlessMax,
-Grouping, ActiveOpacity, InactiveOpacity, OpaqueBorder and ShadowType. The
-module edits no key of the configuration file of the QtCurve style. The settings
-dialogue of the style still holds the title bar gradient, the button layout and
-the caption alignment.
+The change sits on the branch work/kdecoration3 of the local tree, as the second
+commit. The fork wyn/qtcurve holds that branch. Merge request !9 on
+system/qtcurve holds that branch.
 
-One source of truth for the keys. qt6/kdecoration/qtcurvedecorationconfig.h
-gains the file name, the three group names and the fixed grey of the CT_GRAY
-type. It also gains the shadow defaults, the frame defaults, the two pad limits
-and readShade(). The decoration and the module read the same constants and the
-same shade reader. The change moves code out of qtcurvedecorationconfig.cpp and
-out of the anonymous namespace. It changes no value and no behaviour.
-
-A save reaches a running compositor. save() sends the reloadConfig signal of
-org.kde.KWin on the session bus, as kcm_breezedecoration does. KWin reloads its
-configuration and emits the reconfigured signal of KDecoration3.
-Decoration::reconfigure() then reads the two files again, drops the two shared
-drop shadows and repaints. DecorationConfig::instance() gives a non const
-reference for that call. The page therefore needs no restart of the compositor,
-and the note of the page asks for none.
-
-Every open window has a decoration, and each one gets that signal. The
-configuration and the two shadows belong to the process, so the read and the two
-resets must run one time for each signal. DecorationConfig gains a generation
-counter, and reload() raises it. A decoration holds a copy of the counter.
-
-The first decoration of a signal finds the same number, and it does the read and
-the two resets. Each later decoration finds a larger number and reads nothing.
-Every decoration then takes the shadow of its window state and repaints. Every
-window therefore keeps the one shared shadow object.
-
-The page is a port of qt6/kwinconfig/qtcurvekwinconfigwidget.ui and of
-qt6/kwinconfig/qtcurvekwinconfig.cpp. qt6/kwinconfig/qtcurvekwinconfig.cpp
-carries the LGPL notice of QtCurve. The user interface file carries no notice,
-and it takes the licence of the tree. The port drops the widgets of the keys
-that the KDecoration3 decoration never reads:
-
-* Border size. The Window Decorations page of KWin holds the border size now,
-  and KDecoration3 gives the value to the decoration.
-* Remove from maximised windows, and window grouping. KWin holds the first one,
-  and the second one left KWin with the KDE4 tab group.
-* Active opacity, inactive opacity and the opaque border. The compositor draws
-  the frame of a KDecoration3 plugin, so the plugin paints no opacity of its
-  own.
-
-The port replaces one rule of the KDE4 module and drops another. The KDE4
-module forced the custom shadows box on for a border of the shadow shade.
-Decoration::borderColor() reads the shadow colour for that shade with the box
-off as well, so the box now stays as the user left it. The rule that replaces
-it keeps the two colour rows live while the box is on, or while a border holds
-the shadow shade. The box drives the size row and the two offset rows alone. The
-user interface file therefore holds no enabled property and no signal connection
-for the two group boxes, and setWidgetStates() holds every rule. The KDE4 module
-also registered a D-Bus service to stop a second copy of the page. That page
-lived inside the settings dialogue of the style as well. The new module is a
-separate plugin, so it drops the service.
-
-The port also drops the gradient box of the inactive shadow.
-QtCurve::ShadowConfig reads the ShadowType key that the box wrote. The painter
-of the KDecoration3 decoration draws every shadow in one colour, so the value
-changed nothing for that decoration. The KWin page of kstyle_qtcurve6_config
-still writes the key and reads it back into its own box. The module writes no
-ShadowType key, and a save leaves the key of the KDE4 settings module as it is.
-
-The patch adds no ctest entry for the module. kcmshell6 --smoke-test needs a
-graphical platform. The constructor of KColorButton of KF6 WidgetsAddons 6.29
-reads the clipboard, and the offscreen platform gives no mime data.
-kcm_breezedecoration of Breeze 6.7.4 stops with the same fault on the offscreen
-platform.
-
-What the tests show:
-
-* The metadata of the plugin is valid. The identifier is kcm_qtcurvedecoration,
-  and KPluginFactory builds QtCurve::DecorationKCM from it.
-* load() of an empty file gives the defaults of the decoration. The two borders
-  are none, the round corners are on, the custom shadows are off and both pads
-  are 0. The active shadow is 35 pixels in the focus colour. The inactive shadow
-  is 30 pixels in the fixed grey.
-* A file with OuterBorder=2, InnerBorder=1, RoundBottom=false, TitleBarPad=3,
-  EdgePad=2, CustomShadows=true, ActiveShadows Size=45, HOffset=4, VOffset=8,
-  ColorType=5 and Color=255,0,0 reaches every widget of the page. A second
-  load() of the open module reads the same file again, so a save from the other
-  page reaches the widgets.
-* A page with a light outer border, a dark inner border, TitleBarPad=4 and
-  EdgePad=3 writes those keys alone. The same page gives the active shadow 40
-  pixels in red, a horizontal offset of 2 pixels and a vertical offset of 7
-  pixels. It gives the inactive shadow 20 pixels. The file keeps its BorderSize
-  key, its Grouping key and the two ShadowType keys of the KDE4 settings module.
-  A file with no ShadowType key gets none.
-* defaults() gives every widget the default of the decoration, and it writes
-  nothing.
-* An outer border of the shadow shade keeps the two colour rows live while the
-  custom shadows box is off. The size row and the offset rows stay grey.
-* The decoration of the saved file draws a title bar of 31 pixels and borders
-  of 9 pixels. The active shadow image is 89 by 89 pixels. Its padding is 37,
-  32, 41 and 46 pixels, and its strongest pixel is 255, 0, 0.
-* A decoration that starts on an empty file draws borders of 4, 23, 4 and 4
-  pixels. Its shadow is grey and 69 by 69 pixels. The reconfigured signal after
-  a swap of the file gives the numbers of the saved file, so the reload works.
-* Two decorations that share one settings object hold one shadow object. The
-  reconfigured signal after a swap of the file gives both the numbers of the
-  saved file, and both still hold one shadow object.
-* save() puts the reloadConfig signal of org.kde.KWin on the session bus.
-* kcmshell6 --smoke-test org.kde.kdecoration3.kcm/kcm_qtcurvedecoration returns
-  0 on the xcb platform.
-
-Drop this patch when QtCurve ships a KDecoration3 decoration upstream.
+Drop this patch when upstream merges the change.
 
 diff --git a/qt6/kdecoration/CMakeLists.txt b/qt6/kdecoration/CMakeLists.txt
 index e4c868ee..8f878a44 100644
@@ -164,10 +49,10 @@ index e4c868ee..8f878a44 100644
 +add_subdirectory(config)
 diff --git a/qt6/kdecoration/config/CMakeLists.txt b/qt6/kdecoration/config/CMakeLists.txt
 new file mode 100644
-index 00000000..92ee1080
+index 00000000..cda0b1ce
 --- /dev/null
 +++ b/qt6/kdecoration/config/CMakeLists.txt
-@@ -0,0 +1,60 @@
+@@ -0,0 +1,65 @@
 +set(qtcurve_kdecoration_config_SRCS
 +  kcm_qtcurvedecoration.cpp
 +  qtcurvedecorationkcm.cpp
@@ -183,9 +68,11 @@ index 00000000..92ee1080
 +  ${qtcurve_kdecoration_config_UIS}
 +  kcm_qtcurvedecoration.json)
 +
-+# The settings module is a KCMUtils plugin. qt6/CMakeLists.txt finds every
-+# other KF6 component that the tree needs.
-+find_package(KF6 REQUIRED COMPONENTS KCMUtils)
++# The settings module is a KCMUtils plugin, and shadowColor() of
++# qt6/kdecoration/qtcurvedecorationconfig.h reads the colour scheme of the
++# session. qt6/CMakeLists.txt finds every other KF6 component that the tree
++# needs.
++find_package(KF6 REQUIRED COMPONENTS ColorScheme KCMUtils)
 +
 +# ki18n_wrap_ui() puts the strings of the page in the qtcurve translation
 +# domain. The automatic user interface compiler of Qt takes another route and
@@ -217,6 +104,9 @@ index 00000000..92ee1080
 +  Qt6::DBus
 +  Qt6::Gui
 +  Qt6::Widgets
++  # setWidgets() shows the colour of the current shadow colour type, and
++  # shadowColor() takes that colour from the colour scheme.
++  KF6::ColorScheme
 +  KF6::ConfigCore
 +  KF6::CoreAddons
 +  # qt6/kdecoration/qtcurvedecorationconfig.h includes common/common.h, and
@@ -284,10 +174,10 @@ index 00000000..877c122b
 +}
 diff --git a/qt6/kdecoration/config/qtcurvedecorationkcm.cpp b/qt6/kdecoration/config/qtcurvedecorationkcm.cpp
 new file mode 100644
-index 00000000..75b404c5
+index 00000000..74634a25
 --- /dev/null
 +++ b/qt6/kdecoration/config/qtcurvedecorationkcm.cpp
-@@ -0,0 +1,270 @@
+@@ -0,0 +1,267 @@
 +/*****************************************************************************
 + *   Copyright 2007 - 2010 Craig Drummond <craig.p.drummond@gmail.com>       *
 + *   Copyright 2013 - 2015 Yichao Yu <yyc1992@gmail.com>                     *
@@ -398,8 +288,9 @@ index 00000000..75b404c5
 +        connect(button, &KColorButton::changed, this,
 +                &DecorationKCM::updateChanged);
 +    }
-+    // setWidgetStates() reads the custom shadow box and every combination
-+    // box, so those widgets get a handler that calls it first.
++    // setWidgetStates() reads the custom shadow box, the outer border box and
++    // the two colour type boxes, and it can change the inner border box. Those
++    // five widgets therefore get a handler that calls it first.
 +    connect(m_ui.useShadows, &QCheckBox::toggled, this, [this] {
 +        setWidgetStates();
 +        updateChanged();
@@ -527,24 +418,20 @@ index 00000000..75b404c5
 +        one->setEnabled(shadows);
 +    }
 +    // Decoration::borderColor() in qt6/kdecoration/qtcurvedecoration.cpp reads
-+    // the shadow colour for a border of the shadow shade. It reads the colour
-+    // with the custom shadow box off as well, so the two colour rows stay live
-+    // for that shade.
-+    const bool shadowBorder =
-+        (DecorationConfig::SHADE_SHADOW == m_ui.outerBorder->currentIndex() ||
-+         DecorationConfig::SHADE_SHADOW == m_ui.innerBorder->currentIndex());
-+    const bool colours = shadows || shadowBorder;
++    // the shadow colour for a border of the shadow shade. It reads that colour
++    // with the custom shadow box on alone, so the two colour rows follow the
++    // same box.
 +    for (QWidget *one : QList<QWidget*>{
 +            m_ui.activeColorLabel, m_ui.activeShadowColorType,
 +            m_ui.inactiveColorLabel, m_ui.inactiveShadowColorType}) {
-+        one->setEnabled(colours);
++        one->setEnabled(shadows);
 +    }
 +    // The decoration reads the Color key for the custom colour type alone.
 +    m_ui.activeShadowColor->setEnabled(
-+        colours &&
++        shadows &&
 +        ShadowConfig::CT_CUSTOM == m_ui.activeShadowColorType->currentIndex());
 +    m_ui.inactiveShadowColor->setEnabled(
-+        colours &&
++        shadows &&
 +        ShadowConfig::CT_CUSTOM == m_ui.inactiveShadowColorType->currentIndex());
 +}
 +
@@ -681,10 +568,10 @@ index 00000000..9771b59f
 +#endif
 diff --git a/qt6/kdecoration/config/qtcurvedecorationsettings.cpp b/qt6/kdecoration/config/qtcurvedecorationsettings.cpp
 new file mode 100644
-index 00000000..efdb7377
+index 00000000..8a5d4d0d
 --- /dev/null
 +++ b/qt6/kdecoration/config/qtcurvedecorationsettings.cpp
-@@ -0,0 +1,189 @@
+@@ -0,0 +1,193 @@
 +/*****************************************************************************
 + *   Copyright 2007 - 2010 Craig Drummond <craig.p.drummond@gmail.com>       *
 + *   Copyright 2013 - 2015 Yichao Yu <yyc1992@gmail.com>                     *
@@ -734,7 +621,6 @@ index 00000000..efdb7377
 +{
 +    hOffset = ShadowConfig::DEFAULT_HOFFSET;
 +    vOffset = ShadowConfig::DEFAULT_VOFFSET;
-+    color = QColor(QString::fromLatin1(fixedShadowGray));
 +    if (QPalette::Active == m_colorGroup) {
 +        size = ShadowConfig::DEFAULT_ACTIVE_SIZE;
 +        colorType = ShadowConfig::CT_FOCUS;
@@ -742,6 +628,7 @@ index 00000000..efdb7377
 +        size = ShadowConfig::DEFAULT_INACTIVE_SIZE;
 +        colorType = ShadowConfig::CT_GRAY;
 +    }
++    color = shadowColor(colorType, m_colorGroup);
 +}
 +
 +void
@@ -754,7 +641,6 @@ index 00000000..efdb7377
 +    hOffset = entries.readEntry("HOffset", def.hOffset);
 +    vOffset = entries.readEntry("VOffset", def.vOffset);
 +    colorType = entries.readEntry("ColorType", def.colorType);
-+    color = entries.readEntry("Color", def.color);
 +    if (size < ShadowConfig::MIN_SIZE || size > ShadowConfig::MAX_SIZE) {
 +        size = def.size;
 +    }
@@ -770,6 +656,12 @@ index 00000000..efdb7377
 +        colorType > ShadowConfig::CT_CUSTOM) {
 +        colorType = def.colorType;
 +    }
++    // setShadows() in qt6/kwinconfig/qtcurvekwinconfig.cpp put the colour of
++    // the current type in the button. The file holds a colour for the custom
++    // type alone.
++    color = (ShadowConfig::CT_CUSTOM == colorType ?
++             entries.readEntry("Color", def.color) :
++             shadowColor(colorType, m_colorGroup));
 +}
 +
 +bool
@@ -789,9 +681,8 @@ index 00000000..efdb7377
 +    entries.writeEntry("HOffset", hOffset);
 +    entries.writeEntry("VOffset", vOffset);
 +    entries.writeEntry("ColorType", colorType);
-+    // The call writes no ShadowType key. ShadowConfig reads the key, but the
-+    // painter draws every shadow in one colour, so the value changes nothing.
-+    // The key of the KDE4 settings module therefore stays as it is.
++    // The call writes no ShadowType key, because the module shows no row for
++    // it. The key of the KDE4 settings module therefore stays as it is.
 +    if (ShadowConfig::CT_CUSTOM == colorType) {
 +        entries.writeEntry("Color", color);
 +    } else {
@@ -876,10 +767,10 @@ index 00000000..efdb7377
 +}
 diff --git a/qt6/kdecoration/config/qtcurvedecorationsettings.h b/qt6/kdecoration/config/qtcurvedecorationsettings.h
 new file mode 100644
-index 00000000..89f2e13e
+index 00000000..b81f937f
 --- /dev/null
 +++ b/qt6/kdecoration/config/qtcurvedecorationsettings.h
-@@ -0,0 +1,169 @@
+@@ -0,0 +1,166 @@
 +/*****************************************************************************
 + *   Copyright 2007 - 2010 Craig Drummond <craig.p.drummond@gmail.com>       *
 + *   Copyright 2013 - 2015 Yichao Yu <yyc1992@gmail.com>                     *
@@ -924,9 +815,8 @@ index 00000000..89f2e13e
 +    the decoration reads the key for that type alone. The colour keeps the
 +    value of the colour button while another type is current.
 +
-+    The class writes no ShadowType key. ShadowConfig reads the key, but the
-+    painter of the decoration draws every shadow in one colour. A save
-+    therefore leaves the key of the KDE4 settings module as it is.
++    The class writes no ShadowType key, because the module shows no row for
++    it. A save therefore leaves the key of the KDE4 settings module as it is.
 +
 +    The thread of the settings module owns every instance. */
 +class ShadowSettings {
@@ -939,9 +829,7 @@ index 00000000..89f2e13e
 +
 +    //! give every value the default of the decoration
 +    /*! ShadowConfig::defaults() in qt6/kdecoration/qtcurvedecorationconfig.cpp
-+        gives the same values. The custom colour starts at the fixed grey of
-+        the CT_GRAY type. The file holds no colour until the user asks for the
-+        custom type. */
++        gives the same values, and the colour follows the colour type. */
 +    void defaults();
 +
 +    //! read the group of this window state
@@ -980,9 +868,9 @@ index 00000000..89f2e13e
 +    int vOffset;
 +    //! the source of the shadow colour, as a ShadowConfig::ColorType value
 +    int colorType;
-+    //! the colour of the CT_CUSTOM colour type
-+    /*! The value starts at the fixed grey of the CT_GRAY type, because the
-+        file holds no colour until the user asks for the custom type. */
++    //! the colour that the colour button of the group shows
++    /*! defaults() and load() give it the colour of the current colour type,
++        and save() writes it for the CT_CUSTOM type alone. */
 +    QColor color;
 +
 +private:
@@ -1051,7 +939,7 @@ index 00000000..89f2e13e
 +#endif
 diff --git a/qt6/kdecoration/config/ui/qtcurvedecorationconfigui.ui b/qt6/kdecoration/config/ui/qtcurvedecorationconfigui.ui
 new file mode 100644
-index 00000000..46ffc1c6
+index 00000000..af1473d5
 --- /dev/null
 +++ b/qt6/kdecoration/config/ui/qtcurvedecorationconfigui.ui
 @@ -0,0 +1,379 @@
@@ -1158,7 +1046,7 @@ index 00000000..46ffc1c6
 +         <item row="4" column="1">
 +          <widget class="QSpinBox" name="edgePad">
 +           <property name="whatsThis">
-+            <string>Controls the amount of extra padding added to the titlebar border. Changing this will only affect the height of the titlebar, and not the buttons. </string>
++            <string>Controls the amount of extra padding added to the side borders and the bottom border. Changing this will not affect the height of the titlebar. </string>
 +           </property>
 +           <property name="suffix">
 +            <string>px</string>
@@ -1219,7 +1107,7 @@ index 00000000..46ffc1c6
 +       <item row="0" column="0" colspan="2">
 +        <widget class="QCheckBox" name="useShadows">
 +         <property name="whatsThis">
-+          <string>If enabled, QtCurve will draw its own shadows - and not use the generic window manager shadows. This will allow you to specify different shadow colours, etc, for active and inactive windows.</string>
++          <string>If enabled, QtCurve will draw its own shadows, and you can set a different shadow colour and size for active and inactive windows. If disabled, the decoration adds no shadow.</string>
 +         </property>
 +         <property name="text">
 +          <string>Use custom shadows</string>
@@ -1262,7 +1150,7 @@ index 00000000..46ffc1c6
 +          <item row="1" column="1">
 +           <widget class="QSpinBox" name="activeShadowHOffset">
 +            <property name="suffix">
-+             <string>px</string>
++             <string>%</string>
 +            </property>
 +           </widget>
 +          </item>
@@ -1279,7 +1167,7 @@ index 00000000..46ffc1c6
 +          <item row="2" column="1">
 +           <widget class="QSpinBox" name="activeShadowVOffset">
 +            <property name="suffix">
-+             <string>px</string>
++             <string>%</string>
 +            </property>
 +           </widget>
 +          </item>
@@ -1342,7 +1230,7 @@ index 00000000..46ffc1c6
 +          <item row="1" column="1">
 +           <widget class="QSpinBox" name="inactiveShadowHOffset">
 +            <property name="suffix">
-+             <string>px</string>
++             <string>%</string>
 +            </property>
 +           </widget>
 +          </item>
@@ -1359,7 +1247,7 @@ index 00000000..46ffc1c6
 +          <item row="2" column="1">
 +           <widget class="QSpinBox" name="inactiveShadowVOffset">
 +            <property name="suffix">
-+             <string>px</string>
++             <string>%</string>
 +            </property>
 +           </widget>
 +          </item>
@@ -1447,10 +1335,10 @@ index df2ba096..03d607cd 100644
          "blur": false,
          "recommendedBorderSize": "Normal"
 diff --git a/qt6/kdecoration/qtcurvedecoration.cpp b/qt6/kdecoration/qtcurvedecoration.cpp
-index 4bf7ae7f..1d42d70f 100644
+index d52c7207..826318e1 100644
 --- a/qt6/kdecoration/qtcurvedecoration.cpp
 +++ b/qt6/kdecoration/qtcurvedecoration.cpp
-@@ -363,7 +363,8 @@ fillGradient(QPainter *painter, const QPainterPath &path, const QColor &base,
+@@ -549,7 +549,8 @@ fillGradient(QPainter *painter, const QPainterPath &path, const QColor &base,
  }
  
  Decoration::Decoration(QObject *parent, const QVariantList &args)
@@ -1460,7 +1348,7 @@ index 4bf7ae7f..1d42d70f 100644
  {
  }
  
-@@ -635,6 +636,10 @@ bool
+@@ -826,6 +827,10 @@ bool
  Decoration::init()
  {
      auto config = settings();
@@ -1471,7 +1359,7 @@ index 4bf7ae7f..1d42d70f 100644
      connect(config.get(), &KDecoration3::DecorationSettings::borderSizeChanged,
              this, &Decoration::recalculateBorders);
      connect(config.get(), &KDecoration3::DecorationSettings::fontChanged,
-@@ -719,6 +724,26 @@ Decoration::init()
+@@ -910,6 +915,26 @@ Decoration::init()
      return true;
  }
  
@@ -1499,7 +1387,7 @@ index 4bf7ae7f..1d42d70f 100644
  Decoration::updateShadow()
  {
 diff --git a/qt6/kdecoration/qtcurvedecoration.h b/qt6/kdecoration/qtcurvedecoration.h
-index c63f68ef..69d40729 100644
+index 7e12f37a..b03ea96f 100644
 --- a/qt6/kdecoration/qtcurvedecoration.h
 +++ b/qt6/kdecoration/qtcurvedecoration.h
 @@ -111,6 +111,15 @@ public Q_SLOTS:
@@ -1517,9 +1405,9 @@ index c63f68ef..69d40729 100644
 +    void reconfigure();
      //! give the borders, the grab areas and the corner radius their values
      /*! The border size of the settings, the maximized state of the window and
-         the screen edges beside the window select the three values. */
-@@ -193,6 +202,12 @@ private:
-         edge. */
+         the screen edges beside the window select the three values. The call
+@@ -207,6 +216,12 @@ private:
+         CustomShadows key is off. */
      QColor borderColor(DecorationConfig::Shade shadeType) const;
  
 +    //! the copy of DecorationConfig::generation() of the last reconfigure()
@@ -1532,14 +1420,20 @@ index c63f68ef..69d40729 100644
      KDecoration3::DecorationButtonGroup *m_leftButtons=nullptr;
      //! the buttons at the right end of the title bar
 diff --git a/qt6/kdecoration/qtcurvedecorationconfig.cpp b/qt6/kdecoration/qtcurvedecorationconfig.cpp
-index 2c3e93b0..a9b9c196 100644
+index 8ad58fd7..a1499af2 100644
 --- a/qt6/kdecoration/qtcurvedecorationconfig.cpp
 +++ b/qt6/kdecoration/qtcurvedecorationconfig.cpp
-@@ -29,60 +29,10 @@
+@@ -24,66 +24,14 @@
+ 
+ #include <common/config_file.h>
+ 
+-#include <KColorScheme>
+ #include <KConfig>
  #include <KConfigGroup>
  
- #include <QGuiApplication>
+-#include <QGuiApplication>
 -#include <QLatin1String>
+ #include <QSettings>
  #include <QString>
  
  #include <qtcurve-utils/shade.h>
@@ -1595,8 +1489,8 @@ index 2c3e93b0..a9b9c196 100644
 -
  namespace QtCurve {
  
- ShadowConfig::ShadowConfig(QPalette::ColorGroup colorGroup)
-@@ -94,14 +44,14 @@ ShadowConfig::ShadowConfig(QPalette::ColorGroup colorGroup)
+ //! the largest contrast value that the decoration accepts
+@@ -99,14 +47,14 @@ ShadowConfig::ShadowConfig(QPalette::ColorGroup colorGroup)
  void
  ShadowConfig::defaults()
  {
@@ -1615,7 +1509,45 @@ index 2c3e93b0..a9b9c196 100644
          m_shadowType = SH_INACTIVE;
          setColorType(CT_GRAY);
      }
-@@ -175,6 +125,13 @@ DecorationConfig::DecorationConfig()
+@@ -116,35 +64,8 @@ void
+ ShadowConfig::setColorType(ColorType ct)
+ {
+     m_colorType = ct;
+-    switch (m_colorType) {
+-    default:
+-    case CT_FOCUS:
+-        m_color = KColorScheme(m_colorGroup)
+-            .decoration(KColorScheme::FocusColor).color();
+-        break;
+-    case CT_HOVER:
+-        m_color = KColorScheme(m_colorGroup)
+-            .decoration(KColorScheme::HoverColor).color();
+-        break;
+-    case CT_SELECTION:
+-        // The KDE4 decoration read the palette of the application. A
+-        // decoration plugin runs inside the compositor, so the palette is the
+-        // palette of the compositor.
+-        m_color = QGuiApplication::palette().color(m_colorGroup,
+-                                                   QPalette::Highlight);
+-        break;
+-    case CT_TITLEBAR:
+-        m_color = KColorScheme(m_colorGroup, KColorScheme::Window)
+-            .background(m_colorGroup == QPalette::Active ?
+-                        KColorScheme::ActiveBackground :
+-                        KColorScheme::NormalBackground)
+-            .color();
+-        break;
+-    case CT_GRAY:
+-        m_color = QColor(QString::fromLatin1(fixedShadowGray));
+-        break;
+-    case CT_CUSTOM:
+-        break;
++    if (CT_CUSTOM != ct) {
++        m_color = shadowColor(ct, m_colorGroup);
+     }
+ }
+ 
+@@ -180,6 +101,13 @@ DecorationConfig::DecorationConfig()
      : m_activeShadow(QPalette::Active),
        m_inactiveShadow(QPalette::Inactive)
  {
@@ -1629,7 +1561,7 @@ index 2c3e93b0..a9b9c196 100644
      // qtcReadConfig() takes the file from the QTCURVE_CONFIG_FILE environment
      // variable when it is set. It takes the file from the QtCurve directory of
      // the configuration folder of the user when the variable is not set. The
-@@ -187,27 +144,27 @@ DecorationConfig::DecorationConfig()
+@@ -200,27 +128,27 @@ DecorationConfig::DecorationConfig()
      m_outerBorder = readShade(group, "OuterBorder");
      m_innerBorder = (SHADE_NONE == m_outerBorder ? SHADE_NONE :
                       readShade(group, "InnerBorder"));
@@ -1668,16 +1600,18 @@ index 2c3e93b0..a9b9c196 100644
  }
  
 diff --git a/qt6/kdecoration/qtcurvedecorationconfig.h b/qt6/kdecoration/qtcurvedecorationconfig.h
-index 1633e54d..52fe3b6f 100644
+index 46ec860b..c7deeef8 100644
 --- a/qt6/kdecoration/qtcurvedecorationconfig.h
 +++ b/qt6/kdecoration/qtcurvedecorationconfig.h
-@@ -25,19 +25,44 @@
+@@ -25,19 +25,46 @@
  
  #include <common/common.h>
  
++#include <KColorScheme>
 +#include <KConfigGroup>
 +
  #include <QColor>
++#include <QGuiApplication>
 +#include <QLatin1String>
  #include <QPalette>
 +#include <QString>
@@ -1718,7 +1652,7 @@ index 1633e54d..52fe3b6f 100644
      The compositor thread owns every instance. */
  class ShadowConfig {
  public:
-@@ -66,13 +91,21 @@ public:
+@@ -66,13 +93,21 @@ public:
      };
  
      //! the smallest shadow size that load() accepts, in pixels
@@ -1727,35 +1661,66 @@ index 1633e54d..52fe3b6f 100644
      //! the largest shadow size that load() accepts, in pixels
 -    static const int MAX_SIZE = 100;
 +    static constexpr int MAX_SIZE = 100;
-     //! the smallest shadow offset that load() accepts, in pixels
+     //! the smallest shadow offset that load() accepts, in percent
 -    static const int MIN_OFFSET = 0;
 +    static constexpr int MIN_OFFSET = 0;
-     //! the largest shadow offset that load() accepts, in pixels
+     //! the largest shadow offset that load() accepts, in percent
 -    static const int MAX_OFFSET = 20;
 +    static constexpr int MAX_OFFSET = 20;
 +    //! the default shadow size of an active window, in pixels
 +    static constexpr int DEFAULT_ACTIVE_SIZE = 35;
 +    //! the default shadow size of an inactive window, in pixels
 +    static constexpr int DEFAULT_INACTIVE_SIZE = 30;
-+    //! the default horizontal offset of a shadow, in pixels
++    //! the default horizontal offset of a shadow, in percent
 +    static constexpr int DEFAULT_HOFFSET = 0;
-+    //! the default vertical offset of a shadow, in pixels
++    //! the default vertical offset of a shadow, in percent
 +    static constexpr int DEFAULT_VOFFSET = 5;
  
      //! make a shadow configuration with the values of defaults()
      /*! \param colorGroup the colour group that names the window state.
-@@ -121,20 +154,26 @@ private:
+@@ -130,20 +165,57 @@ private:
      //! the colour type, as a ColorType value
      int m_colorType;
      //! the window state, as a ShadowType value
 +    /*! load() reads the ShadowType key of the KDE4 settings module into this
-+        field. The painter draws every shadow in one colour, so no other code
-+        reads the field. */
++        field, and the offset scale of the drop shadow follows it. */
      int m_shadowType;
      //! the colour of the shadow
      QColor m_color;
  };
  
++//! the colour that one shadow colour type selects
++/*! \param colorType a ShadowConfig::ColorType value. The custom type has no
++    colour of its own, so it gives the colour of the focus type.
++    \param colorGroup the colour group that names the window state.
++    \return the colour. */
++inline QColor
++shadowColor(int colorType, QPalette::ColorGroup colorGroup)
++{
++    switch (colorType) {
++    case ShadowConfig::CT_HOVER:
++        return KColorScheme(colorGroup)
++            .decoration(KColorScheme::HoverColor).color();
++    case ShadowConfig::CT_SELECTION:
++        // The KDE4 decoration read the palette of the application. A
++        // decoration plugin runs inside the compositor, so the palette is the
++        // palette of the compositor.
++        return QGuiApplication::palette().color(colorGroup,
++                                                QPalette::Highlight);
++    case ShadowConfig::CT_TITLEBAR:
++        return KColorScheme(colorGroup, KColorScheme::Window)
++            .background(colorGroup == QPalette::Active ?
++                        KColorScheme::ActiveBackground :
++                        KColorScheme::NormalBackground).color();
++    case ShadowConfig::CT_GRAY:
++        return QColor(QString::fromLatin1(fixedShadowGray));
++    case ShadowConfig::CT_FOCUS:
++    default:
++        return KColorScheme(colorGroup)
++            .decoration(KColorScheme::FocusColor).color();
++    }
++}
++
  //! every configuration value that the QtCurve window decoration reads
 -/*! The class reads the configuration file of the QtCurve style, and it reads
 +/*! The class reads the configuration file of the QtCurve style. It also reads
@@ -1775,7 +1740,7 @@ index 1633e54d..52fe3b6f 100644
  
      The compositor thread owns the single instance. */
  class DecorationConfig {
-@@ -154,10 +193,40 @@ public:
+@@ -163,10 +235,40 @@ public:
          SHADE_SHADOW = 3
      };
  
@@ -1817,7 +1782,7 @@ index 1633e54d..52fe3b6f 100644
  
      //! the settings of the QtCurve style
      /*! \return the options that qtcReadConfig() read. The QTCURVE_CONFIG_FILE
-@@ -216,8 +285,36 @@ private:
+@@ -225,8 +327,36 @@ private:
      int m_titleBarPad;
      //! the extra width of the side border and of the bottom border, in pixels
      int m_edgePad;

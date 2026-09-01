@@ -1,0 +1,148 @@
+Replace the deprecated Qt calls of the Qt 6 style
+
+The Qt 6 style called four members that Qt marks as deprecated. A build with
+-Wall -Wextra printed six warning lines for three of them. The compiler stays
+silent for the fourth, because the header defines that constructor as
+defaulted.
+
+Qt deprecated QMouseEvent::globalPos() in 6.0. The window manager calls
+globalPosition().toPoint() now. The header defines the old member as that same
+expression, so the drag point stays an integer point. The equality test and the
+drag threshold then compare integers, as before.
+
+Qt deprecated the QMouseEvent constructor of five arguments in 6.4. The two
+synthetic events take the constructor with the global position now. The
+deprecated constructor read that position from the cursor, so the calls pass
+QCursor::pos(). An offscreen program shows that the position, the scene
+position, the global position and the pointing device stay equal.
+
+Qt deprecated QApplication::fontMetrics() in 6.0. The style calls
+QFontMetrics(qApp->font()) now. The header names QFontMetricsF, which does not
+convert to the return type of the function and which gives other values. The
+new call gives the same height, ascent, descent and text advance.
+
+Qt deprecated the QFontDatabase constructor in 6.0. The font helper called two
+static members through one instance, and the instance held no state. The helper
+calls the static functions now, and it drops the member, the forward
+declaration and the delete.
+
+The change sits on the branch work/qt6-deprecated-api of the local tree. The
+fork wyn/qtcurve holds that branch. Merge request !11 on system/qtcurve holds
+that branch as the source.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/qt6/style/qtcurve.cpp b/qt6/style/qtcurve.cpp
+index 2cf76a44..83e90187 100644
+--- a/qt6/style/qtcurve.cpp
++++ b/qt6/style/qtcurve.cpp
+@@ -838,7 +838,7 @@ static QFontMetrics styledFontMetrics(const QStyleOption *option, const QWidget
+         ? option->fontMetrics
+         : widget
+         ? widget->fontMetrics()
+-        : qApp->fontMetrics();
++        : QFontMetrics(qApp->font());
+ }
+ 
+ static int fontHeight(const QStyleOption *option, const QWidget *widget)
+diff --git a/qt6/style/qtcurve_api.cpp b/qt6/style/qtcurve_api.cpp
+index 0d3a2fb7..034eb764 100644
+--- a/qt6/style/qtcurve_api.cpp
++++ b/qt6/style/qtcurve_api.cpp
+@@ -95,13 +95,10 @@ horizontalAdvance(const QFontMetrics &fm, T &&text)
+ static const char *constBoldProperty = "qtc-set-bold";
+ 
+ Style::FontHelper::FontHelper()
+-    : m_fntDB(new QFontDatabase())
+ {}
+ 
+ Style::FontHelper::~FontHelper()
+-{
+-    delete m_fntDB;
+-}
++{}
+ 
+ QFont Style::FontHelper::fontStripStyleName(const QFont &f) const
+ {
+@@ -116,8 +113,8 @@ QFont Style::FontHelper::fontStripStyleName(const QFont &f) const
+         // may still correspond to the original font, not to the current style.
+         // Do a database lookup to get a consistent QFont instance to work with,
+         // so that methods like setWeight(), setStyle() will work as expected.
+-        QFont g = (m_fntDB->styleString(f) != styleName) ?
+-            m_fntDB->font(f.family(), styleName, f.pointSize())
++        QFont g = (QFontDatabase::styleString(f) != styleName) ?
++            QFontDatabase::font(f.family(), styleName, f.pointSize())
+             : QFont(f.family(), f.pointSize(), f.weight());
+         if (auto s = f.pixelSize() > 0) {
+             g.setPixelSize(s);
+diff --git a/qt6/style/qtcurve_fonthelper.h b/qt6/style/qtcurve_fonthelper.h
+index af63c202..a5493289 100644
+--- a/qt6/style/qtcurve_fonthelper.h
++++ b/qt6/style/qtcurve_fonthelper.h
+@@ -24,8 +24,6 @@
+ 
+ #include <qtcurve.h>
+ 
+-class QFontDatabase;
+-
+ namespace QtCurve {
+ 
+ class Style::FontHelper {
+@@ -36,8 +34,6 @@ public:
+     QFont fontStripStyleName(const QFont &f) const;
+     void setBold(QWidget *widget);
+     void unSetBold(QWidget *widget);
+-
+-    QFontDatabase *m_fntDB;
+ };
+ 
+ }
+diff --git a/qt6/style/windowmanager.cpp b/qt6/style/windowmanager.cpp
+index 4c86e0ad..4e4318bd 100644
+--- a/qt6/style/windowmanager.cpp
++++ b/qt6/style/windowmanager.cpp
+@@ -248,7 +248,7 @@ bool WindowManager::mousePressEvent( QObject* object, QEvent* event )
+     // save target and drag point
+     _target = widget;
+     _dragPoint = position;
+-    _globalDragPoint = mouseEvent->globalPos();
++    _globalDragPoint = mouseEvent->globalPosition().toPoint();
+     _dragAboutToStart = true;
+ 
+     // send a move event to the current child with same position
+@@ -256,7 +256,7 @@ bool WindowManager::mousePressEvent( QObject* object, QEvent* event )
+     QPoint localPoint( _dragPoint );
+     if( child ) localPoint = child->mapFrom( widget, localPoint );
+     else child = widget;
+-    QMouseEvent localMouseEvent( QEvent::MouseMove, localPoint, Qt::LeftButton, Qt::LeftButton, Qt::NoModifier );
++    QMouseEvent localMouseEvent( QEvent::MouseMove, localPoint, QCursor::pos(), Qt::LeftButton, Qt::LeftButton, Qt::NoModifier );
+     qApp->sendEvent( child, &localMouseEvent );
+ 
+     // never eat event
+@@ -280,7 +280,7 @@ bool WindowManager::mouseMoveEvent( QObject* object, QEvent* event )
+ 
+         if( _dragAboutToStart )
+         {
+-            if( mouseEvent->globalPos() == _globalDragPoint )
++            if( mouseEvent->globalPosition().toPoint() == _globalDragPoint )
+             {
+                 // start timer,
+                 _dragAboutToStart = false;
+@@ -289,7 +289,7 @@ bool WindowManager::mouseMoveEvent( QObject* object, QEvent* event )
+ 
+             } else resetDrag();
+ 
+-        } else if( QPoint( mouseEvent->globalPos() - _globalDragPoint ).manhattanLength() >= _dragDistance )
++        } else if( QPoint( mouseEvent->globalPosition().toPoint() - _globalDragPoint ).manhattanLength() >= _dragDistance )
+         { _dragTimer.start( 0, this ); }
+         return true;
+ 
+@@ -697,7 +697,7 @@ bool WindowManager::AppEventFilter::appMouseEvent( QObject* object, QEvent* even
+       post some mouseRelease event to the target, in order to counter balance
+       the mouse press that triggered the drag. Note that it triggers a resetDrag
+     */
+-    QMouseEvent mouseEvent( QEvent::MouseButtonRelease, _parent->_dragPoint, Qt::LeftButton, Qt::LeftButton, Qt::NoModifier );
++    QMouseEvent mouseEvent( QEvent::MouseButtonRelease, _parent->_dragPoint, QCursor::pos(), Qt::LeftButton, Qt::LeftButton, Qt::NoModifier );
+     qApp->sendEvent( _parent->_target.data(), &mouseEvent );
+ 
+     if( event->type() == QEvent::MouseMove )
