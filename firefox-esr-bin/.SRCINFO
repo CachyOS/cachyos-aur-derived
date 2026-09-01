@@ -1,6 +1,6 @@
 pkgbase = firefox-esr-bin
 	pkgdesc = Standalone web browser from mozilla.org - Extended Support Release
-	pkgver = 140.14.0
+	pkgver = 140.15.0
 	pkgrel = 1
 	url = http://www.mozilla.org/en-US/firefox/organizations/
 	install = firefox-esr.install
@@ -14,12 +14,12 @@ pkgbase = firefox-esr-bin
 	depends = dbus-glib
 	depends = nss
 	depends = ffmpeg4.4
-	provides = firefox=140.14.0
-	source = https://ftp.mozilla.org/pub/firefox/releases/140.14.0esr/linux-x86_64/en-US/firefox-140.14.0esr.tar.xz
+	provides = firefox=140.15.0
+	source = https://ftp.mozilla.org/pub/firefox/releases/140.15.0esr/linux-x86_64/en-US/firefox-140.15.0esr.tar.xz
 	source = firefox-esr.desktop
 	source = firefox-esr-safe.desktop
 	source = policies.json
-	sha512sums = 53c667ded54f0044855072c7b66333d6566beb91178009bbfe10a7220d7abd88b580cb2884269e98a13586075906b76c047a73544203b93325957237ff59399b
+	sha512sums = 46f19eac00f2ac396944158524ca58031996dc946328383160af454140f76787cbe6197cc3f508cb7321b840527afbab0bcfa98a290a63adae657ab28d09c897
 	sha512sums = c585f6e8ac7abfc96ad4571940b6f0dcc3f7331a18a518b4fe5d19b45e4c2d96c394524ea5c115c8fdd256c9229ea2fabeb1fc04ca7102f1626fd20728aef47d
 	sha512sums = ab2fa2e08c7a65ac0bfe169a4b579e54b038bddabf838cd3df5ab341bd77be7c101092d0123598944d2174ab3a8fbc70dfbd692b2944016efdb7a69216a74428
 	sha512sums = 5ed67bde39175d4d10d50ba5b12063961e725e94948eadb354c0588b30d3f97d2178b66c1af466a6e7bd208ab694227a1391c4141f88d3da1a1178454eba5308
