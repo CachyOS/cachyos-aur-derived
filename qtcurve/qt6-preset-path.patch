@@ -25,7 +25,7 @@ The delete button now works for a preset of the home directory. A preset
 outside that directory stays a system preset, because the home directory
 test still fails for it.
 
-The Qt 5 dialog holds the same code and keeps the defect.
+The Qt 5 dialog holds the same code and takes the same change.
 
 The change sits on the branch work/preset-path of the local tree. The push puts
 that branch on the fork wyn/qtcurve. The merge request on system/qtcurve
@@ -33,6 +33,28 @@ follows that push.
 
 Drop this patch when upstream merges the change.
 
+diff --git a/qt5/config/qtcurveconfig.cpp b/qt5/config/qtcurveconfig.cpp
+index 68d11854..518abb6d 100644
+--- a/qt5/config/qtcurveconfig.cpp
++++ b/qt5/config/qtcurveconfig.cpp
+@@ -1722,7 +1722,7 @@ QtCurveConfig::setupPresets(const Options &currentStyle,
+     // TODO custom filter and figure out what directory to use.
+     QStringList files;
+     {
+-        // Make unique list of relative paths
++        // Make a unique list of absolute paths
+         QHash<QString, QString> files_map;
+         QStringList dirs = QStandardPaths::locateAll(QStandardPaths::GenericConfigLocation,
+                                                      QStringLiteral("QtCurve"),
+@@ -1734,7 +1734,7 @@ QtCurveConfig::setupPresets(const Options &currentStyle,
+                 if (!files_map.contains(file)) {
+                     auto abspath = d.absoluteFilePath(file);
+                     files_map.insert(file, abspath);
+-                    files.append(file);
++                    files.append(abspath);
+                 }
+             }
+         }
 diff --git a/qt6/config/qtcurveconfig.cpp b/qt6/config/qtcurveconfig.cpp
 index 0c891ce3..91c2fd4a 100644
 --- a/qt6/config/qtcurveconfig.cpp

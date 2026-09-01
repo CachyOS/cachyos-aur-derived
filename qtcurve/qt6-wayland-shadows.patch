@@ -27,7 +27,7 @@ and libqtcurve-utils.so.2 exports nothing new.
 The style dialog in qt6/config/qtcurveconfig.cpp keeps the drop shadow size
 active off X11, because the KWindowShadow route reads the key on every
 platform. The dialog builds with KDE Frameworks 6 alone, so the X property
-route never serves it.
+route never serves it. The tooltip of the box no longer claims X11 alone.
 
 The change sits on the branch work/wayland-shadows of the local tree. The fork
 wyn/qtcurve holds that branch. Merge request !5 on system/qtcurve holds that
@@ -49,6 +49,19 @@ index 0c891ce3..47e8fe08 100644
  
  
      sliderWidth->setRange(MIN_SLIDER_WIDTH, MAX_SLIDER_WIDTH);
+diff --git a/qt6/config/qtcurveconfigbase.ui b/qt6/config/qtcurveconfigbase.ui
+index 54e2a96d..398d43f1 100644
+--- a/qt6/config/qtcurveconfigbase.ui
++++ b/qt6/config/qtcurveconfigbase.ui
+@@ -3833,7 +3833,7 @@
+        <item row="6" column="1">
+         <widget class="QSpinBox" name="dropShadowSize">
+          <property name="toolTip">
+-          <string>&lt;p&gt;Sets the base value used for determining drop shadow sizes.&lt;/p&gt;&lt;p&gt;X11 only.&lt;/p&gt;</string>
++          <string>&lt;p&gt;Sets the base value used for determining drop shadow sizes.&lt;/p&gt;</string>
+          </property>
+         </widget>
+        </item>
 diff --git a/qt6/style/CMakeLists.txt b/qt6/style/CMakeLists.txt
 index af8ef4e4..04739090 100644
 --- a/qt6/style/CMakeLists.txt
