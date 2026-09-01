@@ -1,0 +1,431 @@
+Fix the compiler warnings of libqtcurve-utils, Qt, GTK 2 and the tests
+
+GCC 16.2.1 and Clang 22.1.8 report 34 warning sites outside the deprecated
+declaration family, which stays. Each compiler runs with -Wall -Wextra, and
+again with -O2 and -Wp,-D_FORTIFY_SOURCE=3. The fortified pair arms the
+warn_unused_result attribute of glibc and the format overflow check, and
+gives 11 of them. The code deletes each variable and each parameter name
+that nothing reads, and casts each count to int.
+
+A void cast silences the open call of the Qt 6 configuration code. It does
+not stop GCC for a glibc call. The fork callback and the icon map command
+negate the result and cast it to void. The vformat function of libqtcurve-
+utils returns a null pointer when vasprintf fails.
+
+The test code keeps the result of the other read, write and asprintf calls
+and asserts it. The array compare of test-oneof converts both operands to
+pointers with a unary plus. A content compare stops the test, because both
+strings hold the same text. The two test buffers move from the stack to the
+heap and keep their size. The last assertion of test-process compares and no
+longer assigns, so it tests the number the child process sent.
+
+The GTK 2 engine sizes the slider resource buffer from snprintf. A probe
+over the 324 combinations of width, style and glow gives the same string.
+
+The log tables lose their array designators and keep the order of LogLevel.
+Six explicit instantiations follow their own specialization and add nothing.
+nm -D --defined-only gives the same 692 exported symbols of libqtcurve-utils
+before and after. The compare object of oneOf copies the string into a local
+pointer before the null test.
+
+A Qt 6 root gives the same golden report as the parent commit, byte for
+byte. ctest passes twelve of the thirteen tests before and after.
+
+The change sits on the branch work/build-warnings of the local tree. The push
+puts that branch on the fork wyn/qtcurve. The merge request on system/qtcurve
+follows that push.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/gtk2/style/drawing.cpp b/gtk2/style/drawing.cpp
+index 32559351..f05c16ec 100644
+--- a/gtk2/style/drawing.cpp
++++ b/gtk2/style/drawing.cpp
+@@ -1803,8 +1803,6 @@ drawTriangularSlider(cairo_t *cr, GtkStyle *style, GtkStateType state,
+                              !opts.colorSliderMouseOver);
+     bool horiz = height > width || oneOf(detail, "hscale");
+     int bgnd = getFill(state, false, opts.shadeSliders == SHADE_DARKEN);
+-    int xo = horiz ? 8 : 0;
+-    int yo = horiz ? 0 : 8;
+     int size = 15;
+     int light = opts.sliderAppearance == APPEARANCE_DULL_GLASS ? 1 : 0;
+     const GdkColor *colors = btnColors;
+@@ -1819,8 +1817,6 @@ drawTriangularSlider(cairo_t *cr, GtkStyle *style, GtkStateType state,
+     if (opts.coloredMouseOver == MO_GLOW && opts.buttonEffect != EFFECT_NONE) {
+         x++;
+         y++;
+-        xo++;
+-        yo++;
+     }
+     cairo_new_path(cr);
+     cairo_save(cr);
+diff --git a/gtk2/style/qt_settings.cpp b/gtk2/style/qt_settings.cpp
+index 303c1484..22fa5354 100644
+--- a/gtk2/style/qt_settings.cpp
++++ b/gtk2/style/qt_settings.cpp
+@@ -1430,7 +1430,7 @@ qtSettingsInit()
+                             qtSettings.iconSizes.dlgSize,
+                             iconTheme, qtcVersion(), tmpStr, getpid(),
+                             tmpStr, getpid(), tmpStr);
+-                    system(cmdStr);
++                    (void)!system(cmdStr);
+                     free(cmdStr);
+                 }
+                 free(version);
+@@ -1845,8 +1845,9 @@ qtSettingsInit()
+                 "{GtkScale::slider_length = %d GtkScale::slider_width = %d} "
+                 "class \"*\" style \"" RC_SETTING "Sldr\"";
+ 
+-            tmpStr = (char*)realloc(tmpStr, strlen(constStrFormat) + 8);
+-            sprintf(tmpStr, constStrFormat, length, width);
++            int sldrLen = snprintf(nullptr, 0, constStrFormat, length, width);
++            tmpStr = (char*)realloc(tmpStr, sldrLen + 1);
++            snprintf(tmpStr, sldrLen + 1, constStrFormat, length, width);
+             gtk_rc_parse_string(tmpStr);
+ 
+             if(!opts.menuIcons)
+diff --git a/gtk2/style/qtcurve.cpp b/gtk2/style/qtcurve.cpp
+index 55e2b736..0b987357 100644
+--- a/gtk2/style/qtcurve.cpp
++++ b/gtk2/style/qtcurve.cpp
+@@ -3223,7 +3223,7 @@ style_set_hook(GSignalInvocationHint*, unsigned, const GValue *argv, void*)
+ }
+ 
+ static void
+-rc_style_init(void*, void*s)
++rc_style_init(void*, void*)
+ {
+ #ifdef INCREASE_SB_SLIDER
+     lastSlider.widget = nullptr;
+diff --git a/lib/utils/log.cpp b/lib/utils/log.cpp
+index 5da92bf8..2deeb6e8 100644
+--- a/lib/utils/log.cpp
++++ b/lib/utils/log.cpp
+@@ -94,19 +94,19 @@ logv(LogLevel _level, const char *fname, int line, const char *func,
+     QTC_RET_IF_FAIL(_level >= level() && ((int)_level) >= 0 &&
+                     _level <= LogLevel::Force);
+     static const char *color_codes[] = {
+-        [(int)LogLevel::Debug] = "\e[01;32m",
+-        [(int)LogLevel::Info] = "\e[01;34m",
+-        [(int)LogLevel::Warn] = "\e[01;33m",
+-        [(int)LogLevel::Error] = "\e[01;31m",
+-        [(int)LogLevel::Force] = "\e[01;35m",
++        "\e[01;32m",
++        "\e[01;34m",
++        "\e[01;33m",
++        "\e[01;31m",
++        "\e[01;35m",
+     };
+ 
+     static const char *log_prefixes[] = {
+-        [(int)LogLevel::Debug] = "qtcDebug-",
+-        [(int)LogLevel::Info] = "qtcInfo-",
+-        [(int)LogLevel::Warn] = "qtcWarn-",
+-        [(int)LogLevel::Error] = "qtcError-",
+-        [(int)LogLevel::Force] = "qtcLog-",
++        "qtcDebug-",
++        "qtcInfo-",
++        "qtcWarn-",
++        "qtcError-",
++        "qtcLog-",
+     };
+ 
+     const char *color_prefix = (useColor() ? color_codes[(int)_level] : "");
+diff --git a/lib/utils/options.cpp b/lib/utils/options.cpp
+index a5e8da95..71e66065 100644
+--- a/lib/utils/options.cpp
++++ b/lib/utils/options.cpp
+@@ -35,8 +35,7 @@ namespace Config {
+     {                                           \
+         static const StrMap<type> map{body};    \
+         return map.search(str, def);            \
+-    }                                           \
+-    QTC_CONFIG_DEF_LOAD_VALUE(type)
++    }
+ 
+ DEF_LOAD_VALUE(Shading,
+                {"simple", Shading::Simple},
+diff --git a/lib/utils/strs.cpp b/lib/utils/strs.cpp
+index 1c2144d3..22896dc7 100644
+--- a/lib/utils/strs.cpp
++++ b/lib/utils/strs.cpp
+@@ -33,7 +33,9 @@ vformat(char *buff, size_t *_size, const char *fmt, va_list ap)
+ {
+     if (!buff || !_size || !*_size) {
+         char *res = nullptr;
+-        vasprintf(&res, fmt, ap);
++        if (vasprintf(&res, fmt, ap) < 0) {
++            return nullptr;
++        }
+         return res;
+     }
+     va_list _ap;
+@@ -77,7 +79,6 @@ convert<double>(const char *str, const double &def, bool *is_def)
+     }
+     return res;
+ }
+-template double convert<double>(const char*, const double&, bool *is_def);
+ 
+ template<>
+ QTC_EXPORT long
+@@ -98,7 +99,6 @@ convert<long>(const char *str, const long &def, bool *is_def)
+     }
+     return res;
+ }
+-template long convert<long>(const char*, const long&, bool *is_def);
+ 
+ template<>
+ QTC_EXPORT bool
+@@ -114,7 +114,6 @@ convert<bool>(const char *str, const bool &def, bool *is_def)
+     }
+     return def;
+ }
+-template bool convert<bool>(const char*, const bool&, bool *is_def);
+ 
+ }
+ 
+diff --git a/lib/utils/utils.h b/lib/utils/utils.h
+index 52f1fe7c..fe8437b8 100644
+--- a/lib/utils/utils.h
++++ b/lib/utils/utils.h
+@@ -116,7 +116,8 @@ struct _oneOfCmp<T1, T2, typename std::enable_if<_isCharStr<T1>::value &&
+                                       _isCharStr<T2>::value>::type> {
+     inline bool operator()(T1 &&v1, T2 &&v2)
+     {
+-        return v1 && strcmp(v1, v2) == 0;
++        const char *p1 = v1;
++        return p1 && strcmp(p1, v2) == 0;
+     }
+ };
+ 
+diff --git a/qt5/common/config_file.cpp b/qt5/common/config_file.cpp
+index 63346b61..86144b2d 100644
+--- a/qt5/common/config_file.cpp
++++ b/qt5/common/config_file.cpp
+@@ -1402,12 +1402,11 @@ bool qtcReadConfig(const QString &file, Options *opts, Options *defOpts, bool ch
+                     bool                       ok(true),
+                                                haveAlpha(false);
+                     Gradient                   grad;
+-                    int                        j;
+ 
+                     grad.border=toGradientBorder(TO_LATIN1((*it)), &haveAlpha);
+                     ok=vals.size()%(haveAlpha ? 3 : 2);
+ 
+-                    for(++it, j=0; it!=end && ok; ++it, ++j)
++                    for(++it; it!=end && ok; ++it)
+                     {
+                         double pos=(*it).toDouble(&ok),
+                                val=ok ? (*(++it)).toDouble(&ok) : 0.0,
+diff --git a/qt5/style/qtcurve_api.cpp b/qt5/style/qtcurve_api.cpp
+index 631184cf..c6cc1080 100644
+--- a/qt5/style/qtcurve_api.cpp
++++ b/qt5/style/qtcurve_api.cpp
+@@ -5286,11 +5286,6 @@ void Style::drawComplexControl(ComplexControl control, const QStyleOptionComplex
+                 if (interval <= 0)
+                     interval = 1;
+ 
+-                int sliderLength(slider->maximum - slider->minimum + 1),
+-                    nticks(sliderLength / interval); // add one to get the end tickmark
+-                if (sliderLength % interval > 0)
+-                    nticks++; // round up the number of tick marks
+-
+                 int v(slider->minimum),
+                     len(pixelMetric(PM_SliderLength, slider, widget));
+ 
+diff --git a/qt6/common/config_file.cpp b/qt6/common/config_file.cpp
+index 4535c785..4cf2e7d8 100644
+--- a/qt6/common/config_file.cpp
++++ b/qt6/common/config_file.cpp
+@@ -542,7 +542,7 @@ void qtcSetBarHidden(const QString &app, bool hidden, const char *prefix)
+     if(!hidden)
+         QFile::remove(QFile::decodeName(QtCurve::getConfDir())+prefix+app);
+     else
+-        QFile(QFile::decodeName(QtCurve::getConfDir())+prefix+app).open(QIODevice::WriteOnly);
++        (void)QFile(QFile::decodeName(QtCurve::getConfDir())+prefix+app).open(QIODevice::WriteOnly);
+ }
+ 
+ void qtcLoadBgndImage(QtCImage *img)
+@@ -1402,12 +1402,11 @@ bool qtcReadConfig(const QString &file, Options *opts, Options *defOpts, bool ch
+                     bool                       ok(true),
+                                                haveAlpha(false);
+                     Gradient                   grad;
+-                    int                        j;
+ 
+                     grad.border=toGradientBorder(TO_LATIN1((*it)), &haveAlpha);
+                     ok=vals.size()%(haveAlpha ? 3 : 2);
+ 
+-                    for(++it, j=0; it!=end && ok; ++it, ++j)
++                    for(++it; it!=end && ok; ++it)
+                     {
+                         double pos=(*it).toDouble(&ok),
+                                val=ok ? (*(++it)).toDouble(&ok) : 0.0,
+diff --git a/qt6/style/qtcurve_api.cpp b/qt6/style/qtcurve_api.cpp
+index 0d3a2fb7..f0a8e3c5 100644
+--- a/qt6/style/qtcurve_api.cpp
++++ b/qt6/style/qtcurve_api.cpp
+@@ -5278,11 +5278,6 @@ void Style::drawComplexControl(ComplexControl control, const QStyleOptionComplex
+                 if (interval <= 0)
+                     interval = 1;
+ 
+-                int sliderLength(slider->maximum - slider->minimum + 1),
+-                    nticks(sliderLength / interval); // add one to get the end tickmark
+-                if (sliderLength % interval > 0)
+-                    nticks++; // round up the number of tick marks
+-
+                 int v(slider->minimum),
+                     len(pixelMetric(PM_SliderLength, slider, widget));
+ 
+diff --git a/qt6/style/qtcurve_plugin.cpp b/qt6/style/qtcurve_plugin.cpp
+index e874a4c5..e09a7683 100644
+--- a/qt6/style/qtcurve_plugin.cpp
++++ b/qt6/style/qtcurve_plugin.cpp
+@@ -155,7 +155,7 @@ StylePlugin::~StylePlugin()
+ {
+     qtcInfo("Deleting QtCurve plugin (%p)\n", this);
+     if (!m_styleInstances.isEmpty()) {
+-        qtcWarn("there remain(s) %d Style instance(s)\n", m_styleInstances.count());
++        qtcWarn("there remain(s) %d Style instance(s)\n", (int)m_styleInstances.count());
+         foreach (Style *that, m_styleInstances) {
+             // don't let ~Style() touch m_styleInstances from here.
+             that->m_plugin = nullptr;
+@@ -207,7 +207,7 @@ __attribute__((destructor)) int atLibClose()
+     qtcInfo("Closing QtCurve\n");
+     if (firstPlInstance) {
+         qtcInfo("Plugin instance %p still open with %d open Style instance(s)\n",
+-            firstPlInstance, styleInstances->count());
++            firstPlInstance, (int)styleInstances->count());
+     }
+     return 0;
+ }
+diff --git a/test/test-oneof.cpp b/test/test-oneof.cpp
+index fdfcc224..9c810349 100644
+--- a/test/test-oneof.cpp
++++ b/test/test-oneof.cpp
+@@ -39,7 +39,7 @@ main()
+     const char str3[] = "3456";
+     const char str4[] = "4567";
+ 
+-    assert(str0 != str1);
++    assert(+str0 != +str1);
+     static_assert(_isCharStr<char*>::value, "");
+     static_assert(_isCharStr<char[]>::value, "");
+     static_assert(_isCharStr<const char*>::value, "");
+diff --git a/test/test-popen-buff.cpp b/test/test-popen-buff.cpp
+index 1475794b..2f1b02ce 100644
+--- a/test/test-popen-buff.cpp
++++ b/test/test-popen-buff.cpp
+@@ -44,9 +44,12 @@ static void
+ subProcess(int, char **argv)
+ {
+     char buff3[1024] = {0};
+-    read(0, buff3, sizeof(buff3));
++    ssize_t read_res = read(0, buff3, sizeof(buff3));
++    assert(read_res == (ssize_t)sizeof(buff3));
+     assert(memcmp(argv[1], buff3, sizeof(buff3)) == 0);
+-    write(1, argv[2], strlen(argv[2]) + 1);
++    size_t reply_size = strlen(argv[2]) + 1;
++    ssize_t write_res = write(1, argv[2], reply_size);
++    assert(write_res == (ssize_t)reply_size);
+ }
+ 
+ static void
+diff --git a/test/test-popen.cpp b/test/test-popen.cpp
+index 5b2f8346..cfc600b7 100644
+--- a/test/test-popen.cpp
++++ b/test/test-popen.cpp
+@@ -43,9 +43,12 @@ static void
+ subProcess(int, char **argv)
+ {
+     char buff3[1024] = {0};
+-    read(0, buff3, sizeof(buff3));
++    ssize_t read_res = read(0, buff3, sizeof(buff3));
++    assert(read_res == (ssize_t)sizeof(buff3));
+     assert(memcmp(argv[1], buff3, sizeof(buff3)) == 0);
+-    write(1, argv[2], strlen(argv[2]) + 1);
++    size_t reply_size = strlen(argv[2]) + 1;
++    ssize_t write_res = write(1, argv[2], reply_size);
++    assert(write_res == (ssize_t)reply_size);
+ }
+ 
+ static void
+@@ -67,11 +70,13 @@ mainProcess(int, char **argv)
+     alarm(1);
+     const char* const args[] = {argv[0], buff1, buff2, nullptr};
+     qtcPopen(argv[0], args, sizeof(fds) / sizeof(fds[0]), fds);
+-    write(fds[0].replace, buff1, sizeof(buff1));
++    ssize_t write_res = write(fds[0].replace, buff1, sizeof(buff1));
++    assert(write_res == (ssize_t)sizeof(buff1));
+     shutdown(fds[0].replace, SHUT_RDWR);
+     close(fds[0].replace);
+     char buff3[1024] = {0};
+-    read(fds[1].replace, buff3, sizeof(buff3));
++    ssize_t read_res = read(fds[1].replace, buff3, sizeof(buff3));
++    assert(read_res == (ssize_t)sizeof(buff3));
+     assert(memcmp(buff2, buff3, sizeof(buff3)) == 0);
+ }
+ 
+diff --git a/test/test-printf.cpp b/test/test-printf.cpp
+index 4ca89f55..35ef37b2 100644
+--- a/test/test-printf.cpp
++++ b/test/test-printf.cpp
+@@ -21,6 +21,7 @@
+ 
+ #include <qtcurve-utils/strs.h>
+ #include <assert.h>
++#include <memory>
+ 
+ #define TEST_FORMAT "%d ... %x \"%s\" kkk %d", 1023, 999, "als8fausdfas", 40
+ 
+@@ -33,7 +34,8 @@ main()
+     sprintf(static_res, TEST_FORMAT);
+ 
+     char *asprintf_res;
+-    asprintf(&asprintf_res, TEST_FORMAT);
++    int asprintf_res_len = asprintf(&asprintf_res, TEST_FORMAT);
++    assert(asprintf_res_len > 0);
+ 
+     char *m_res1 = Str::format<false>(nullptr, nullptr, TEST_FORMAT);
+     size_t size = 10;
+@@ -50,15 +52,15 @@ main()
+     assert(m_res4 == buff4);
+     assert(size == strlen(m_res4) + 1);
+ 
+-    char buff5[size];
+-    char *m_res5 = Str::format<false>(buff5, &size, TEST_FORMAT);
+-    assert(m_res5 == buff5);
++    std::unique_ptr<char[]> buff5(new char[size]);
++    char *m_res5 = Str::format<false>(buff5.get(), &size, TEST_FORMAT);
++    assert(m_res5 == buff5.get());
+     assert(size == strlen(m_res5) + 1);
+ 
+     size--;
+-    char buff6[size];
+-    char *m_res6 = Str::format<false>(buff6, &size, TEST_FORMAT);
+-    assert(m_res6 != buff6);
++    std::unique_ptr<char[]> buff6(new char[size]);
++    char *m_res6 = Str::format<false>(buff6.get(), &size, TEST_FORMAT);
++    assert(m_res6 != buff6.get());
+     assert(size > strlen(m_res6) + 1);
+ 
+     Str::Buff<10> buff7(10);
+diff --git a/test/test-process.cpp b/test/test-process.cpp
+index 139bba63..42ac19f8 100644
+--- a/test/test-process.cpp
++++ b/test/test-process.cpp
+@@ -32,7 +32,7 @@ long num;
+ static void
+ forkCb(void*)
+ {
+-    write(pipe_fds[1], &num, sizeof(num));
++    (void)!write(pipe_fds[1], &num, sizeof(num));
+ }
+ 
+ static void
+@@ -67,6 +67,6 @@ main()
+     long num_sent = 0;
+     ssize_t read_res = read(pipe_fds[0], &num_sent, sizeof(num_sent));
+     assert(read_res == sizeof(num_sent));
+-    assert(num_sent = num);
++    assert(num_sent == num);
+     return 0;
+ }
