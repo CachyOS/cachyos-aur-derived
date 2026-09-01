@@ -1,0 +1,468 @@
+Replace the deprecated Qt calls of the Qt 5 style
+
+Qt 5.15 marks calls of the Qt 5 tree as deprecated, and the style build
+prints a warning line for most of them. Each call now uses the API that
+Qt 5.15 offers.
+
+QPalette::Background, QPalette::Foreground, QStyle::PE_FrameStatusBar and
+QStyle::PE_IndicatorViewItemCheck are aliases. They become
+QPalette::Window, QPalette::WindowText, PE_FrameStatusBarItem and
+PE_IndicatorItemViewItemCheck, and the values stay the same.
+
+QString::SkipEmptyParts becomes Qt::SkipEmptyParts, and both enumerators
+hold the value 1. QWheelEvent::pos() becomes position().toPoint(), the
+expression that the header holds. QLayout::setMargin(n) becomes
+setContentsMargins(n, n, n, n). QApplication::globalStrut() has no
+replacement, and the call goes, because the default strut is 0 by 0.
+
+Qt offers no other name for PM_DefaultTopLevelMargin,
+PM_DefaultChildMargin and PM_DefaultLayoutSpacing, so the three cases go.
+The PM_Layout*Margin case now holds the values: 9 pixels for a window, 2
+for OpenOffice with no widget, and 6 for any other widget.
+
+layoutSpacing() returns 6 pixels. Qt reads the PM_Layout* metrics and
+layoutSpacing() for a layout, so the layouts keep their margins and gaps.
+A direct caller now gets the QCommonStyle values: 11, 9 and 6 pixels at
+96 dots per inch, not 9, 6 and 6. QCommonStyle grows the three with the
+screen resolution, and the configuration dialog now sets 6 pixels itself.
+
+Qt::SkipEmptyParts and QWheelEvent::position() need Qt 5.14, so
+QT_MIN_VERSION rises from 5.3.2 to 5.14 and find_package() carries it.
+Qt 5.15 is the last Qt 5 release.
+
+The change sits on the branch work/qt6-deprecated-api of the local tree. The
+fork wyn/qtcurve holds that branch. Merge request !11 on system/qtcurve holds
+that branch as the source.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/qt5/CMakeLists.txt b/qt5/CMakeLists.txt
+index ea1fbdc5..2352879b 100644
+--- a/qt5/CMakeLists.txt
++++ b/qt5/CMakeLists.txt
+@@ -7,8 +7,9 @@ if(QTC_QT5_ENABLE_KDE)
+   set(QTC_QT5_MODULES ${QTC_QT5_MODULES} Qt5PrintSupport)
+ endif()
+ 
++set(QT_MIN_VERSION "5.14")
++
+ if(ENABLE_QT5 AND NOT ENABLE_QT5_DEFINED)
+-  set(QT_MIN_VERSION "5.3.2")
+   # ENABLE_QT5 is not defined on the command line
+   foreach(QtModule ${QTC_QT5_MODULES})
+     find_package(${QtModule} ${QT_MIN_VERSION} CONFIG)
+@@ -31,7 +32,7 @@ if(ENABLE_QT5)
+   set(QTC_QT5_DEFS)
+   set(QTC_QT5_INCLUDES)
+   foreach(QtModule ${QTC_QT5_MODULES})
+-    find_package(${QtModule} REQUIRED)
++    find_package(${QtModule} ${QT_MIN_VERSION} REQUIRED)
+     set(QTC_QT5_LINK_LIBS ${QTC_QT5_LINK_LIBS} ${${QtModule}_LIBRARIES})
+     set(QTC_QT5_DEFS ${QTC_QT5_DEFS} ${${QtModule}_DEFINITIONS})
+     set(QTC_QT5_INCLUDES ${QTC_QT5_INCLUDES} ${${QtModule}_INCLUDE_DIRS})
+diff --git a/qt5/common/config_file.cpp b/qt5/common/config_file.cpp
+index 63346b61..1f961941 100644
+--- a/qt5/common/config_file.cpp
++++ b/qt5/common/config_file.cpp
+@@ -655,7 +655,7 @@ static bool readBoolEntry(QtCConfig &cfg, const QString &key, bool def)
+ 
+ static void readDoubleList(QtCConfig &cfg, const char *key, double *list, int count)
+ {
+-    QStringList strings(readStringEntry(cfg, key).split(',', QString::SkipEmptyParts));
++    QStringList strings(readStringEntry(cfg, key).split(',', Qt::SkipEmptyParts));
+     bool ok(count==strings.size());
+ 
+     if(ok)
+@@ -707,7 +707,7 @@ static void readDoubleList(QtCConfig &cfg, const char *key, double *list, int co
+ #define CFG_READ_STRING_LIST(ENTRY) do {                                \
+         QString val = readStringEntry(cfg, #ENTRY);                     \
+         Strings set = val.isEmpty() ? Strings() :                       \
+-            QtCurve::qSetFromList(val.split(",", QString::SkipEmptyParts)); \
++            QtCurve::qSetFromList(val.split(",", Qt::SkipEmptyParts)); \
+         opts->ENTRY = set.count() || cfg.hasKey(#ENTRY) ? set : def->ENTRY; \
+     } while (0)
+ 
+@@ -1365,7 +1365,7 @@ bool qtcReadConfig(const QString &file, Options *opts, Options *defOpts, bool ch
+             // as with saving, we should always read the titleButtonColor values
+             // so that they can be saved again without losing the information.
+             QStringList cols(readStringEntry(cfg, "titlebarButtonColors")
+-                             .split(',', QString::SkipEmptyParts));
++                             .split(',', Qt::SkipEmptyParts));
+             if (cols.count() &&
+                 0 == (cols.count() % NUM_TITLEBAR_BUTTONS) &&
+                 cols.count() <= (NUM_TITLEBAR_BUTTONS * 3)) {
+@@ -1390,7 +1390,7 @@ bool qtcReadConfig(const QString &file, Options *opts, Options *defOpts, bool ch
+                 QTextStream(&gradKey) << "customgradient" << i - APPEARANCE_CUSTOM1 + 1;
+ 
+                 QStringList vals(readStringEntry(cfg, gradKey)
+-                                 .split(',', QString::SkipEmptyParts));
++                                 .split(',', Qt::SkipEmptyParts));
+ 
+                 if(vals.size())
+                     opts->customGradient.erase((EAppearance)i);
+diff --git a/qt5/config/qtcurveconfig.cpp b/qt5/config/qtcurveconfig.cpp
+index 68d11854..fec0754a 100644
+--- a/qt5/config/qtcurveconfig.cpp
++++ b/qt5/config/qtcurveconfig.cpp
+@@ -224,7 +224,7 @@ static QString toString(const QSet<QString> &set)
+ 
+ static QSet<QString> toSet(const QString &str)
+ {
+-    QStringList           list=str.simplified().split(QRegExp("\\s*,\\s*"), QString::SkipEmptyParts);
++    QStringList           list=str.simplified().split(QRegExp("\\s*,\\s*"), Qt::SkipEmptyParts);
+     QStringList::Iterator it(list.begin()),
+                           end(list.end());
+ 
+@@ -317,9 +317,8 @@ public:
+         auto buttonBox = QtCurve::createDialogButtonBox(this);
+         auto page = new QFrame(this);
+         QBoxLayout *layout = new QBoxLayout(QBoxLayout::TopToBottom, page);
+-        layout->setMargin(0);
+-        layout->setSpacing(QApplication::style()
+-                           ->pixelMetric(QStyle::PM_DefaultLayoutSpacing));
++        layout->setContentsMargins(0, 0, 0, 0);
++        layout->setSpacing(6);
+ 
+         m_selector = new KCharSelect(page, nullptr);
+         m_selector->setCurrentChar(QChar(v));
+@@ -1793,7 +1792,7 @@ void QtCurveConfig::setupPreview()
+     QVBoxLayout *layout = new QVBoxLayout(previewFrame);
+ 
+     workSpace = new CWorkspace(previewFrame);
+-    layout->setMargin(0);
++    layout->setContentsMargins(0, 0, 0, 0);
+     layout->addWidget(workSpace);
+ 
+     previewControlPressed();
+@@ -2119,7 +2118,7 @@ void QtCurveConfig::exportQt()
+                        dis;
+         QString        sep("^e");
+ 
+-        QPalette::ColorRole roles[]={QPalette::Foreground,
++        QPalette::ColorRole roles[]={QPalette::WindowText,
+                                      QPalette::Button,
+                                      QPalette::Light,
+                                      QPalette::Midlight,
+@@ -2129,7 +2128,7 @@ void QtCurveConfig::exportQt()
+                                      QPalette::BrightText,
+                                      QPalette::ButtonText,
+                                      QPalette::Base,
+-                                     QPalette::Background,
++                                     QPalette::Window,
+                                      QPalette::Shadow,
+                                      QPalette::Highlight,
+                                      QPalette::HighlightedText,
+@@ -2283,7 +2282,7 @@ void QtCurveConfig::setupGradientsTab()
+     gradPreview=new CGradientPreview(this, previewWidgetContainer);
+     QBoxLayout *layout=new QBoxLayout(QBoxLayout::TopToBottom, previewWidgetContainer);
+     layout->addWidget(gradPreview);
+-    layout->setMargin(0);
++    layout->setContentsMargins(0, 0, 0, 0);
+     layout->setSpacing(0);
+     QColor col(palette().color(QPalette::Active, QPalette::Button));
+     previewColor->setColor(col);
+diff --git a/qt5/style/qtcurve.cpp b/qt5/style/qtcurve.cpp
+index ca9965a2..46ae4188 100644
+--- a/qt5/style/qtcurve.cpp
++++ b/qt5/style/qtcurve.cpp
+@@ -435,7 +435,7 @@ void Style::init(bool initial)
+         opts.contrast=DEFAULT_CONTRAST;
+ 
+     shadeColors(QApplication::palette().color(QPalette::Active, QPalette::Highlight), m_highlightCols);
+-    shadeColors(QApplication::palette().color(QPalette::Active, QPalette::Background), m_backgroundCols);
++    shadeColors(QApplication::palette().color(QPalette::Active, QPalette::Window), m_backgroundCols);
+     shadeColors(QApplication::palette().color(QPalette::Active, QPalette::Button), m_buttonCols);
+ 
+     // Set defaults for Hover and Focus, these will be changed when KDE4 palette is applied...
+@@ -649,7 +649,7 @@ void Style::init(bool initial)
+         }
+     }
+ 
+-    setMenuColors(QApplication::palette().color(QPalette::Active, QPalette::Background));
++    setMenuColors(QApplication::palette().color(QPalette::Active, QPalette::Window));
+ 
+     switch(opts.shadeCheckRadio)
+     {
+@@ -1157,7 +1157,9 @@ int Style::layoutSpacing(QSizePolicy::ControlType control1,
+     Q_UNUSED(control1);
+     Q_UNUSED(control2);
+     Q_UNUSED(orientation);
+-    return pixelMetric(PM_DefaultLayoutSpacing, option, widget);
++    Q_UNUSED(option);
++    Q_UNUSED(widget);
++    return 6;
+ }
+ 
+ // Use 'drawItemTextWithRole' when already know which role to use.
+@@ -3816,18 +3818,18 @@ void Style::setMenuTextColors(QWidget *widget, bool isMenuBar) const
+         opt.init(widget);
+         getMdiColors(&opt, false);
+ 
+-        pal.setBrush(QPalette::Active, QPalette::Foreground, m_activeMdiTextColor);
+-        pal.setBrush(QPalette::Active, QPalette::Text, pal.brush(QPalette::Active, QPalette::Foreground));
++        pal.setBrush(QPalette::Active, QPalette::WindowText, m_activeMdiTextColor);
++        pal.setBrush(QPalette::Active, QPalette::Text, pal.brush(QPalette::Active, QPalette::WindowText));
+         if(isMenuBar)
+         {
+-            pal.setBrush(QPalette::Inactive, QPalette::Foreground,
++            pal.setBrush(QPalette::Inactive, QPalette::WindowText,
+                          opts.shadeMenubarOnlyWhenActive ? m_mdiTextColor : m_activeMdiTextColor);
+-            pal.setBrush(QPalette::Inactive, QPalette::Text, pal.brush(QPalette::Inactive, QPalette::Foreground));
++            pal.setBrush(QPalette::Inactive, QPalette::Text, pal.brush(QPalette::Inactive, QPalette::WindowText));
+         }
+         else if(opts.shadePopupMenu)
+         {
+-            pal.setBrush(QPalette::Disabled, QPalette::Foreground, midColor(m_activeMdiTextColor, popupMenuCols()[ORIGINAL_SHADE]));
+-            pal.setBrush(QPalette::Disabled, QPalette::Text, pal.brush(QPalette::Disabled, QPalette::Foreground));
++            pal.setBrush(QPalette::Disabled, QPalette::WindowText, midColor(m_activeMdiTextColor, popupMenuCols()[ORIGINAL_SHADE]));
++            pal.setBrush(QPalette::Disabled, QPalette::Text, pal.brush(QPalette::Disabled, QPalette::WindowText));
+         }
+ 
+         widget->setPalette(pal);
+@@ -3838,23 +3840,23 @@ void Style::setMenuTextColors(QWidget *widget, bool isMenuBar) const
+                 TOO_DARK(m_menubarCols[ORIGINAL_SHADE]))) {
+         QPalette pal(widget->palette());
+ 
+-        pal.setBrush(QPalette::Active, QPalette::Foreground,
++        pal.setBrush(QPalette::Active, QPalette::WindowText,
+                      opts.customMenuTextColor ? opts.customMenuNormTextColor :
+                      pal.highlightedText().color());
+-        pal.setBrush(QPalette::Active, QPalette::Text, pal.brush(QPalette::Active, QPalette::Foreground));
++        pal.setBrush(QPalette::Active, QPalette::Text, pal.brush(QPalette::Active, QPalette::WindowText));
+ 
+         if(isMenuBar && !opts.shadeMenubarOnlyWhenActive)
+         {
+-            pal.setBrush(QPalette::Inactive, QPalette::Foreground, opts.customMenuTextColor
++            pal.setBrush(QPalette::Inactive, QPalette::WindowText, opts.customMenuTextColor
+                          ? opts.customMenuNormTextColor
+                          : pal.highlightedText().color());
+-            pal.setBrush(QPalette::Inactive, QPalette::Text, pal.brush(QPalette::Inactive, QPalette::Foreground));
++            pal.setBrush(QPalette::Inactive, QPalette::Text, pal.brush(QPalette::Inactive, QPalette::WindowText));
+         }
+         else if(!isMenuBar && opts.shadePopupMenu)
+         {
+-            pal.setBrush(QPalette::Disabled, QPalette::Foreground,
+-                         midColor(pal.brush(QPalette::Active, QPalette::Foreground).color(), popupMenuCols()[ORIGINAL_SHADE]));
+-            pal.setBrush(QPalette::Disabled, QPalette::Text, pal.brush(QPalette::Disabled, QPalette::Foreground));
++            pal.setBrush(QPalette::Disabled, QPalette::WindowText,
++                         midColor(pal.brush(QPalette::Active, QPalette::WindowText).color(), popupMenuCols()[ORIGINAL_SHADE]));
++            pal.setBrush(QPalette::Disabled, QPalette::Text, pal.brush(QPalette::Disabled, QPalette::WindowText));
+         }
+         widget->setPalette(pal);
+     }
+diff --git a/qt5/style/qtcurve_api.cpp b/qt5/style/qtcurve_api.cpp
+index 631184cf..222e424f 100644
+--- a/qt5/style/qtcurve_api.cpp
++++ b/qt5/style/qtcurve_api.cpp
+@@ -258,7 +258,7 @@ void Style::polish(QPalette &palette)
+     bool newHighlight(newContrast ||
+                       m_highlightCols[ORIGINAL_SHADE]!=palette.color(QPalette::Active, QPalette::Highlight)),
+         newGray(newContrast ||
+-                m_backgroundCols[ORIGINAL_SHADE]!=palette.color(QPalette::Active, QPalette::Background)),
++                m_backgroundCols[ORIGINAL_SHADE]!=palette.color(QPalette::Active, QPalette::Window)),
+         newButton(newContrast ||
+                   m_buttonCols[ORIGINAL_SHADE]!=palette.color(QPalette::Active, QPalette::Button)),
+         newSlider(m_sliderCols && m_highlightCols!=m_sliderCols && SHADE_BLEND_SELECTED == opts.shadeSliders &&
+@@ -286,7 +286,7 @@ void Style::polish(QPalette &palette)
+                         m_sortedLvColors!=m_progressCols && m_checkRadioSelCols!=m_progressCols && (newContrast || newButton));
+ 
+     if (newGray) {
+-        shadeColors(palette.color(QPalette::Active, QPalette::Background), m_backgroundCols);
++        shadeColors(palette.color(QPalette::Active, QPalette::Window), m_backgroundCols);
+         if (oneOf(opts.bgndImage.type, IMG_PLAIN_RINGS, IMG_BORDERED_RINGS,
+                   IMG_SQUARE_RINGS) ||
+             oneOf(opts.menuBgndImage.type, IMG_PLAIN_RINGS,
+@@ -311,7 +311,7 @@ void Style::polish(QPalette &palette)
+ //     if(opts.coloredMouseOver)
+ //         shadeColors(QApplication::palette().color(QPalette::Active, QPalette::Highlight), m_mouseOverCols);
+ 
+-    setMenuColors(palette.color(QPalette::Active, QPalette::Background));
++    setMenuColors(palette.color(QPalette::Active, QPalette::Window));
+ 
+     if (newSlider) {
+         shadeColors(midColor(m_highlightCols[ORIGINAL_SHADE],
+@@ -410,9 +410,9 @@ void Style::polish(QPalette &palette)
+                      m_backgroundCols[QTC_STD_BORDER]);
+ 
+     palette.setColor(QPalette::Disabled, QPalette::Base,
+-                     palette.color(QPalette::Active, QPalette::Background));
+-    palette.setColor(QPalette::Disabled, QPalette::Background,
+-                     palette.color(QPalette::Active, QPalette::Background));
++                     palette.color(QPalette::Active, QPalette::Window));
++    palette.setColor(QPalette::Disabled, QPalette::Window,
++                     palette.color(QPalette::Active, QPalette::Window));
+ 
+     // Fix KDE4's palette...
+     if (palette.color(QPalette::Active, QPalette::Highlight) !=
+@@ -704,7 +704,7 @@ void Style::polish(QWidget *widget)
+                 }
+                 QLayout *layout(frame->layout());
+                 if (layout) {
+-                    layout->setMargin(0);
++                    layout->setContentsMargins(0, 0, 0, 0);
+                 }
+             }
+ 
+@@ -836,7 +836,7 @@ void Style::polish(QWidget *widget)
+     if (theThemedApp == APP_KDEVELOP && !opts.stdSidebarButtons &&
+         widget->inherits("Sublime::IdealButtonBarWidget") && widget->layout()) {
+         widget->layout()->setSpacing(0);
+-        widget->layout()->setMargin(0);
++        widget->layout()->setContentsMargins(0, 0, 0, 0);
+     }
+ 
+     QWidget *window=widget->window();
+@@ -953,7 +953,7 @@ void Style::unpolish(QWidget *widget)
+         widget->setAttribute(Qt::WA_Hover, false);
+ 
+         if(qtcIsCustomBgnd(opts))
+-            widget->setBackgroundRole(QPalette::Background);
++            widget->setBackgroundRole(QPalette::Window);
+ 
+         if(SHADE_WINDOW_BORDER==opts.shadeMenubars || opts.customMenuTextColor || SHADE_BLEND_SELECTED==opts.shadeMenubars ||
+            SHADE_SELECTED==opts.shadeMenubars || (SHADE_CUSTOM==opts.shadeMenubars &&TOO_DARK(m_menubarCols[ORIGINAL_SHADE])))
+@@ -1003,7 +1003,7 @@ void Style::unpolish(QWidget *widget)
+                 QLayout *layout(frame->layout());
+ 
+                 if(layout) {
+-                    layout->setMargin(6);
++                    layout->setContentsMargins(6, 6, 6, 6);
+                 }
+             }
+ 
+@@ -1074,7 +1074,7 @@ bool Style::eventFilter(QObject *object, QEvent *event)
+             pos = ((QMouseEvent*)event)->pos();
+             break;
+         case QEvent::Wheel:
+-            pos=((QWheelEvent*)event)->pos();
++            pos=((QWheelEvent*)event)->position().toPoint();
+         default:
+             break;
+         }
+@@ -1265,7 +1265,7 @@ bool Style::eventFilter(QObject *object, QEvent *event)
+ 
+             // In case the gradient uses alpha, we need to fill with the background colour - this makes it consistent with Gtk.
+             if(100==opts.menuBgndOpacity)
+-                p.fillRect(r, opt.palette.brush(QPalette::Background));
++                p.fillRect(r, opt.palette.brush(QPalette::Window));
+             drawBackground(&p, widget, BGND_MENU);
+             if (opts.popupBorder) {
+                 EGradientBorder border=qtcGetGradient(opts.menuBgndAppearance, &opts)->border;
+@@ -1581,23 +1581,17 @@ Style::pixelMetric(PixelMetric metric, const QStyleOption *option,
+         return 18;
+     case PM_HeaderMargin:
+         return 3;
+-    case PM_DefaultChildMargin:
+-        return isOOWidget(widget) ? 2 : 6;
+-    case PM_DefaultTopLevelMargin:
+-        return 9;
+     case PM_LayoutHorizontalSpacing:
+     case PM_LayoutVerticalSpacing:
+         return -1; // use layoutSpacing
+-    case PM_DefaultLayoutSpacing:
+-        return 6;
+     case PM_LayoutLeftMargin:
+     case PM_LayoutTopMargin:
+     case PM_LayoutRightMargin:
+     case PM_LayoutBottomMargin:
+-        return pixelMetric((option && (option->state & State_Window)) ||
+-                           (widget && widget->isWindow()) ?
+-                           PM_DefaultTopLevelMargin : PM_DefaultChildMargin,
+-                           option, widget);
++        if ((option && (option->state & State_Window)) ||
++            (widget && widget->isWindow()))
++            return 9;
++        return isOOWidget(widget) ? 2 : 6;
+     case PM_MenuBarItemSpacing:
+         return 0;
+     case PM_ToolBarItemMargin:
+@@ -2083,7 +2077,7 @@ Style::drawPrimitive(PrimitiveElement element, const QStyleOption *option,
+     case PE_IndicatorBranch:
+         drawFunc = &Style::drawPrimitiveIndicatorBranch;
+         break;
+-    case PE_IndicatorViewItemCheck:
++    case PE_IndicatorItemViewItemCheck:
+         drawFunc = &Style::drawPrimitiveIndicatorViewItemCheck;
+         break;
+     case PE_IndicatorHeaderArrow:
+@@ -2116,7 +2110,7 @@ Style::drawPrimitive(PrimitiveElement element, const QStyleOption *option,
+     case PE_FrameTabBarBase:
+         drawFunc = &Style::drawPrimitiveFrameTabBarBase;
+         break;
+-    case PE_FrameStatusBar:
++    case PE_FrameStatusBarItem:
+     case PE_FrameMenu:
+         initFontTickData(widget ? widget->font() : QApplication::font("QMenu"), widget);
+         drawFunc = &Style::drawPrimitiveFrameStatusBarOrMenu;
+@@ -4230,7 +4224,7 @@ Style::drawControl(ControlElement element, const QStyleOption *option,
+ 
+         painter->save();
+         if(opts.flatSbarButtons && !qtcIsFlat(opts.sbarBgndAppearance) /*&& SCROLLBAR_NONE!=opts.scrollbarType*/)
+-            drawBevelGradientReal(palette.brush(QPalette::Background).color(), painter, r, state&State_Horizontal, false,
++            drawBevelGradientReal(palette.brush(QPalette::Window).color(), painter, r, state&State_Horizontal, false,
+                                   opts.sbarBgndAppearance, WIDGET_SB_BGND);
+ 
+         QStyleOption opt(*option);
+@@ -5808,7 +5802,7 @@ void Style::drawComplexControl(ComplexControl control, const QStyleOptionComplex
+             }
+             if (!opts.gtkScrollViews ||
+                 (opts.flatSbarButtons && !qtcIsFlat(opts.sbarBgndAppearance)))
+-                drawBevelGradientReal(palette.brush(QPalette::Background).color(), painter, r, horiz, false,
++                drawBevelGradientReal(palette.brush(QPalette::Window).color(), painter, r, horiz, false,
+                                       opts.sbarBgndAppearance, WIDGET_SB_BGND);
+ 
+             if(noButtons || opts.flatSbarButtons)
+@@ -6701,7 +6695,6 @@ QRect Style::subControlRect(ComplexControl control, const QStyleOptionComplex *o
+                 bs.setHeight(8);
+             bs.setWidth(opts.buttonEffect != EFFECT_NONE && opts.etchEntry ?
+                         16 : 15);
+-            bs = bs.expandedTo(QApplication::globalStrut());
+ 
+             int y = 0;
+             int x = reverse ? (0 + fw) : (r.width() - bs.width() - fw + r.x());
+diff --git a/qt5/style/qtcurve_primitive.cpp b/qt5/style/qtcurve_primitive.cpp
+index d9bd5195..6338b336 100644
+--- a/qt5/style/qtcurve_primitive.cpp
++++ b/qt5/style/qtcurve_primitive.cpp
+@@ -1271,11 +1271,11 @@ Style::drawPrimitivePanelMenu(PrimitiveElement, const QStyleOption *option,
+     const QColor *bgCols;
+     QColor altCols[TOTAL_SHADES+1];
+     if (theThemedApp==APP_KWIN && w
+-            && w->palette().color(QPalette::Active, QPalette::Background)
+-                != QApplication::palette().color(QPalette::Active, QPalette::Background)) {
++            && w->palette().color(QPalette::Active, QPalette::Window)
++                != QApplication::palette().color(QPalette::Active, QPalette::Window)) {
+ //         qWarning() << "drawPrimitivePanelMenu: widget" << w << "bgCol" << w->palette().color(QPalette::Active, QPalette::Background)
+ //             << "differs from app bgCol" << QApplication::palette().color(QPalette::Active, QPalette::Background);
+-        shadeColors(w->palette().color(QPalette::Active, QPalette::Background), altCols);
++        shadeColors(w->palette().color(QPalette::Active, QPalette::Window), altCols);
+         bgCols = use = altCols;
+     } else {
+         use = popupMenuCols(option);
+@@ -1298,7 +1298,7 @@ Style::drawPrimitivePanelMenu(PrimitiveElement, const QStyleOption *option,
+     // In case the gradient uses alpha, we need to fill with the background
+     // colour - this makes it consistent with Gtk.
+     if (opts.menuBgndOpacity == 100) {
+-        painter->fillRect(r, option->palette.brush(QPalette::Background));
++        painter->fillRect(r, option->palette.brush(QPalette::Window));
+     }
+     drawBackground(painter, bgCols[ORIGINAL_SHADE], r,
+                    opts.menuBgndOpacity, BGND_MENU, opts.menuBgndAppearance);
+@@ -1524,7 +1524,7 @@ Style::drawPrimitiveIndicatorRadioButton(PrimitiveElement,
+                                  State_Selected));
+ 
+     if (isOO) {
+-        painter->fillRect(r, palette.brush(QPalette::Background));
++        painter->fillRect(r, palette.brush(QPalette::Window));
+     }
+     if (selectedOOMenu) {
+         drawPrimitive(PE_IndicatorCheckBox, option, painter, widget);
+@@ -1992,7 +1992,7 @@ Style::drawPrimitiveFrameStatusBarOrMenu(PrimitiveElement element,
+                                          QPainter *painter,
+                                          const QWidget *widget) const
+ {
+-    if (element == PE_FrameStatusBar && !opts.drawStatusBarFrames) {
++    if (element == PE_FrameStatusBarItem && !opts.drawStatusBarFrames) {
+         return true;
+     }
+     QRect r = option->rect;
