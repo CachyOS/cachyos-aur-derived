@@ -27,8 +27,8 @@ calls the static functions now, and it drops the member, the forward
 declaration and the delete.
 
 The change sits on the branch work/qt6-deprecated-api of the local tree. The
-push puts that branch on the fork wyn/qtcurve. The merge request on
-system/qtcurve follows that push.
+fork wyn/qtcurve holds that branch. Merge request !11 on system/qtcurve holds
+that branch as the source.
 
 Drop this patch when upstream merges the change.
 

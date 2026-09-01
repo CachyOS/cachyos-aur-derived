@@ -27,9 +27,9 @@ test still fails for it.
 
 The Qt 5 dialog holds the same code and takes the same change.
 
-The change sits on the branch work/preset-path of the local tree. The push puts
-that branch on the fork wyn/qtcurve. The merge request on system/qtcurve
-follows that push.
+The change sits on the branch work/preset-path of the local tree. The fork
+wyn/qtcurve holds that branch. Merge request !12 on system/qtcurve holds that
+branch as the source.
 
 Drop this patch when upstream merges the change.
 
