@@ -1,11 +1,12 @@
 Restore the child layout margin in the Qt 6 style
 
 Commit fbadbbf3 ("copy qt5 to qt6") copied qt5/ to qt6/. Commit a501c957
-("PM_DefaultTopLevelMargin, PM_DefaultChildMargin removed") then deleted
-the cases for the two metrics that Qt 6 no longer defines. The four
-layout margin cases now return 9 pixels for every widget. The Qt 5 style
+and commit 23e2ad04 then deleted the cases for the three metrics that
+Qt 6 no longer defines. The four layout margin cases now return 9 pixels
+for every widget, and layoutSpacing returns 4 pixels. The Qt 5 style
 returns 9 pixels for a window and 6 pixels for a child layout. It returns
-2 pixels when OpenOffice asks without a widget.
+2 pixels when OpenOffice asks without a widget. Its layout spacing is
+6 pixels.
 
 Dolphin 26.08 sets the height of the StatusBarSpaceInfo widget in
 src/statusbar/dolphinstatusbar.cpp. Line 126 takes the greatest of the
@@ -23,16 +24,31 @@ greater of the font height and its 12 pixel bar. A 16 pixel font
 therefore costs the bar 4 pixels of height. The button beside the bar
 holds the free space text, and cuts it at the top and at the bottom.
 
-Restore the Qt 5 logic. Qt 6 has no PM_DefaultTopLevelMargin and no
-PM_DefaultChildMargin, so the case for the layout margins holds the
-values. A window keeps the 9 pixel margin. The space widget gets a
-6 pixel margin, and 18 pixels for its contents. Breeze gives the same
-18 pixels. The Qt 5 style still has the two metrics at
-qt5/style/qtcurve_api.cpp:1584, and needs no change.
+Restore the Qt 5 values. A window keeps the 9 pixel margin. The space
+widget gets a 6 pixel margin, and 18 pixels for its contents. A layout
+that sets no spacing again leaves 6 pixels between its widgets. Breeze
+gives the same 18 pixels and the same 6 pixel gap.
 
-Drop this patch when upstream restores the child layout margin in the
-Qt 6 style.
+The change sits on the branch work/child-layout-margin of the local tree. The
+fork wyn/qtcurve holds that branch. Merge request !7 on system/qtcurve holds
+that branch as the source.
 
+Drop this patch when upstream merges the change.
+
+diff --git a/qt6/style/qtcurve.cpp b/qt6/style/qtcurve.cpp
+index 2cf76a44..7ec26c1b 100644
+--- a/qt6/style/qtcurve.cpp
++++ b/qt6/style/qtcurve.cpp
+@@ -1164,7 +1164,8 @@ int Style::layoutSpacing(QSizePolicy::ControlType control1,
+     Q_UNUSED(orientation);
+     Q_UNUSED(option);
+     Q_UNUSED(widget);
+-    return 4;
++    // Qt 6 has no PM_DefaultLayoutSpacing. Keep the Qt 5 value of 6 pixels.
++    return 6;
+ }
+ 
+ // Use 'drawItemTextWithRole' when already know which role to use.
 diff --git a/qt6/style/qtcurve_api.cpp b/qt6/style/qtcurve_api.cpp
 index 0d3a2fb7..faf4880f 100644
 --- a/qt6/style/qtcurve_api.cpp

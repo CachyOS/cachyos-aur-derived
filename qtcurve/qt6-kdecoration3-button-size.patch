@@ -24,12 +24,13 @@ that the pad changes the title bar alone. Out of scope: a per button size, the
 window icon size and the title alignment option of Breeze.
 
 The change sits on the branch work/kdecoration3 of the local tree, as the third
-commit. Merge request !9 on system/qtcurve holds that branch.
+commit. The fork wyn/qtcurve holds that branch. Merge request !9 on
+system/qtcurve holds that branch.
 
 Drop this patch when upstream merges the change.
 
 diff --git a/qt6/kdecoration/config/qtcurvedecorationkcm.cpp b/qt6/kdecoration/config/qtcurvedecorationkcm.cpp
-index 75b404c5..f7814d0a 100644
+index 74634a25..a3b254cc 100644
 --- a/qt6/kdecoration/config/qtcurvedecorationkcm.cpp
 +++ b/qt6/kdecoration/config/qtcurvedecorationkcm.cpp
 @@ -65,6 +65,30 @@ insertShadeEntries(QComboBox *combo)
@@ -82,19 +83,7 @@ index 75b404c5..f7814d0a 100644
      for (QSpinBox *box : {m_ui.titleBarPad, m_ui.edgePad,
                            m_ui.activeShadowSize, m_ui.activeShadowHOffset,
                            m_ui.activeShadowVOffset, m_ui.inactiveShadowSize,
-@@ -108,8 +137,9 @@ DecorationKCM::DecorationKCM(QObject *parent, const KPluginMetaData &data)
-         connect(button, &KColorButton::changed, this,
-                 &DecorationKCM::updateChanged);
-     }
--    // setWidgetStates() reads the custom shadow box and every combination
--    // box, so those widgets get a handler that calls it first.
-+    // setWidgetStates() reads the custom shadow box, the two border boxes
-+    // and the two shadow colour boxes. Those widgets therefore get a
-+    // handler that calls it first.
-     connect(m_ui.useShadows, &QCheckBox::toggled, this, [this] {
-         setWidgetStates();
-         updateChanged();
-@@ -172,6 +202,7 @@ DecorationKCM::setWidgets(const DecorationSettings &settings)
+@@ -173,6 +202,7 @@ DecorationKCM::setWidgets(const DecorationSettings &settings)
      m_ui.useShadows->setChecked(settings.customShadows);
      m_ui.titleBarPad->setValue(settings.titleBarPad);
      m_ui.edgePad->setValue(settings.edgePad);
@@ -102,7 +91,7 @@ index 75b404c5..f7814d0a 100644
  
      m_ui.activeShadowSize->setValue(settings.activeShadow.size);
      m_ui.activeShadowHOffset->setValue(settings.activeShadow.hOffset);
-@@ -198,6 +229,7 @@ DecorationKCM::readWidgets(DecorationSettings &settings) const
+@@ -199,6 +229,7 @@ DecorationKCM::readWidgets(DecorationSettings &settings) const
      settings.customShadows = m_ui.useShadows->isChecked();
      settings.titleBarPad = m_ui.titleBarPad->value();
      settings.edgePad = m_ui.edgePad->value();
@@ -111,10 +100,10 @@ index 75b404c5..f7814d0a 100644
      settings.activeShadow.size = m_ui.activeShadowSize->value();
      settings.activeShadow.hOffset = m_ui.activeShadowHOffset->value();
 diff --git a/qt6/kdecoration/config/qtcurvedecorationsettings.cpp b/qt6/kdecoration/config/qtcurvedecorationsettings.cpp
-index efdb7377..21fedd77 100644
+index 8a5d4d0d..bdc44073 100644
 --- a/qt6/kdecoration/config/qtcurvedecorationsettings.cpp
 +++ b/qt6/kdecoration/config/qtcurvedecorationsettings.cpp
-@@ -128,6 +128,7 @@ DecorationSettings::defaults()
+@@ -132,6 +132,7 @@ DecorationSettings::defaults()
      customShadows = DecorationConfig::DEFAULT_CUSTOM_SHADOWS;
      titleBarPad = DecorationConfig::DEFAULT_PAD;
      edgePad = DecorationConfig::DEFAULT_PAD;
@@ -122,7 +111,7 @@ index efdb7377..21fedd77 100644
      activeShadow.defaults();
      inactiveShadow.defaults();
  }
-@@ -140,6 +141,7 @@ DecorationSettings::operator==(const DecorationSettings &other) const
+@@ -144,6 +145,7 @@ DecorationSettings::operator==(const DecorationSettings &other) const
              roundBottom == other.roundBottom &&
              customShadows == other.customShadows &&
              titleBarPad == other.titleBarPad && edgePad == other.edgePad &&
@@ -130,7 +119,7 @@ index efdb7377..21fedd77 100644
              activeShadow == other.activeShadow &&
              inactiveShadow == other.inactiveShadow);
  }
-@@ -166,6 +168,7 @@ DecorationSettings::load(const KConfig *cfg)
+@@ -170,6 +172,7 @@ DecorationSettings::load(const KConfig *cfg)
          edgePad > DecorationConfig::MAX_EDGE_PAD) {
          edgePad = def.edgePad;
      }
@@ -138,7 +127,7 @@ index efdb7377..21fedd77 100644
      activeShadow.load(cfg);
      inactiveShadow.load(cfg);
  }
-@@ -182,6 +185,9 @@ DecorationSettings::save(KConfig *cfg) const
+@@ -186,6 +189,9 @@ DecorationSettings::save(KConfig *cfg) const
      entries.writeEntry("CustomShadows", customShadows);
      entries.writeEntry("TitleBarPad", titleBarPad);
      entries.writeEntry("EdgePad", edgePad);
@@ -149,10 +138,10 @@ index efdb7377..21fedd77 100644
      inactiveShadow.save(cfg);
  }
 diff --git a/qt6/kdecoration/config/qtcurvedecorationsettings.h b/qt6/kdecoration/config/qtcurvedecorationsettings.h
-index 89f2e13e..09612a24 100644
+index b81f937f..8f071cda 100644
 --- a/qt6/kdecoration/config/qtcurvedecorationsettings.h
 +++ b/qt6/kdecoration/config/qtcurvedecorationsettings.h
-@@ -153,6 +153,10 @@ public:
+@@ -150,6 +150,10 @@ public:
      int titleBarPad;
      //! the extra width of the side border and of the bottom border, in pixels
      int edgePad;
@@ -164,7 +153,7 @@ index 89f2e13e..09612a24 100644
      ShadowSettings activeShadow;
      //! the shadow of an inactive window
 diff --git a/qt6/kdecoration/config/ui/qtcurvedecorationconfigui.ui b/qt6/kdecoration/config/ui/qtcurvedecorationconfigui.ui
-index 46ffc1c6..47ece889 100644
+index af1473d5..d51c6261 100644
 --- a/qt6/kdecoration/config/ui/qtcurvedecorationconfigui.ui
 +++ b/qt6/kdecoration/config/ui/qtcurvedecorationconfigui.ui
 @@ -41,13 +41,30 @@
@@ -252,7 +241,7 @@ index 46ffc1c6..47ece889 100644
 +         <item row="5" column="1">
            <widget class="QSpinBox" name="edgePad">
             <property name="whatsThis">
-             <string>Controls the amount of extra padding added to the titlebar border. Changing this will only affect the height of the titlebar, and not the buttons. </string>
+             <string>Controls the amount of extra padding added to the side borders and the bottom border. Changing this will not affect the height of the titlebar. </string>
 @@ -358,6 +375,7 @@
   <tabstops>
    <tabstop>tabWidget</tabstop>
@@ -262,10 +251,10 @@ index 46ffc1c6..47ece889 100644
    <tabstop>innerBorder</tabstop>
    <tabstop>titleBarPad</tabstop>
 diff --git a/qt6/kdecoration/qtcurvedecoration.cpp b/qt6/kdecoration/qtcurvedecoration.cpp
-index 41770d8f..f9e893a4 100644
+index 826318e1..1a2a1901 100644
 --- a/qt6/kdecoration/qtcurvedecoration.cpp
 +++ b/qt6/kdecoration/qtcurvedecoration.cpp
-@@ -71,6 +71,26 @@ const qreal buttonVerticalPad = 3.0;
+@@ -75,6 +75,26 @@ const qreal buttonVerticalPad = 3.0;
  //! the gap between two buttons, in pixels
  const qreal buttonSpacing = 2.0;
  
@@ -292,9 +281,9 @@ index 41770d8f..f9e893a4 100644
  //! the gap between the caption and a button group, in pixels
  const qreal captionPad = 4.0;
  
-@@ -133,6 +153,33 @@ std::shared_ptr<KDecoration3::DecorationShadow> activeShadow;
- /*! The shadow does not depend on the window, so one shadow serves them all. */
- std::shared_ptr<KDecoration3::DecorationShadow> inactiveShadow;
+@@ -225,6 +245,33 @@ writeBorderSizes(int titleHeight, int bottom, int sides)
+     }
+ }
  
 +//! the title bar height that the decoration draws for a wanted height
 +/*! \param height the wanted height, in pixels.
@@ -326,7 +315,7 @@ index 41770d8f..f9e893a4 100644
  //! find the button at one end of a button group that takes a click
  /*! DecorationButtonGroup::updateLayout() puts the buttons from the left under
      a left to right layout, and from the right under a right to left layout.
-@@ -403,24 +450,46 @@ Decoration::titleBarAppearance() const
+@@ -589,24 +636,46 @@ Decoration::titleBarAppearance() const
  qreal
  Decoration::buttonSize() const
  {
@@ -383,7 +372,7 @@ index 41770d8f..f9e893a4 100644
  }
  
  qreal
-@@ -656,6 +725,12 @@ Decoration::init()
+@@ -847,6 +916,12 @@ Decoration::init()
              this, &Decoration::updateButtonsGeometryDelayed);
      connect(config.get(), &KDecoration3::DecorationSettings::reconfigured,
              this, &Decoration::updateButtonsGeometryDelayed);
@@ -397,7 +386,7 @@ index 41770d8f..f9e893a4 100644
      auto *decorated = window();
      connect(decorated, &KDecoration3::DecoratedWindow::activeChanged,
 diff --git a/qt6/kdecoration/qtcurvedecoration.h b/qt6/kdecoration/qtcurvedecoration.h
-index 32ca4da7..8eb04f83 100644
+index b03ea96f..7506651b 100644
 --- a/qt6/kdecoration/qtcurvedecoration.h
 +++ b/qt6/kdecoration/qtcurvedecoration.h
 @@ -101,6 +101,11 @@ public:
@@ -412,7 +401,7 @@ index 32ca4da7..8eb04f83 100644
      qreal buttonSize() const;
  
  public Q_SLOTS:
-@@ -152,14 +157,40 @@ private:
+@@ -164,14 +169,40 @@ private:
      void paintTitleBar(QPainter *painter, const QRectF &repaintRegion);
  
      //! the height of the title bar, in pixels
@@ -456,10 +445,10 @@ index 32ca4da7..8eb04f83 100644
      //! the width of the side border and of the bottom border, in pixels
      /*! \param bottom true for the bottom border, false for a side border.
 diff --git a/qt6/kdecoration/qtcurvedecorationbutton.cpp b/qt6/kdecoration/qtcurvedecorationbutton.cpp
-index 78656be3..25981bee 100644
+index 72de19ef..8bd638b1 100644
 --- a/qt6/kdecoration/qtcurvedecorationbutton.cpp
 +++ b/qt6/kdecoration/qtcurvedecorationbutton.cpp
-@@ -35,7 +35,25 @@
+@@ -36,7 +36,25 @@
  namespace {
  
  //! the smallest side of the line art of a button, in pixels
@@ -486,7 +475,7 @@ index 78656be3..25981bee 100644
  
  //! the entry of the titlebarButtonColors key for one button type
  /*! \param type the button type of the decoration framework.
-@@ -279,7 +297,7 @@ Button::drawFrame(QPainter *painter, const QRectF &rect) const
+@@ -305,7 +323,7 @@ Button::drawFrame(QPainter *painter, const QRectF &rect) const
  
  void
  Button::drawGlyph(QPainter *painter, const QRectF &rect,
@@ -495,7 +484,7 @@ index 78656be3..25981bee 100644
  {
      const qreal side = qMin(rect.width(), rect.height());
      // The three widths follow IconEngine::icon() of the KDE4 decoration. A
-@@ -348,6 +366,11 @@ Button::drawGlyph(QPainter *painter, const QRectF &rect,
+@@ -374,6 +392,11 @@ Button::drawGlyph(QPainter *painter, const QRectF &rect,
          // the centre. A dot closes the mark.
          const qreal quarter = side / 4.0;
          pen.setWidthF(frame > 1.0 ? frame : stroke);
@@ -507,7 +496,7 @@ index 78656be3..25981bee 100644
          painter->setPen(pen);
          painter->setBrush(Qt::NoBrush);
          QPainterPath mark;
-@@ -479,12 +502,15 @@ Button::paint(QPainter *painter, const QRectF &repaintRegion)
+@@ -525,12 +548,15 @@ Button::paint(QPainter *painter, const QRectF &repaintRegion)
      // away on each axis, then centres the line art in the rest.
      const qreal side = qMin(area.width(), area.height());
      int glyphSide = int(qMax(minGlyphSide,
@@ -527,12 +516,12 @@ index 78656be3..25981bee 100644
      QRectF glyph(0, 0, glyphSide, glyphSide);
      glyph.moveCenter(area.center());
      if (isPressed()) {
-@@ -505,9 +531,10 @@ Button::paint(QPainter *painter, const QRectF &repaintRegion)
-                   glyph.translated(opts.titlebarEffect == EFFECT_SHADOW ? 1 : 0,
-                                    1),
+@@ -556,9 +582,10 @@ Button::paint(QPainter *painter, const QRectF &repaintRegion)
+         drawGlyph(painter,
+                   glyph.translated(effect == EFFECT_SHADOW ? 1 : 0, 1),
                    qtcColorMix(&base, &edge,
--                              WINDOW_TEXT_SHADOW_ALPHA(opts.titlebarEffect)));
-+                              WINDOW_TEXT_SHADOW_ALPHA(opts.titlebarEffect)),
+-                              WINDOW_TEXT_SHADOW_ALPHA(effect)));
++                              WINDOW_TEXT_SHADOW_ALPHA(effect)),
 +                  margin);
      }
 -    drawGlyph(painter, glyph, glyphColor());
@@ -541,10 +530,10 @@ index 78656be3..25981bee 100644
  }
  
 diff --git a/qt6/kdecoration/qtcurvedecorationbutton.h b/qt6/kdecoration/qtcurvedecorationbutton.h
-index c8659484..ae0300f5 100644
+index c11b3d80..4811a601 100644
 --- a/qt6/kdecoration/qtcurvedecorationbutton.h
 +++ b/qt6/kdecoration/qtcurvedecorationbutton.h
-@@ -102,9 +102,13 @@ private:
+@@ -108,9 +108,13 @@ private:
      //! draw the line art of the button
      /*! \param painter the painter to draw with.
          \param rect the area of the glyph, which is smaller than the button.
@@ -561,10 +550,10 @@ index c8659484..ae0300f5 100644
      //! the colour of the line art
      /*! \return the button colour for the colour symbol flag, or the caption
 diff --git a/qt6/kdecoration/qtcurvedecorationconfig.cpp b/qt6/kdecoration/qtcurvedecorationconfig.cpp
-index a9b9c196..a258f172 100644
+index a1499af2..d09c2b3b 100644
 --- a/qt6/kdecoration/qtcurvedecorationconfig.cpp
 +++ b/qt6/kdecoration/qtcurvedecorationconfig.cpp
-@@ -156,6 +156,7 @@ DecorationConfig::reload()
+@@ -140,6 +140,7 @@ DecorationConfig::reload()
      if (m_edgePad < MIN_EDGE_PAD || m_edgePad > MAX_EDGE_PAD) {
          m_edgePad = DEFAULT_PAD;
      }
@@ -573,10 +562,10 @@ index a9b9c196..a258f172 100644
      m_activeShadow.load(&cfg);
      m_inactiveShadow.load(&cfg);
 diff --git a/qt6/kdecoration/qtcurvedecorationconfig.h b/qt6/kdecoration/qtcurvedecorationconfig.h
-index 52fe3b6f..efd82452 100644
+index c7deeef8..226c5296 100644
 --- a/qt6/kdecoration/qtcurvedecorationconfig.h
 +++ b/qt6/kdecoration/qtcurvedecorationconfig.h
-@@ -193,6 +193,26 @@ public:
+@@ -235,6 +235,26 @@ public:
          SHADE_SHADOW = 3
      };
  
@@ -603,7 +592,7 @@ index 52fe3b6f..efd82452 100644
      //! the default of the RoundBottom key
      static constexpr bool DEFAULT_ROUND_BOTTOM = true;
      //! the default of the CustomShadows key
-@@ -207,6 +227,8 @@ public:
+@@ -249,6 +269,8 @@ public:
      static constexpr int MIN_EDGE_PAD = 0;
      //! the largest EdgePad value that the reader accepts, in pixels
      static constexpr int MAX_EDGE_PAD = 10;
@@ -612,7 +601,7 @@ index 52fe3b6f..efd82452 100644
  
      //! the single configuration of this process
      /*! The first call reads both files.
-@@ -256,6 +278,11 @@ public:
+@@ -298,6 +320,11 @@ public:
      /*! \return the value of the EdgePad key, from 0 to 10. */
      int edgePad() const { return m_edgePad; }
  
@@ -624,7 +613,7 @@ index 52fe3b6f..efd82452 100644
      //! the drop shadow settings of one window state
      /*! \param active true for the active window, false for an inactive
          window. */
-@@ -285,6 +312,8 @@ private:
+@@ -327,6 +354,8 @@ private:
      int m_titleBarPad;
      //! the extra width of the side border and of the bottom border, in pixels
      int m_edgePad;
@@ -633,7 +622,7 @@ index 52fe3b6f..efd82452 100644
      //! the number of reads of the two files
      unsigned m_generation = 0;
  };
-@@ -315,6 +344,48 @@ readShade(const KConfigGroup &group, const char *key)
+@@ -357,6 +386,48 @@ readShade(const KConfigGroup &group, const char *key)
      return DecorationConfig::SHADE_NONE;
  }
  
