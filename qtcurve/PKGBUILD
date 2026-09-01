@@ -4,7 +4,7 @@
 _commit=519f04b08d7a1029b62b871cc8cf408d6fbefc1f
 pkgname=qtcurve
 pkgver=20260812
-pkgrel=2
+pkgrel=3
 pkgdesc="A configurable set of widget styles for Qt5, Qt6, KDE Frameworks 6 and GTK 2"
 arch=(x86_64)
 url="https://invent.kde.org/system/qtcurve"
@@ -71,6 +71,8 @@ source=(
 	qt6-deprecated-api.patch
 	qt6-preset-path.patch
 	qt5-deprecated-api.patch
+	build-cmake-warnings.patch
+	build-compiler-warnings.patch
 )
 sha256sums=('d4db624ff455548fffb38277d7080a4380911bc25a12c63a1e653aa47660435f'
             '60d6c52289f3b6e7c0645bb9acaa96a769801f66e77f50cd5551b7e613611152'
@@ -83,7 +85,9 @@ sha256sums=('d4db624ff455548fffb38277d7080a4380911bc25a12c63a1e653aa47660435f'
             'db521126121105d4b375976e4e33b25488953b22d8280086a279040fecaf16c0'
             '3e8c93c4f8a38cb81a48aff2f43e300a945a842a61efb431937061acf5d08174'
             '4f437130cf4c8f1699061eba733b038804c76e417deb0c70b2885e83fb0037bf'
-            '2b27c37159d083d9e8553c465ddbf5bd833ca2f0d35283517e9c31a64305efe6')
+            '2b27c37159d083d9e8553c465ddbf5bd833ca2f0d35283517e9c31a64305efe6'
+            'd7fd0ec4eeb6a2312fb6064844b0664543c6528b45dfbafc9681cd38cb7b012f'
+            '594e0371d563761b9fe50ee3ef7d841dc583b1f9ba7f9e86330efeb265c1ab21')
 
 pkgver() {
 	git -C "$pkgname" log -1 --format=%cd --date=format:%Y%m%d
@@ -112,6 +116,10 @@ prepare() {
 	patch -Np1 -d "$pkgname" -i "$srcdir/qt6-preset-path.patch"
 	# The patch replaces the deprecated Qt calls of the Qt 5 style.
 	patch -Np1 -d "$pkgname" -i "$srcdir/qt5-deprecated-api.patch"
+	# The patch stops the CMake warnings and the compiler flag notes.
+	patch -Np1 -d "$pkgname" -i "$srcdir/build-cmake-warnings.patch"
+	# The patch stops the compiler warnings of the library, the styles and the tests.
+	patch -Np1 -d "$pkgname" -i "$srcdir/build-compiler-warnings.patch"
 }
 
 build() {
@@ -122,6 +130,7 @@ build() {
 		-DCMAKE_BUILD_TYPE=None \
 		-DCMAKE_INSTALL_PREFIX=/usr \
 		-DCMAKE_INSTALL_LIBDIR=lib \
+		-DKDE_INSTALL_LIBDIR=lib \
 		-DENABLE_QT4=OFF \
 		-DENABLE_QT5=ON \
 		-DQTC_QT5_ENABLE_KDE=OFF \
