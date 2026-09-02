@@ -1,0 +1,21 @@
+_notice() {
+	cat <<'EOF'
+The QtCurve style dialogue writes GTK theme files into your home directory.
+Before you remove the package, run qtcurve-gtk-writer --remove-gtk to delete
+them. Run qtcurve-gtk-writer --remove-qt to delete your saved settings and
+presets; the GTK theme then follows the defaults. Run qtcurve-gtk-writer
+--purge-settings to delete both.
+EOF
+}
+
+post_install() {
+	_notice
+}
+
+post_upgrade() {
+	_notice
+}
+
+pre_remove() {
+	_notice
+}
