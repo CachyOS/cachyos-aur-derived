@@ -1,0 +1,4 @@
+[fcitx5-lotus]
+source = "git"
+git = "https://github.com/LotusInputMethod/fcitx5-lotus.git"
+prefix = "v"
