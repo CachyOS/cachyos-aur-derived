@@ -1,0 +1,29 @@
+# Contributor: Dharmik Lathiya <dharmiklathiya.it@gmail.com>
+
+pkgname='krefresh'
+pkgver=1.0.0
+pkgrel=1
+pkgdesc='Windows-style refresh for KDE Plasma: reload desktop, Dolphin windows and thumbnail caches'
+arch=('any')
+license=('GPL-3.0-or-later')
+depends=(
+  'bash'
+  'coreutils'
+  'dolphin'
+  'kconfig'
+  'plasma-workspace'
+  'qt6-tools'
+  'systemd'
+)
+source=('krefresh'
+        'krefresh.desktop'
+        'krefresh-command.desktop')
+sha512sums=('SKIP'
+            'SKIP'
+            'SKIP')
+
+package() {
+    install -Dm755 "$srcdir/krefresh" "$pkgdir/usr/bin/krefresh"
+    install -Dm644 "$srcdir/krefresh.desktop" "$pkgdir/usr/share/kio/servicemenus/krefresh.desktop"
+    install -Dm644 "$srcdir/krefresh-command.desktop" "$pkgdir/usr/share/applications/krefresh-command.desktop"
+}
