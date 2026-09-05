@@ -1,0 +1,2857 @@
+Draw the window frame of Plasma 6 with a KDecoration3 plugin
+
+QtCurve draws no window border on Plasma 5 or Plasma 6, which is upstream
+issue 5. The qt5/kwin and qt6/kwin decorations include kcommondecoration.h of
+the KDE4 decoration library, and no build without Qt4 compiles them. A Plasma
+6 user therefore gets the Breeze title bar with the QtCurve widget style.
+
+The commit adds qt6/kdecoration, the plugin org.kde.qtcurve.so for
+KDecoration3 6. QtCurve::Decoration draws the title bar, the caption, the
+border and the custom drop shadow, and QtCurve::Button draws one button. It
+writes the windowBorderSizes file for the style. A window with no outer border
+shade gets no frame line, as in the KDE4 decoration.
+
+The new option QTC_QT6_ENABLE_KDECORATION is On for a build with
+QTC_QT6_ENABLE_KDE, and Off elsewhere, because the plugin links KF6. A build
+without KDecoration3 drops the decoration with a warning, and a command line
+value of On makes that miss a hard error.
+
+KWin holds no QStyle for a decoration, so the plugin compiles
+qt6/common/config_file.cpp and calls qtcReadConfig(), as the style does. It
+reads the file of the style, which QTCURVE_CONFIG_FILE names when it is set,
+for the corner, appearance, button, border, caption and shade keys. It reads
+the kwinqtcurverc file of the KDE4 decoration for the border, corner, pad and
+drop shadow keys. The HOffset and VOffset keys keep the percent meaning of the
+KDE4 decoration, and the settings module of a later commit labels them so. It
+reads both files and the contrast one time, at the first decoration of the
+session, so a change needs a restart of the compositor.
+
+Out of scope: the BorderSize key, because KDecoration3 owns the border width.
+KWin owns the window opacity, the borderless state and the window grouping, so
+those keys stay without effect. The KWin page of the settings dialogue of the
+style writes kwinqtcurverc.
+
+The change sits on the branch work/kdecoration3 of the local tree, as the first
+commit. The fork wyn/qtcurve holds that branch. Merge request !9 on
+system/qtcurve holds that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 66e2dbfe..be3297ef 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -46,6 +46,14 @@ qtc_option(ENABLE_QT5 "Building Qt5 theme." On)
+ qtc_option(ENABLE_QT6 "Building Qt6 theme." On)
+ qtc_option(ENABLE_GTK2 "Building Gtk2 theme." On)
+ qtc_option(QTC_QT6_ENABLE_KDE "Building Qt6 style with KDE Frameworks 6 support." Off)
++# The Plasma 6 window decoration links KF6, so it needs QTC_QT6_ENABLE_KDE.
++if(QTC_QT6_ENABLE_KDE)
++  qtc_option(QTC_QT6_ENABLE_KDECORATION
++    "Building the Plasma 6 window decoration." On)
++else()
++  qtc_option(QTC_QT6_ENABLE_KDECORATION
++    "Building the Plasma 6 window decoration." Off)
++endif()
+ # option(ENABLE_GTK3 "Building Gtk3 theme." On)
+ option(BUILD_TESTING "Enable testing." On)
+ option(QTC_ENABLE_X11 "Enable X11" On)
+diff --git a/qt6/CMakeLists.txt b/qt6/CMakeLists.txt
+index 31f31ba6..38e135ac 100644
+--- a/qt6/CMakeLists.txt
++++ b/qt6/CMakeLists.txt
+@@ -63,6 +63,25 @@ if(QTC_QT6_ENABLE_KDE)
+   if(NOT APPLE)
+     set(QTC_QT6_ENABLE_KWIN ON)
+   endif()
++else()
++  # The decoration links KF6, so a build without KDE support drops it.
++  set(QTC_QT6_ENABLE_KDECORATION Off)
++endif()
++
++# The Plasma 6 window decoration is a KDecoration3 plugin. A build that asks
++# for the decoration on the command line fails when KDecoration3 is absent.
++# Every other build drops the decoration and keeps going.
++if(QTC_QT6_ENABLE_KDECORATION)
++  find_package(KDecoration3 QUIET)
++  if(NOT KDecoration3_FOUND)
++    if(QTC_QT6_ENABLE_KDECORATION_DEFINED)
++      message(FATAL_ERROR "QTC_QT6_ENABLE_KDECORATION is on, but "
++        "find_package(KDecoration3) found nothing.")
++    endif()
++    message(WARNING "KDecoration3 is absent. The build drops the Plasma 6 "
++      "window decoration.")
++    set(QTC_QT6_ENABLE_KDECORATION Off)
++  endif()
+ endif()
+ 
+ add_subdirectory(common)
+@@ -71,4 +90,7 @@ if(QTC_QT6_ENABLE_KWIN)
+   add_subdirectory(kwin)
+   add_subdirectory(kwinconfig)
+ endif()
++if(QTC_QT6_ENABLE_KDECORATION)
++  add_subdirectory(kdecoration)
++endif()
+ add_subdirectory(style)
+diff --git a/qt6/kdecoration/CMakeLists.txt b/qt6/kdecoration/CMakeLists.txt
+new file mode 100644
+index 00000000..e4c868ee
+--- /dev/null
++++ b/qt6/kdecoration/CMakeLists.txt
+@@ -0,0 +1,56 @@
++set(qtcurve_kdecoration_SRCS
++  qtcurvedecoration.cpp
++  qtcurvedecorationbutton.cpp
++  qtcurvedecorationconfig.cpp)
++set(qtcurve_kdecoration_HDRS
++  qtcurvedecoration.h
++  qtcurvedecorationbutton.h
++  qtcurvedecorationconfig.h)
++
++translate_add_sources(${qtcurve_kdecoration_SRCS} ${qtcurve_kdecoration_HDRS}
++  qtcurve.json)
++
++# The decoration reads the configuration file of the QtCurve style, so it
++# compiles the reader of the style into the plugin, as qt6/style does.
++set(qtcurve_kdecoration_SRCS ${qtcurve_kdecoration_SRCS}
++  ../common/common.cpp
++  ../common/config_file.cpp)
++
++# The decoration makes its own drop shadow tiles. lib/utils keeps
++# qtcShadowCreate() hidden, so the decoration compiles the tile generator into
++# the plugin, as qt6/style does.
++set(qtcurve_kdecoration_SRCS ${qtcurve_kdecoration_SRCS}
++  ../../lib/utils/shadow.cpp)
++
++# The shadow colour of the ActiveShadows group follows the colour scheme of the
++# session, so the plugin needs KColorScheme. The style needs no such component.
++find_package(KF6 REQUIRED COMPONENTS ColorScheme)
++
++include_directories(
++  "${CMAKE_CURRENT_SOURCE_DIR}"
++  "${CMAKE_CURRENT_BINARY_DIR}")
++
++add_library(qtcurve-kdecoration MODULE ${qtcurve_kdecoration_SRCS})
++# KDecoration3/decoration.h declares a defaulted three way comparison, so the
++# headers need C++20. The rest of QtCurve builds with C++17.
++set_target_properties(qtcurve-kdecoration PROPERTIES
++  OUTPUT_NAME "org.kde.qtcurve"
++  LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
++  PREFIX "")
++target_compile_options(qtcurve-kdecoration PRIVATE -std=c++20)
++target_link_libraries(qtcurve-kdecoration
++  Qt6::Core
++  Qt6::Gui
++  Qt6::Widgets
++  Qt6::Svg
++  KF6::ColorScheme
++  KF6::ConfigCore
++  KF6::CoreAddons
++  KF6::GuiAddons
++  KDecoration3::KDecoration
++  qtcurve-utils)
++
++# KWin looks for a decoration plugin in the org.kde.kdecoration3 directory of
++# the Qt plugin path.
++install(TARGETS qtcurve-kdecoration LIBRARY
++  DESTINATION "${_Qt6_PLUGIN_INSTALL_DIR}/${KDECORATION_PLUGIN_DIR}")
+diff --git a/qt6/kdecoration/qtcurve.json b/qt6/kdecoration/qtcurve.json
+new file mode 100644
+index 00000000..df2ba096
+--- /dev/null
++++ b/qt6/kdecoration/qtcurve.json
+@@ -0,0 +1,11 @@
++{
++    "KPlugin": {
++        "Description": "Window decoration using the QtCurve visual style for the Plasma Desktop",
++        "EnabledByDefault": true,
++        "Name": "QtCurve"
++    },
++    "org.kde.kdecoration3": {
++        "blur": false,
++        "recommendedBorderSize": "Normal"
++    }
++}
+diff --git a/qt6/kdecoration/qtcurvedecoration.cpp b/qt6/kdecoration/qtcurvedecoration.cpp
+new file mode 100644
+index 00000000..d52c7207
+--- /dev/null
++++ b/qt6/kdecoration/qtcurvedecoration.cpp
+@@ -0,0 +1,1257 @@
++/*****************************************************************************
++ *   Copyright 2003 - 2010 Craig Drummond <craig.p.drummond@gmail.com>       *
++ *   Copyright 2013 - 2015 Yichao Yu <yyc1992@gmail.com>                     *
++ *                                                                           *
++ *   This program is free software; you can redistribute it and/or modify    *
++ *   it under the terms of the GNU Lesser General Public License as          *
++ *   published by the Free Software Foundation; either version 2.1 of the    *
++ *   License, or (at your option) version 3, or any later version accepted   *
++ *   by the membership of KDE e.V. (or its successor approved by the         *
++ *   membership of KDE e.V.), which shall act as a proxy defined in          *
++ *   Section 6 of version 3 of the license.                                  *
++ *                                                                           *
++ *   This program is distributed in the hope that it will be useful,         *
++ *   but WITHOUT ANY WARRANTY; without even the implied warranty of          *
++ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU       *
++ *   Lesser General Public License for more details.                         *
++ *                                                                           *
++ *   You should have received a copy of the GNU Lesser General Public        *
++ *   License along with this library. If not,                                *
++ *   see <http://www.gnu.org/licenses/>.                                     *
++ *****************************************************************************/
++
++#include "qtcurvedecoration.h"
++#include "qtcurvedecorationbutton.h"
++
++#include <KDecoration3/DecorationButtonGroup>
++#include <KDecoration3/DecorationSettings>
++#include <KDecoration3/DecorationShadow>
++#include <KDecoration3/ScaleHelpers>
++
++#include <KPluginFactory>
++
++#include <QFontMetricsF>
++#include <QGuiApplication>
++#include <QIcon>
++#include <QMarginsF>
++#include <QLinearGradient>
++#include <QPainter>
++#include <QPixmap>
++#include <QSaveFile>
++#include <QTextStream>
++#include <QTimer>
++
++#include <qtcurve-utils/color.h>
++#include <qtcurve-utils/dirs.h>
++#include <qtcurve-utils/shade.h>
++#include <qtcurve-utils/shadow_p.h>
++
++#include <cmath>
++
++K_PLUGIN_FACTORY_WITH_JSON(QtCurveDecoFactory, "qtcurve.json",
++                           registerPlugin<QtCurve::Decoration>();
++                           registerPlugin<QtCurve::Button>();)
++
++namespace {
++
++//! the smallest title bar height, in pixels
++/*! readConfig() in qt6/kwin/qtcurvehandler.cpp uses the same figure, but it
++    applies the floor before the TitleBarPad value. A negative pad therefore
++    drives the title bar of the KDE4 decoration below this height. */
++const int titleBarMinHeight = 16;
++
++//! the room above and below the caption, in pixels
++/*! The KDE4 decoration adds this room to the font height so the caption shadow
++    fits inside the title bar. */
++const int titleBarTextPad = 4;
++
++//! the gap between the window edge and a button group, in pixels
++const qreal buttonEdgePad = 4.0;
++
++//! the gap between the title bar edge and a button, in pixels
++/*! The gap keeps a round button clear of the title bar border. */
++const qreal buttonVerticalPad = 3.0;
++
++//! the gap between two buttons, in pixels
++const qreal buttonSpacing = 2.0;
++
++//! the gap between the caption and a button group, in pixels
++const qreal captionPad = 4.0;
++
++//! the gap between the window icon and the caption, in pixels
++/*! constTitlePad in qt6/kwin/qtcurveclient.cpp holds the same value. */
++const qreal iconPad = 4.0;
++
++//! the corner radius of the top of a window with no title bar appearance
++/*! QtCurveClient::paintEvent() in qt6/kwin/qtcurveclient.cpp used the same
++    value. */
++const qreal noAppearanceRadius = 6.0;
++
++//! the corner radius of the top of every other window, in pixels
++/*! QtCurveClient::paintEvent() in qt6/kwin/qtcurveclient.cpp used the same
++    value. */
++const qreal titleBarRadius = 8.0;
++
++//! the corner radius of a round window bottom, in pixels
++const qreal roundBottomRadius = 6.0;
++
++//! the corner radius of a square window bottom, in pixels
++/*! The KDE4 decoration keeps one pixel of round, so the bottom corner loses
++    the sharp point of a plain rectangle. */
++const qreal flatBottomRadius = 1.0;
++
++//! the gap between the light border and the bottom of a round window, in pixels
++/*! drawPrimitiveFrameWindow() in qt6/style/qtcurve_primitive.cpp stops the
++    light line the same distance above the bottom, inside the corner curve. */
++const qreal roundBottomLightGap = 4.0;
++
++//! the gap between the light border and the bottom of a square window, in pixels
++/*! drawPrimitiveFrameWindow() in qt6/style/qtcurve_primitive.cpp takes the
++    light line to the last row of a square window. */
++const qreal flatBottomLightGap = 1.0;
++
++//! the width of the side border of a normal window, in pixels
++/*! setBorderSize() in qt6/kwin/qtcurvehandler.cpp reports this width for
++    BORDER_NORMAL. */
++const qreal normalBorder = 4.0;
++
++//! the alpha value of the border line in the drop shadow colour
++/*! QtCurveClient::paintEvent() in qt6/kwin/qtcurveclient.cpp mixes the shadow
++    colour with the window colour by this weight for an active window. */
++const double activeShadowBorderAlpha = 0.75;
++
++//! the alpha value of the border line of an inactive window
++/*! QtCurveClient::paintEvent() in qt6/kwin/qtcurveclient.cpp mixes the shadow
++    colour with the window colour by this weight for an inactive window. */
++const double inactiveShadowBorderAlpha = 0.4;
++
++//! the distance from each end of the separator to the window edge, in pixels
++/*! QtCurveClient::paintEvent() in qt6/kwin/qtcurveclient.cpp moves each end
++    of the rule in by the same width. */
++const qreal separatorInset = 16.0;
++
++//! the alpha value of the separator under the title bar
++/*! drawFadedLine() in qt6/kwin/qtcurveclient.cpp gives a horizontal line the
++    same value. */
++const qreal separatorAlpha = 0.6;
++
++//! the weight of the caption colour of an inactive window
++/*! paintTitle() in qt6/kwin/qtcurveclient.cpp mixes a dark caption colour
++    with the title bar colour by ((255 * 180) >> 8) / 256.0. */
++const double inactiveTextBlend = 179.0 / 256.0;
++
++//! the side of the tile of the striped background appearance, in pixels
++/*! drawStripes() in qt6/style/qtcurve.cpp builds a tile of the same side. */
++const int stripeTileSide = 64;
++
++//! the width of the clear band along the window edge, in pixels
++/*! qtcShadowCreate() holds the alpha at zero over this band, then starts the
++    gradient. The band lets a tile lie over the window edge without a dark
++    line. */
++const size_t shadowRadius = 4;
++
++//! the number of tiles that make one shadow
++const int numTiles = 8;
++
++//! the tile number of the bottom right corner of a shadow
++const int bottomRightTile = 3;
++
++//! the tile number of the bottom left corner of a shadow
++const int bottomLeftTile = 5;
++
++//! the gradient length that scales a shadow offset, in pixels
++/*! simpleShadowPixmap() in qt6/kwin/qtcurveshadowcache.cpp holds the same
++    figure. */
++const qreal offsetBaseSize = 25.5;
++
++//! the weight of the offset of the shadow of an active window
++/*! The active recipe of simpleShadowPixmap() in
++    qt6/kwin/qtcurveshadowcache.cpp moves its outer gradient by this multiple
++    of the offset. */
++const qreal activeOffsetWeight = 12.0;
++
++//! the weight of the offset of the shadow of an inactive window
++/*! The inactive recipe of simpleShadowPixmap() in
++    qt6/kwin/qtcurveshadowcache.cpp moves its outer gradient by this multiple
++    of the offset. */
++const qreal inactiveOffsetWeight = 20.0;
++
++//! the border widths of the last writeBorderSizes() call, or three -1 values
++/*! The widths do not depend on the window, so one copy serves them all. */
++int writtenBorders[3] = {-1, -1, -1};
++
++//! the drop shadow of an active window, or an empty pointer
++/*! The shadow does not depend on the window, so one shadow serves them all.
++    The pointer is empty before the first paint, and while the CustomShadows
++    key is off. */
++std::shared_ptr<KDecoration3::DecorationShadow> activeShadow;
++
++//! the drop shadow of an inactive window, or an empty pointer
++/*! The shadow does not depend on the window, so one shadow serves them all.
++    The pointer is empty before the first paint, and while the CustomShadows
++    key is off. */
++std::shared_ptr<KDecoration3::DecorationShadow> inactiveShadow;
++
++//! write the four border widths of the decoration for the QtCurve style
++/*! qtcGetWindowBorderSize() in qt6/common/config_file.cpp reads the file, and
++    the style grows the window background by the widths. The call writes the
++    file after a change alone, as QtCurveHandler::reset() in
++    qt6/kwin/qtcurvehandler.cpp did.
++    \param titleHeight the height of the title bar, in pixels.
++    \param bottom the width of the bottom border, in pixels.
++    \param sides the width of one side border, in pixels. */
++void
++writeBorderSizes(int titleHeight, int bottom, int sides)
++{
++    if (writtenBorders[0] == titleHeight && writtenBorders[1] == bottom &&
++        writtenBorders[2] == sides) {
++        return;
++    }
++    QSaveFile file(QString::fromUtf8(QtCurve::getConfDir()) +
++                   QLatin1String(BORDER_SIZE_FILE));
++    if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
++        return;
++    }
++    QTextStream stream(&file);
++    // KDecoration3 holds one caption font, so the tool window line takes the
++    // height of the one title bar.
++    stream << titleHeight << '\n' << titleHeight << '\n' << bottom << '\n'
++           << sides << '\n';
++    stream.flush();
++    if (file.commit()) {
++        writtenBorders[0] = titleHeight;
++        writtenBorders[1] = bottom;
++        writtenBorders[2] = sides;
++    }
++}
++
++//! find the button at one end of a button group that takes a click
++/*! DecorationButtonGroup::updateLayout() puts the buttons from the left under
++    a left to right layout, and from the right under a right to left layout.
++    The first button of the list is therefore the leftmost button under the
++    first direction and the rightmost button under the second. A hidden button
++    keeps no place in the layout, so the scan drops it. The scan drops a Spacer
++    button and a Custom button as well. DecorationButton disables a Spacer, so
++    a Spacer takes no click. Button::paint() draws neither type.
++    \param group the button group.
++    \param leftEnd true for the leftmost button, or false for the rightmost
++    button.
++    \return the button, or nullptr where the group shows no such button. */
++QtCurve::Button*
++endButton(const KDecoration3::DecorationButtonGroup *group, bool leftEnd)
++{
++    const bool fromFront = (QGuiApplication::layoutDirection() ==
++                            Qt::RightToLeft) ? !leftEnd : leftEnd;
++    QtCurve::Button *found = nullptr;
++    const auto buttons = group->buttons();
++    for (KDecoration3::DecorationButton *button : buttons) {
++        if (!button->isVisible() ||
++            button->type() == KDecoration3::DecorationButtonType::Spacer ||
++            button->type() == KDecoration3::DecorationButtonType::Custom) {
++            continue;
++        }
++        found = static_cast<QtCurve::Button*>(button);
++        if (fromFront) {
++            break;
++        }
++    }
++    return found;
++}
++
++//! move a button group so that the end button of endButton() touches an anchor
++/*! DecorationButtonGroup::updateLayout() adds the group spacing for each
++    visible button that the list holds before another entry. A hidden button
++    at the end of the list therefore makes the group box wider than the
++    buttons in it. A position that comes from the box width then holds the end
++    button away from the anchor. This call reads the end button back and moves
++    the whole group over that surplus. A Spacer button outside the end button
++    moves past the anchor, and it paints nothing there. The call does nothing
++    where the group shows no end button.
++    \param group the button group.
++    \param leftEnd true to put the left side of the end button on the anchor,
++    or false to put the right side of the end button there.
++    \param anchor the x coordinate for that side of the button, in pixels. */
++void
++anchorGroup(KDecoration3::DecorationButtonGroup *group, bool leftEnd,
++            qreal anchor)
++{
++    const QtCurve::Button *end = endButton(group, leftEnd);
++    if (!end) {
++        return;
++    }
++    const QRectF box = end->geometry();
++    const qreal shift = anchor - (leftEnd ? box.left() : box.right());
++    if (shift != 0.0) {
++        group->setPos(group->pos() + QPointF(shift, 0));
++    }
++}
++
++//! build a shape with round top corners and round bottom corners
++/*! \param rect the area to cover.
++    \param radiusTop the radius of the two top corners, in pixels.
++    \param radiusBot the radius of the two bottom corners, in pixels.
++    \return the shape. createPath() in qt6/kwin/qtcurveclient.cpp builds the
++    same shape. */
++QPainterPath
++framedPath(const QRectF &rect, qreal radiusTop, qreal radiusBot)
++{
++    QPainterPath path;
++    const qreal diameterTop = radiusTop * 2.0;
++    const qreal diameterBot = radiusBot * 2.0;
++
++    if (radiusBot > 0.0) {
++        path.moveTo(rect.right(), rect.bottom() - radiusBot);
++        path.arcTo(QRectF(rect.right() - diameterBot,
++                          rect.bottom() - diameterBot, diameterBot,
++                          diameterBot), 0.0, -90.0);
++    } else {
++        path.moveTo(rect.right(), rect.bottom());
++    }
++    if (radiusBot > 0.0) {
++        path.lineTo(rect.left() + radiusBot, rect.bottom());
++        path.arcTo(QRectF(rect.left(), rect.bottom() - diameterBot,
++                          diameterBot, diameterBot), -90.0, -90.0);
++    } else {
++        path.lineTo(rect.left(), rect.bottom());
++    }
++    if (radiusTop > 0.0) {
++        path.lineTo(rect.left(), rect.top() + radiusTop);
++        path.arcTo(QRectF(rect.left(), rect.top(), diameterTop, diameterTop),
++                   180.0, -90.0);
++    } else {
++        path.lineTo(rect.left(), rect.top());
++    }
++    if (radiusTop > 0.0) {
++        path.lineTo(rect.right() - radiusTop, rect.top());
++        path.arcTo(QRectF(rect.right() - diameterTop, rect.top(), diameterTop,
++                          diameterTop), 90.0, -90.0);
++    } else {
++        path.lineTo(rect.right(), rect.top());
++    }
++    path.closeSubpath();
++    return path;
++}
++
++//! make one QtCurve drop shadow for the decoration framework
++/*! qtcShadowCreate() draws eight tiles. The call puts them in one image, in
++    the layout that DecorationShadow asks for: a corner tile in each corner, a
++    side tile between two corner tiles, and one clear pixel in the middle. The
++    padding of the shadow is one pixel less than the gradient, as in
++    qtcX11ShadowInit(), so a tile lies over the window edge. An offset makes
++    the padding of one side larger and the padding of the other side smaller,
++    which moves the whole shadow.
++    \param size the length of the gradient, in pixels.
++    \param start the colour at the window edge.
++    \param end the colour at the outer end of the gradient.
++    \param hOffset the distance that the shadow moves to the right, in pixels.
++    \param vOffset the distance that the shadow moves down, in pixels.
++    \param roundBottom true for a round window bottom, false for a square one.
++    \return the shadow. */
++std::shared_ptr<KDecoration3::DecorationShadow>
++createShadow(int size, const QColor &start, const QColor &end, int hOffset,
++             int vOffset, bool roundBottom)
++{
++    QtcColor c1 = {start.redF(), start.greenF(), start.blueF()};
++    QtcColor c2 = {end.redF(), end.greenF(), end.blueF()};
++    QtCurve::Image *images[numTiles];
++    qtcShadowCreate(size_t(size), &c1, &c2, shadowRadius, false,
++                    QTC_PIXEL_QT, images);
++    if (!roundBottom) {
++        // The square flag of qtcShadowCreate() covers all eight tiles, so a
++        // square window bottom takes the two bottom corners of a second set.
++        // renderGradient() in qt6/kwin/qtcurveshadowcache.cpp squared the same
++        // two corners.
++        QtCurve::Image *square[numTiles];
++        qtcShadowCreate(size_t(size), &c1, &c2, shadowRadius, true,
++                        QTC_PIXEL_QT, square);
++        for (int i = 0;i < numTiles;i++) {
++            const bool corner = (i == bottomRightTile || i == bottomLeftTile);
++            delete (corner ? images[i] : square[i]);
++            if (corner) {
++                images[i] = square[i];
++            }
++        }
++    }
++
++    const int side = size + int(shadowRadius);
++    QImage composite(2 * side + 1, 2 * side + 1,
++                     QImage::Format_ARGB32_Premultiplied);
++    composite.fill(Qt::transparent);
++    // qtcShadowCreate() writes the tiles in this order: top, top right, right,
++    // bottom right, bottom, bottom left, left and top left.
++    const QPoint origin[numTiles] = {
++        QPoint(side, 0),
++        QPoint(side + 1, 0),
++        QPoint(side + 1, side),
++        QPoint(side + 1, side + 1),
++        QPoint(side, side + 1),
++        QPoint(0, side + 1),
++        QPoint(0, side),
++        QPoint(0, 0),
++    };
++    QPainter painter(&composite);
++    for (int i = 0;i < numTiles;i++) {
++        const QtCurve::Image *image = images[i];
++        // QTC_PIXEL_QT puts the four bytes of a pixel in the order that
++        // QImage::Format_ARGB32_Premultiplied reads. qtcFillShadowPixel() also
++        // multiplies each colour channel by the alpha.
++        QImage tile((const uchar*)image->data.data(), int(image->width),
++                    int(image->height), qsizetype(image->width) * 4,
++                    QImage::Format_ARGB32_Premultiplied);
++        painter.drawImage(origin[i], tile);
++        delete images[i];
++    }
++    painter.end();
++
++    auto shadow = std::make_shared<KDecoration3::DecorationShadow>();
++    const qreal base = size - 1;
++    shadow->setPadding(QMarginsF(qMax(qreal(0), base - hOffset),
++                                 qMax(qreal(0), base - vOffset),
++                                 base + hOffset, base + vOffset));
++    shadow->setInnerShadowRect(QRectF(side, side, 1, 1));
++    shadow->setShadow(composite);
++    return shadow;
++}
++
++//! the distance that one offset key moves the shadow, in pixels
++/*! \param percent the value of the HOffset key or of the VOffset key.
++    \param size the length of the shadow gradient, in pixels.
++    \param type the shadow type of the same group, which picks the weight.
++    \return the distance, rounded to a whole pixel. simpleShadowPixmap() in
++    qt6/kwin/qtcurveshadowcache.cpp moved its outer gradient by the same
++    distance. */
++int
++shadowOffset(int percent, int size, QtCurve::ShadowConfig::ShadowType type)
++{
++    const qreal weight = (QtCurve::ShadowConfig::SH_ACTIVE == type ?
++                          activeOffsetWeight : inactiveOffsetWeight);
++    return int(std::lround(weight * percent / 100.0 * size / offsetBaseSize));
++}
++
++//! make the drop shadow of one window state
++/*! \param active true for the shadow of an active window, false for the
++    shadow of an inactive window.
++    \return the shadow that the kwinqtcurverc file asks for, or an empty
++    pointer while the CustomShadows key is off. AbilityProvidesShadow in
++    qt6/kwin/qtcurvehandler.cpp gave the same answer for a false key. */
++std::shared_ptr<KDecoration3::DecorationShadow>
++shadowFor(bool active)
++{
++    const QtCurve::DecorationConfig &config =
++        QtCurve::DecorationConfig::instance();
++    if (!config.customShadows()) {
++        return {};
++    }
++    // The KDE4 shadow held one colour for the whole gradient, so the start and
++    // the end are the same colour.
++    const QtCurve::ShadowConfig &shadow = config.shadow(active);
++    const int size = shadow.shadowSize();
++    const QtCurve::ShadowConfig::ShadowType type = shadow.shadowType();
++    return createShadow(size, shadow.color(), shadow.color(),
++                        shadowOffset(shadow.horizontalOffset(), size, type),
++                        shadowOffset(shadow.verticalOffset(), size, type),
++                        config.roundBottom());
++}
++
++//! the tile of the striped background appearance
++/*! drawStripes() in qt6/style/qtcurve.cpp builds the same tile.
++    \param base the colour of the background.
++    \param opts the settings of the style.
++    \return the tile, which repeats every four rows. */
++QPixmap
++stripeTile(const QColor &base, const Options &opts)
++{
++    QPixmap tile(stripeTileSide, stripeTileSide);
++    tile.fill(base);
++    const QColor dark = QtCurve::shade(base, BGND_STRIPE_SHADE, opts.shading);
++    const QColor mid((3 * base.red() + dark.red()) / 4,
++                     (3 * base.green() + dark.green()) / 4,
++                     (3 * base.blue() + dark.blue()) / 4);
++    QPainter painter(&tile);
++    painter.setPen(QPen(mid, 1.0));
++    for (int i = 1;i < tile.height();i += 4) {
++        painter.drawLine(0, i, tile.width() - 1, i);
++        painter.drawLine(0, i + 2, tile.width() - 1, i + 2);
++    }
++    painter.setPen(QPen(dark, 1.0));
++    for (int i = 2;i < tile.height() - 1;i += 4) {
++        painter.drawLine(0, i, tile.width() - 1, i);
++    }
++    return tile;
++}
++
++//! fill a shape with the window background of the QtCurve style
++/*! drawBackground() in qt6/style/qtcurve.cpp draws a tile for the striped
++    appearance and for the file appearance, and a gradient for every other
++    appearance.
++    \param painter the painter to draw with.
++    \param path the shape to fill.
++    \param base the colour that the shade factors of the gradient act on.
++    \param opts the settings of the style. The bgndAppearance field names the
++    appearance, and the bgndPixmap field holds the image of the file
++    appearance. */
++void
++fillBackground(QPainter *painter, const QPainterPath &path, const QColor &base,
++               const Options &opts)
++{
++    if (opts.bgndAppearance == APPEARANCE_STRIPED) {
++        painter->fillPath(path, QBrush(stripeTile(base, opts)));
++        return;
++    }
++    if (opts.bgndAppearance == APPEARANCE_FILE) {
++        painter->fillPath(path, QBrush(opts.bgndPixmap.img));
++        return;
++    }
++    QtCurve::fillGradient(painter, path, base, opts.bgndAppearance, opts);
++}
++
++}
++
++namespace QtCurve {
++
++using KDecoration3::ColorGroup;
++using KDecoration3::ColorRole;
++
++QColor
++shade(const QColor &base, double factor, Shading shading)
++{
++    QColor result;
++    qtcShade(&base, &result, factor, shading);
++    return result;
++}
++
++void
++fillGradient(QPainter *painter, const QPainterPath &path, const QColor &base,
++             EAppearance app, const Options &opts)
++{
++    if (qtcIsFlat(app)) {
++        painter->fillPath(path, base);
++        return;
++    }
++    const Gradient *grad = qtcGetGradient(app, &opts);
++    const QRectF area = path.boundingRect();
++    QLinearGradient gradient(area.topLeft(), area.bottomLeft());
++    for (const auto &stop : grad->stops) {
++        QColor colour = shade(base, stop.val, opts.shading);
++        colour.setAlphaF(stop.alpha * base.alphaF());
++        gradient.setColorAt(stop.pos, colour);
++    }
++    // drawBevelGradientReal() in qt6/style/qtcurve.cpp adds the same two
++    // stops to an agua shape above AGUA_MAX, so a tall button keeps the
++    // gradient of a short one.
++    if (app == APPEARANCE_AGUA && area.height() > AGUA_MAX) {
++        const qreal pos = AGUA_MAX / (area.height() * 2.0);
++        const QColor colour = shade(base, AGUA_MID_SHADE, opts.shading);
++        gradient.setColorAt(pos, colour);
++        gradient.setColorAt(1.0 - pos, colour);
++    }
++    painter->fillPath(path, QBrush(gradient));
++}
++
++Decoration::Decoration(QObject *parent, const QVariantList &args)
++    : KDecoration3::Decoration(parent, args)
++{
++}
++
++Decoration::~Decoration()
++{
++}
++
++const Options&
++Decoration::options() const
++{
++    return DecorationConfig::instance().options();
++}
++
++QColor
++Decoration::titleBarColor() const
++{
++    return window()->color(window()->isActive() ? ColorGroup::Active :
++                           ColorGroup::Inactive, ColorRole::TitleBar);
++}
++
++QColor
++Decoration::fontColor() const
++{
++    return window()->color(window()->isActive() ? ColorGroup::Active :
++                           ColorGroup::Inactive, ColorRole::Foreground);
++}
++
++EAppearance
++Decoration::titleBarAppearance() const
++{
++    const Options &opts = options();
++    return window()->isActive() ? opts.titlebarAppearance :
++        opts.inactiveTitlebarAppearance;
++}
++
++qreal
++Decoration::buttonSize() const
++{
++    return qMax(1.0, titleBarHeight() - 2 * buttonVerticalPad);
++}
++
++qreal
++Decoration::titleBarHeight() const
++{
++    const QFontMetricsF metrics(settings()->font());
++    int height = int(std::ceil(metrics.height() + titleBarTextPad));
++    // A negative TitleBarPad value shrinks the title bar, so the floor applies
++    // after the pad and not before it.
++    height += 2 * DecorationConfig::instance().titleBarPad();
++    height = qMax(height, titleBarMinHeight);
++    // The KDE4 decoration keeps an odd height. An odd height gives an odd
++    // button side, and an odd glyph side then has a centre pixel.
++    if (height % 2 == 0) {
++        height++;
++    }
++    return height;
++}
++
++qreal
++Decoration::borderSize(bool bottom, qreal scale) const
++{
++    // The widths of Tiny to Oversized come from setBorderSize() in
++    // qt6/kwin/qtcurvehandler.cpp. The None size and the NoSides size are the
++    // choice of this plugin. KDecoration3 gives None the meaning of no border.
++    // It gives NoSides the meaning of no side border.
++    const KDecoration3::BorderSize wanted = settings()->borderSize();
++    qreal width = normalBorder;
++    switch (wanted) {
++    case KDecoration3::BorderSize::None:
++        return 0;
++    case KDecoration3::BorderSize::NoSides:
++        // The bottom border keeps the width of the Normal size.
++        if (!bottom) {
++            return 0;
++        }
++        break;
++    case KDecoration3::BorderSize::Tiny:
++        width = 2;
++        break;
++    case KDecoration3::BorderSize::Large:
++        width = 8;
++        break;
++    case KDecoration3::BorderSize::VeryLarge:
++        width = 12;
++        break;
++    case KDecoration3::BorderSize::Huge:
++        width = 18;
++        break;
++    case KDecoration3::BorderSize::VeryHuge:
++        width = 27;
++        break;
++    case KDecoration3::BorderSize::Oversized:
++        width = 40;
++        break;
++    case KDecoration3::BorderSize::Normal:
++    default:
++        break;
++    }
++
++    // setBorderSize() in qt6/kwin/qtcurvehandler.cpp changes the width by the
++    // two border keys of the kwinqtcurverc file. A window with no outer border
++    // loses a pixel. A window with both borders and a small size gains the room
++    // for the second line.
++    const DecorationConfig &config = DecorationConfig::instance();
++    if (config.outerBorder() == DecorationConfig::SHADE_NONE) {
++        if (width > normalBorder) {
++            width--;
++        }
++    } else if (config.innerBorder() != DecorationConfig::SHADE_NONE &&
++               wanted <= KDecoration3::BorderSize::Normal) {
++        width += 2;
++    }
++    return KDecoration3::snapToPixelGrid(width + config.edgePad(), scale);
++}
++
++QMarginsF
++Decoration::bordersFor(qreal scale) const
++{
++    const auto *decorated = window();
++    const Qt::Edges edges = decorated->adjacentScreenEdges();
++    // A maximized window fills the screen, so a border on a maximized axis
++    // falls outside the screen.
++    const bool wide = decorated->isMaximizedHorizontally();
++    const bool tall = decorated->isMaximizedVertically();
++    const qreal side = borderSize(false, scale);
++    const qreal left = (wide || edges.testFlag(Qt::LeftEdge)) ? 0 : side;
++    const qreal right = (wide || edges.testFlag(Qt::RightEdge)) ? 0 : side;
++    const qreal bottom = (tall || decorated->isShaded() ||
++                          edges.testFlag(Qt::BottomEdge)) ? 0 :
++        borderSize(true, scale);
++    const qreal top = KDecoration3::snapToPixelGrid(titleBarHeight(), scale);
++    return QMarginsF(left, top, right, bottom);
++}
++
++void
++Decoration::recalculateBorders()
++{
++    const auto *decorated = window();
++    const qreal scale = decorated->nextScale();
++    const QMarginsF borders = bordersFor(scale);
++    setBorders(borders);
++
++    const Qt::Edges edges = decorated->adjacentScreenEdges();
++    const bool wide = decorated->isMaximizedHorizontally();
++    const bool tall = decorated->isMaximizedVertically();
++
++    // A side edge and the bottom edge need a grab area outside the frame only
++    // where the border size gives no border. A border of any width already
++    // takes the click, and a maximized axis falls outside the screen. The top
++    // edge gets no grab area, as in recalculateBorders() of the Breeze
++    // decoration. A band there would cover the window or the panel above the
++    // title bar.
++    const qreal grab = KDecoration3::snapToPixelGrid(settings()->largeSpacing(),
++                                                     scale);
++    const qreal sides = (borderSize(false, scale) <= 0 && !wide) ? grab : 0;
++    const qreal bottom = (borderSize(true, scale) <= 0 && !tall) ? grab : 0;
++    setResizeOnlyBorders(QMarginsF(sides, 0, sides, bottom));
++
++    // KWin cuts the window to the border radius. The decoration draws the
++    // title bar over the two top corners, so the top radius is the radius of
++    // the title bar. The window content reaches the two bottom corners only
++    // where the bottom border is zero, so every other window keeps square
++    // bottom corners. A maximized axis and a screen edge both give a straight
++    // edge, and a straight edge needs no radius.
++    const bool leftEdge = wide || edges.testFlag(Qt::LeftEdge);
++    const bool rightEdge = wide || edges.testFlag(Qt::RightEdge);
++    const qreal upper = (tall || edges.testFlag(Qt::TopEdge)) ? 0 : topRadius();
++    const qreal lower = (tall || borders.bottom() > 0 ||
++                         edges.testFlag(Qt::BottomEdge)) ? 0 : bottomRadius();
++    setBorderRadius(KDecoration3::BorderRadius(leftEdge ? 0 : upper,
++                                              rightEdge ? 0 : upper,
++                                              rightEdge ? 0 : lower,
++                                              leftEdge ? 0 : lower));
++
++    // A maximized window and a window at a screen edge lose a border. The file
++    // therefore takes the widths of a window that touches no edge.
++    writeBorderSizes(int(std::lround(titleBarHeight())),
++                     int(std::lround(borderSize(true, scale))),
++                     int(std::lround(borderSize(false, scale))));
++}
++
++void
++Decoration::updateTitleBar()
++{
++    const bool maximized = window()->isMaximized();
++    const qreal x = maximized ? 0 : borderLeft();
++    const qreal width = maximized ? size().width() :
++        size().width() - borderLeft() - borderRight();
++    setTitleBar(QRectF(x, 0, width, borderTop()));
++}
++
++void
++Decoration::updateButtonsGeometryDelayed()
++{
++    QTimer::singleShot(0, this, &Decoration::updateButtonsGeometry);
++}
++
++void
++Decoration::updateButtonsGeometry()
++{
++    if (!m_leftButtons || !m_rightButtons) {
++        return;
++    }
++    // A window that touches a screen edge keeps no gap between the outermost
++    // button and that edge. The button grows over the gap and takes every
++    // click up to the edge, which the pointer reaches without aim. The frame
++    // and the glyph keep the square, so the button looks the same. The layout
++    // direction selects which button of a group sits at the outer end. The
++    // Breeze decoration makes the same choice.
++    const auto *decorated = window();
++    const Qt::Edges edges = decorated->adjacentScreenEdges();
++    const bool wide = decorated->isMaximizedHorizontally();
++    const bool leftEdge = wide || edges.testFlag(Qt::LeftEdge);
++    const bool rightEdge = wide || edges.testFlag(Qt::RightEdge);
++    const bool topEdge = decorated->isMaximizedVertically() ||
++        edges.testFlag(Qt::TopEdge);
++
++    const qreal side = buttonSize();
++    const qreal top = KDecoration3::snapToPixelGrid((borderTop() - side) / 2,
++                                                    decorated->scale());
++    // The group sits at the top of the decoration at the top edge, and the
++    // room above the square then belongs to the button.
++    const qreal vPad = topEdge ? top : 0;
++    const auto all = m_leftButtons->buttons() + m_rightButtons->buttons();
++    for (KDecoration3::DecorationButton *button : all) {
++        // The plugin hides the Close, Maximize, Minimize, ContextHelp and Shade
++        // buttons in Button::create() when the window drops the ability.
++        // KDecoration3 hides the ApplicationMenu, OnAllDesktops and
++        // ExcludeFromCapture buttons itself. The outermost
++        // visible button carries the edge growth, and the group position
++        // follows that button. A change of the visible set therefore runs
++        // this call again. A group builds new buttons after a change of the
++        // button list, so the connection starts here, and not in init().
++        connect(button, &KDecoration3::DecorationButton::visibilityChanged,
++                this, &Decoration::updateButtonsGeometry,
++                Qt::UniqueConnection);
++        auto *one = static_cast<Button*>(button);
++        one->setPadding(QMarginsF(0, vPad, 0, 0));
++        one->setGeometry(QRectF(QPointF(0, 0), QSizeF(side, side + vPad)));
++    }
++    m_leftButtons->setSpacing(buttonSpacing);
++    m_rightButtons->setSpacing(buttonSpacing);
++
++    const qreal y = topEdge ? 0 : top;
++    if (Button *const atLeft = leftEdge ? endButton(m_leftButtons, true) :
++        nullptr) {
++        atLeft->setPadding(QMarginsF(buttonEdgePad, vPad, 0, 0));
++        atLeft->setGeometry(QRectF(QPointF(0, 0),
++                                   QSizeF(side + buttonEdgePad, side + vPad)));
++    }
++    if (Button *const atRight = rightEdge ? endButton(m_rightButtons, false) :
++        nullptr) {
++        atRight->setPadding(QMarginsF(0, vPad, buttonEdgePad, 0));
++        atRight->setGeometry(QRectF(QPointF(0, 0),
++                                    QSizeF(side + buttonEdgePad, side + vPad)));
++    }
++
++    // The group box can be wider than the buttons in it. The left group starts
++    // on its anchor. The right group starts one box width inside the right
++    // anchor. anchorGroup() then puts the end button of each group on the
++    // anchor.
++    const qreal leftAnchor = leftEdge ? 0 : borderLeft() + buttonEdgePad;
++    const qreal rightAnchor = rightEdge ? size().width() :
++        size().width() - borderRight() - buttonEdgePad;
++    m_leftButtons->setPos(QPointF(leftAnchor, y));
++    m_rightButtons->setPos(
++        QPointF(rightAnchor - m_rightButtons->geometry().width(), y));
++    anchorGroup(m_leftButtons, true, leftAnchor);
++    anchorGroup(m_rightButtons, false, rightAnchor);
++    update();
++}
++
++bool
++Decoration::init()
++{
++    auto config = settings();
++    connect(config.get(), &KDecoration3::DecorationSettings::borderSizeChanged,
++            this, &Decoration::recalculateBorders);
++    connect(config.get(), &KDecoration3::DecorationSettings::fontChanged,
++            this, &Decoration::recalculateBorders);
++    connect(config.get(), &KDecoration3::DecorationSettings::spacingChanged,
++            this, &Decoration::recalculateBorders);
++    connect(config.get(), &KDecoration3::DecorationSettings::reconfigured,
++            this, &Decoration::recalculateBorders);
++    connect(config.get(),
++            &KDecoration3::DecorationSettings::decorationButtonsLeftChanged,
++            this, &Decoration::updateButtonsGeometryDelayed);
++    connect(config.get(),
++            &KDecoration3::DecorationSettings::decorationButtonsRightChanged,
++            this, &Decoration::updateButtonsGeometryDelayed);
++    connect(config.get(), &KDecoration3::DecorationSettings::reconfigured,
++            this, &Decoration::updateButtonsGeometryDelayed);
++
++    auto *decorated = window();
++    connect(decorated, &KDecoration3::DecoratedWindow::activeChanged,
++            this, [this]() {
++                update();
++            });
++    connect(decorated, &KDecoration3::DecoratedWindow::activeChanged,
++            this, &Decoration::updateShadow);
++    connect(decorated, &KDecoration3::DecoratedWindow::captionChanged,
++            this, [this]() {
++                update(titleBar());
++            });
++    connect(decorated, &KDecoration3::DecoratedWindow::iconChanged,
++            this, [this]() {
++                update(titleBar());
++            });
++    connect(decorated,
++            &KDecoration3::DecoratedWindow::adjacentScreenEdgesChanged,
++            this, &Decoration::recalculateBorders);
++    connect(decorated, &KDecoration3::DecoratedWindow::shadedChanged,
++            this, &Decoration::recalculateBorders);
++    connect(decorated, &KDecoration3::DecoratedWindow::nextScaleChanged,
++            this, &Decoration::recalculateBorders);
++    connect(decorated,
++            &KDecoration3::DecoratedWindow::maximizedHorizontallyChanged,
++            this, &Decoration::recalculateBorders);
++    connect(decorated,
++            &KDecoration3::DecoratedWindow::maximizedVerticallyChanged,
++            this, &Decoration::recalculateBorders);
++    connect(decorated, &KDecoration3::DecoratedWindow::maximizedChanged,
++            this, &Decoration::setOpaque);
++    connect(decorated, &KDecoration3::DecoratedWindow::maximizedChanged,
++            this, &Decoration::updateTitleBar);
++    connect(decorated, &KDecoration3::DecoratedWindow::widthChanged,
++            this, &Decoration::updateTitleBar);
++    connect(decorated, &KDecoration3::DecoratedWindow::widthChanged,
++            this, &Decoration::updateButtonsGeometry);
++    // The outermost button of a group grows at a screen edge. The three
++    // signals below also drive the border code, and they drive the button
++    // geometry as well. A border of zero width stays zero over the change, and
++    // bordersChanged then stays silent.
++    connect(decorated,
++            &KDecoration3::DecoratedWindow::adjacentScreenEdgesChanged,
++            this, &Decoration::updateButtonsGeometry);
++    connect(decorated,
++            &KDecoration3::DecoratedWindow::maximizedHorizontallyChanged,
++            this, &Decoration::updateButtonsGeometry);
++    connect(decorated,
++            &KDecoration3::DecoratedWindow::maximizedVerticallyChanged,
++            this, &Decoration::updateButtonsGeometry);
++    connect(this, &KDecoration3::Decoration::bordersChanged,
++            this, &Decoration::updateTitleBar);
++    connect(this, &KDecoration3::Decoration::bordersChanged,
++            this, &Decoration::updateButtonsGeometry);
++
++    recalculateBorders();
++    updateTitleBar();
++    m_leftButtons = new KDecoration3::DecorationButtonGroup(
++        KDecoration3::DecorationButtonGroup::Position::Left, this,
++        &Button::create);
++    m_rightButtons = new KDecoration3::DecorationButtonGroup(
++        KDecoration3::DecorationButtonGroup::Position::Right, this,
++        &Button::create);
++    updateButtonsGeometry();
++    updateShadow();
++    return true;
++}
++
++void
++Decoration::updateShadow()
++{
++    const bool active = window()->isActive();
++    auto &shared = active ? activeShadow : inactiveShadow;
++    if (!shared) {
++        shared = shadowFor(active);
++    }
++    setShadow(shared);
++}
++
++qreal
++Decoration::topRadius() const
++{
++    const Options &opts = options();
++    // QtC_Round in qt6/style/qtcurve_api.cpp lowers the round key to the
++    // slight value while the square key holds the window bit.
++    const int round = ((opts.square & SQUARE_WINDOWS) &&
++                       opts.round > ROUND_SLIGHT) ? ROUND_SLIGHT : opts.round;
++    if (window()->isMaximized() || !settings()->isAlphaChannelSupported() ||
++        round <= ROUND_SLIGHT) {
++        return 0;
++    }
++    return (titleBarAppearance() == APPEARANCE_NONE ? noAppearanceRadius :
++            titleBarRadius);
++}
++
++qreal
++Decoration::bottomRadius() const
++{
++    if (topRadius() <= 0) {
++        return 0;
++    }
++    return (DecorationConfig::instance().roundBottom() ? roundBottomRadius :
++            flatBottomRadius);
++}
++
++QPainterPath
++Decoration::framePath() const
++{
++    return framedPath(rect(), topRadius(), bottomRadius());
++}
++
++QColor
++Decoration::borderColor(DecorationConfig::Shade shadeType) const
++{
++    const Options &opts = options();
++    const QColor base = titleBarColor();
++    if (shadeType == DecorationConfig::SHADE_LIGHT) {
++        return shade(base, shadeFactor(opts, 0), opts.shading);
++    }
++    // paintEvent() in qt6/kwin/qtcurveclient.cpp takes the shadow colour with
++    // the CustomShadows key on alone. It falls back to the dark shade.
++    if (shadeType == DecorationConfig::SHADE_SHADOW &&
++        DecorationConfig::instance().customShadows()) {
++        const bool active = window()->isActive();
++        const QColor shadowColour = DecorationConfig::instance().shadow(active).color();
++        return qtcColorMix(&base, &shadowColour,
++                           active ? activeShadowBorderAlpha :
++                           inactiveShadowBorderAlpha);
++    }
++    return shade(base, shadeFactor(opts, QTC_STD_BORDER), opts.shading);
++}
++
++qreal
++Decoration::captionIconSide() const
++{
++    if (options().titlebarIcon != TITLEBAR_ICON_NEXT_TO_TITLE ||
++        window()->icon().isNull()) {
++        return 0;
++    }
++    return std::floor(qMin(QFontMetricsF(settings()->font()).height(),
++                           borderTop() - 2 * buttonVerticalPad));
++}
++
++qreal
++Decoration::captionIconRoom() const
++{
++    const qreal side = captionIconSide();
++    return side > 0 ? side + iconPad : 0;
++}
++
++QPair<QRectF, Qt::Alignment>
++Decoration::captionRect() const
++{
++    const qreal width = size().width();
++    const qreal leftOffset = (!m_leftButtons ||
++                              m_leftButtons->buttons().isEmpty()) ?
++        captionPad : m_leftButtons->geometry().right() + captionPad;
++    const qreal rightOffset = (!m_rightButtons ||
++                               m_rightButtons->buttons().isEmpty()) ?
++        captionPad : width - m_rightButtons->geometry().left() + captionPad;
++    const QRectF between(leftOffset, 0, qMax(qreal(0),
++                                             width - leftOffset - rightOffset),
++                         borderTop());
++
++    switch (options().titlebarAlignment) {
++    case ALIGN_LEFT:
++        return qMakePair(between, Qt::AlignVCenter | Qt::AlignLeft);
++    case ALIGN_RIGHT:
++        return qMakePair(between, Qt::AlignVCenter | Qt::AlignRight);
++    case ALIGN_CENTER:
++        return qMakePair(between, Qt::AlignCenter);
++    case ALIGN_FULL_CENTER:
++    default:
++        break;
++    }
++
++    // The full centre alignment centres the caption over the whole title bar
++    // while the icon and the text clear both button groups.
++    QRectF bounds = settings()->fontMetrics().boundingRect(window()->caption());
++    bounds.setWidth(bounds.width() + captionIconRoom());
++    bounds.moveLeft((width - bounds.width()) / 2);
++    if (bounds.left() < leftOffset) {
++        return qMakePair(between, Qt::AlignVCenter | Qt::AlignLeft);
++    }
++    if (bounds.right() > width - rightOffset) {
++        return qMakePair(between, Qt::AlignVCenter | Qt::AlignRight);
++    }
++    return qMakePair(QRectF(0, 0, width, borderTop()), Qt::AlignCenter);
++}
++
++void
++Decoration::paintTitleBar(QPainter *painter, const QRectF &repaintRegion)
++{
++    const qreal height = borderTop();
++    if (height <= 0) {
++        return;
++    }
++    const QRectF bar(0, 0, size().width(), height);
++    if (!bar.intersects(repaintRegion)) {
++        return;
++    }
++    const Options &opts = options();
++
++    painter->save();
++    painter->setRenderHint(QPainter::Antialiasing);
++    painter->setPen(Qt::NoPen);
++
++    // The gradient covers the title bar only. A path over the whole window
++    // stretches the same gradient over the border as well, which flattens the
++    // shading.
++    const QPainterPath barPath = framedPath(bar, topRadius(), 0);
++
++    // The fill title bar flag adds the window background under the title bar
++    // appearance. paintEvent() in qt6/kwin/qtcurveclient.cpp lets the flag
++    // extend the background fill over the title bar.
++    if (opts.windowBorder & WINDOW_BORDER_FILL_TITLEBAR) {
++        fillBackground(painter, barPath,
++                       window()->color(window()->isActive() ?
++                                       ColorGroup::Active :
++                                       ColorGroup::Inactive,
++                                       ColorRole::Frame),
++                       opts);
++    }
++    // CC_TitleBar in qt6/style/qtcurve_api.cpp draws no title bar fill under
++    // KWin for the none appearance, so the paint below it stays.
++    if (titleBarAppearance() != APPEARANCE_NONE) {
++        fillGradient(painter, barPath, titleBarColor(), titleBarAppearance(),
++                     opts);
++    }
++    painter->restore();
++
++    painter->save();
++    painter->setFont(settings()->font());
++    const QFontMetricsF metrics(settings()->font());
++    const auto [area, alignment] = captionRect();
++
++    // The titlebarIcon key selects the place of the window icon.
++    // Button::paint() draws the icon in the menu button for the menu button
++    // value. The caption therefore holds the icon for the title value alone.
++    const QIcon icon = (opts.titlebarIcon == TITLEBAR_ICON_NEXT_TO_TITLE ?
++                        window()->icon() : QIcon());
++    const qreal iconSide = captionIconSide();
++    const qreal iconRoom = captionIconRoom();
++    const QString caption =
++        metrics.elidedText(window()->caption(), Qt::ElideRight,
++                           qMax(qreal(0), area.width() - iconRoom));
++    const qreal textWidth = metrics.horizontalAdvance(caption);
++    const qreal blockWidth = textWidth + iconRoom;
++
++    qreal left = area.left();
++    if (alignment & Qt::AlignRight) {
++        left = area.right() - blockWidth;
++    } else if (alignment & Qt::AlignHCenter) {
++        left = area.left() + (area.width() - blockWidth) / 2;
++    }
++    if (iconSide > 0) {
++        icon.paint(painter,
++                   QRectF(left, (height - iconSide) / 2, iconSide,
++                          iconSide).toRect());
++    }
++    const QRectF textRect(left + iconRoom, 0, textWidth, height);
++
++    // The titlebarEffect key selects the second caption under the caption. The
++    // shadow value draws one pixel down and one pixel right, in a ten percent
++    // black mix of the title bar colour. The etch value draws one pixel down,
++    // in a sixty percent white mix of the title bar colour.
++    QColor text = fontColor();
++    if (opts.titlebarEffect != EFFECT_NONE) {
++        const QColor edge(WINDOW_SHADOW_COLOR(opts.titlebarEffect));
++        const QColor base = titleBarColor();
++        painter->setPen(qtcColorMix(&base, &edge,
++                                    WINDOW_TEXT_SHADOW_ALPHA(
++                                        opts.titlebarEffect)));
++        painter->drawText(textRect.translated(
++                              opts.titlebarEffect == EFFECT_SHADOW ? 1 : 0, 1),
++                          Qt::AlignVCenter | Qt::AlignLeft | Qt::TextSingleLine,
++                          caption);
++        // paintTitle() in qt6/kwin/qtcurveclient.cpp fades a dark caption of
++        // an inactive window towards the title bar colour.
++        if (!window()->isActive() && DARK_WINDOW_TEXT(text)) {
++            text = qtcColorMix(&base, &text, inactiveTextBlend);
++        }
++    }
++    painter->setPen(text);
++    painter->drawText(textRect,
++                      Qt::AlignVCenter | Qt::AlignLeft | Qt::TextSingleLine,
++                      caption);
++    painter->restore();
++
++    if (m_leftButtons) {
++        m_leftButtons->paint(painter, repaintRegion);
++    }
++    if (m_rightButtons) {
++        m_rightButtons->paint(painter, repaintRegion);
++    }
++}
++
++void
++Decoration::paint(QPainter *painter, const QRectF &repaintRegion)
++{
++    const Options &opts = options();
++    const DecorationConfig &config = DecorationConfig::instance();
++    const ColorGroup group = window()->isActive() ? ColorGroup::Active :
++        ColorGroup::Inactive;
++    const QPainterPath frame = framePath();
++
++    // The colorTitlebarOnly key gives the border the window background. The
++    // border keeps the title bar colour while the key is off, which is the
++    // default of the style.
++    const QColor fill =
++        window()->color(group, opts.windowBorder &
++                        WINDOW_BORDER_COLOR_TITLEBAR_ONLY ?
++                        ColorRole::Frame : ColorRole::TitleBar);
++    painter->save();
++    painter->setRenderHint(QPainter::Antialiasing);
++    painter->setPen(Qt::NoPen);
++    painter->fillPath(frame, fill);
++    painter->restore();
++
++    paintTitleBar(painter, repaintRegion);
++
++    const QColor base = titleBarColor();
++    const qreal top = topRadius();
++    const qreal bottom = bottomRadius();
++
++    // The light line follows the top edge and the two side edges of the title
++    // bar, one pixel inside the frame line. It also runs down the left border.
++    // A window with the no shade value in the OuterBorder key gets no frame
++    // line and no light line, as in paintEvent() of
++    // qt6/kwin/qtcurveclient.cpp.
++    if ((opts.windowBorder & WINDOW_BORDER_ADD_LIGHT_BORDER) &&
++        config.outerBorder() != DecorationConfig::SHADE_NONE) {
++        painter->save();
++        painter->setRenderHint(QPainter::Antialiasing);
++        painter->setBrush(Qt::NoBrush);
++        painter->setPen(QPen(shade(base, shadeFactor(opts, 0), opts.shading),
++                             1.0));
++        // drawPrimitiveFrameWindow() in qt6/style/qtcurve_primitive.cpp drew
++        // the part below the title bar. It drew none for a side border of one
++        // pixel or less.
++        if (borderLeft() > 1) {
++            const qreal gap = (config.roundBottom() ? roundBottomLightGap :
++                               flatBottomLightGap);
++            painter->drawLine(QPointF(1.5, borderTop()),
++                              QPointF(1.5, size().height() - gap));
++        }
++        painter->setClipRect(QRectF(0, 0, size().width(), borderTop()),
++                             Qt::IntersectClip);
++        painter->drawPath(framedPath(rect().adjusted(1.5, 1.5, -1.5, 0),
++                                     qMax(qreal(0), top - 1.5), 0));
++        painter->restore();
++    }
++
++    // The frame line follows the same rule. The fill above covers the whole
++    // window, so the border keeps the fill colour to the edge without the line.
++    if (config.outerBorder() != DecorationConfig::SHADE_NONE) {
++        painter->save();
++        painter->setRenderHint(QPainter::Antialiasing);
++        painter->setBrush(Qt::NoBrush);
++        painter->setPen(QPen(borderColor(config.outerBorder()), 1.0));
++        painter->drawPath(framedPath(rect().adjusted(0.5, 0.5, -0.5, -0.5),
++                                     qMax(qreal(0), top - 0.5),
++                                     qMax(qreal(0), bottom - 0.5)));
++        // paintEvent() in qt6/kwin/qtcurveclient.cpp drew the inner line one
++        // pixel outside the window content. The line therefore follows the
++        // inner edge of each border and not the window edge. A border of no
++        // width leaves the line on the frame line.
++        if (config.innerBorder() != DecorationConfig::SHADE_NONE) {
++            const QRectF inner =
++                rect().adjusted(qMax(qreal(0.5), borderLeft() - 0.5),
++                                qMax(qreal(0.5), borderTop() - 0.5),
++                                -qMax(qreal(0.5), borderRight() - 0.5),
++                                -qMax(qreal(0.5), borderBottom() - 0.5));
++            if (inner.isValid()) {
++                painter->setPen(QPen(borderColor(config.innerBorder()), 1.0));
++                painter->drawRect(inner);
++            }
++        }
++        painter->restore();
++    }
++
++    // The separator takes the caption colour. It fades the end that the
++    // caption leaves free, as drawFadedLine() in qt6/kwin/qtcurveclient.cpp
++    // did.
++    if (window()->isActive() && (opts.windowBorder & WINDOW_BORDER_SEPARATOR)) {
++        const qreal line = borderTop() - 0.5;
++        const qreal left = separatorInset + 0.5;
++        const qreal right = size().width() - separatorInset - 0.5;
++        if (right > left) {
++            QColor colour = fontColor();
++            colour.setAlphaF(separatorAlpha);
++            // The KDE4 gradient fades to a clear white, so the two ends run
++            // through the light half of the colour space.
++            QColor clear(Qt::white);
++            clear.setAlphaF(0);
++            const bool fadeLeft = (opts.titlebarAlignment != ALIGN_LEFT);
++            const bool fadeRight = (opts.titlebarAlignment != ALIGN_RIGHT);
++            QLinearGradient gradient(QPointF(left, line), QPointF(right, line));
++            gradient.setColorAt(0, fadeLeft ? clear : colour);
++            gradient.setColorAt(FADE_SIZE, colour);
++            gradient.setColorAt(1 - FADE_SIZE, colour);
++            gradient.setColorAt(1, fadeRight ? clear : colour);
++            painter->save();
++            painter->setPen(QPen(QBrush(gradient), 1.0));
++            painter->drawLine(QPointF(left, line), QPointF(right, line));
++            painter->restore();
++        }
++    }
++}
++
++}
++
++#include "qtcurvedecoration.moc"
+diff --git a/qt6/kdecoration/qtcurvedecoration.h b/qt6/kdecoration/qtcurvedecoration.h
+new file mode 100644
+index 00000000..7e12f37a
+--- /dev/null
++++ b/qt6/kdecoration/qtcurvedecoration.h
+@@ -0,0 +1,218 @@
++/*****************************************************************************
++ *   Copyright 2003 - 2010 Craig Drummond <craig.p.drummond@gmail.com>       *
++ *   Copyright 2013 - 2015 Yichao Yu <yyc1992@gmail.com>                     *
++ *                                                                           *
++ *   This program is free software; you can redistribute it and/or modify    *
++ *   it under the terms of the GNU Lesser General Public License as          *
++ *   published by the Free Software Foundation; either version 2.1 of the    *
++ *   License, or (at your option) version 3, or any later version accepted   *
++ *   by the membership of KDE e.V. (or its successor approved by the         *
++ *   membership of KDE e.V.), which shall act as a proxy defined in          *
++ *   Section 6 of version 3 of the license.                                  *
++ *                                                                           *
++ *   This program is distributed in the hope that it will be useful,         *
++ *   but WITHOUT ANY WARRANTY; without even the implied warranty of          *
++ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU       *
++ *   Lesser General Public License for more details.                         *
++ *                                                                           *
++ *   You should have received a copy of the GNU Lesser General Public        *
++ *   License along with this library. If not,                                *
++ *   see <http://www.gnu.org/licenses/>.                                     *
++ *****************************************************************************/
++
++#ifndef qtcurvedecoration_h
++#define qtcurvedecoration_h
++
++#include "qtcurvedecorationconfig.h"
++
++#include <KDecoration3/DecoratedWindow>
++#include <KDecoration3/Decoration>
++
++#include <QColor>
++#include <QMarginsF>
++#include <QPainterPath>
++#include <QRectF>
++#include <QVariantList>
++
++namespace KDecoration3 {
++class DecorationButtonGroup;
++}
++
++namespace QtCurve {
++
++//! darken or lighten a colour the way the QtCurve style does
++/*! \param base the colour to change.
++    \param factor the shade factor. A factor above 1.0 gives a lighter colour
++    and a factor below 1.0 gives a darker colour.
++    \param shading the shading mode of the style settings.
++    \return the shaded colour, with the alpha value of the base. */
++QColor shade(const QColor &base, double factor, Shading shading);
++
++//! paint a QtCurve appearance from the top of a shape to the bottom of the shape
++/*! A flat appearance gives a plain fill. Every other appearance gives the
++    gradient that qtcGetGradient() holds for it.
++    \param painter the painter to draw with.
++    \param path the shape to fill.
++    \param base the colour that the shade factors of the gradient act on.
++    \param app the appearance to draw.
++    \param opts the settings of the style. */
++void fillGradient(QPainter *painter, const QPainterPath &path,
++                  const QColor &base, EAppearance app, const Options &opts);
++
++//! the QtCurve window decoration for Plasma 6
++/*! The decoration draws the title bar, the caption, the buttons and the window
++    border for one window. It takes the colours and the border size from
++    KDecoration3, and it takes the look from the configuration file of the
++    QtCurve style. The compositor thread owns every decoration. */
++class Decoration : public KDecoration3::Decoration {
++    Q_OBJECT
++public:
++    //! make a decoration
++    /*! \param parent the parent object, or a null pointer.
++        \param args the arguments of the decoration framework. The framework
++        passes the bridge and the window in this list. */
++    explicit Decoration(QObject *parent=nullptr,
++                        const QVariantList &args=QVariantList());
++    ~Decoration() override;
++
++    //! draw the decoration
++    /*! \param painter the painter of the decoration framework.
++        \param repaintRegion the area that needs paint, in the coordinates of
++        the decoration. */
++    void paint(QPainter *painter, const QRectF &repaintRegion) override;
++
++    //! the settings of the QtCurve style
++    /*! \return the options of the single Config of the process. */
++    const Options &options() const;
++
++    //! the colour under the title bar gradient
++    /*! \return the title bar colour of the active window group, or of the
++        inactive window group. */
++    QColor titleBarColor() const;
++
++    //! the colour of the caption and of the button glyphs
++    /*! \return the foreground colour of the active window group, or of the
++        inactive window group. */
++    QColor fontColor() const;
++
++    //! the appearance of the title bar of the current window state
++    /*! \return titlebarAppearance for an active window, and
++        inactiveTitlebarAppearance for an inactive window. */
++    EAppearance titleBarAppearance() const;
++
++    //! the length of one side of a square title bar button, in pixels
++    qreal buttonSize() const;
++
++public Q_SLOTS:
++    //! connect the signals and make the buttons
++    /*! The decoration framework calls this method one time, after it builds
++        the decoration.
++        \return true. The decoration needs no resource that can fail. */
++    bool init() override;
++
++private Q_SLOTS:
++    //! give the borders, the grab areas and the corner radius their values
++    /*! The border size of the settings, the maximized state of the window and
++        the screen edges beside the window select the three values. The call
++        also writes the four border widths for the QtCurve style. */
++    void recalculateBorders();
++    //! put the buttons in the title bar
++    void updateButtonsGeometry();
++    //! put the buttons in the title bar at the end of the current event cycle
++    /*! The button group of the framework reads the button list of the settings
++        after it emits the change signal. The move therefore waits for the
++        timer. */
++    void updateButtonsGeometryDelayed();
++    //! tell the framework which area takes a click on the title bar
++    void updateTitleBar();
++    //! give the window the drop shadow of the current window state
++    /*! A false CustomShadows key gives the window no shadow. */
++    void updateShadow();
++
++private:
++    //! the side of the window icon of the caption, in pixels
++    /*! \return the side, or zero while the caption holds no icon. The
++        titlebarIcon key and the icon of the window select the value. */
++    qreal captionIconSide() const;
++
++    //! the room of the window icon of the caption, in pixels
++    /*! \return the side of the icon plus the gap to the text, or zero while
++        the caption holds no icon. */
++    qreal captionIconRoom() const;
++
++    //! the area that holds the caption
++    /*! \return the rectangle between the two button groups, and the alignment
++        of the caption in that rectangle. The titlebarAlignment key selects the
++        alignment. The full centre alignment centres the caption over the whole
++        title bar while the icon and the text fit there. The caption sits
++        beside a button group while they do not fit. */
++    QPair<QRectF, Qt::Alignment> captionRect() const;
++
++    //! draw the title bar, the caption and the buttons
++    /*! \param painter the painter of the decoration framework.
++        \param repaintRegion the area that needs paint. The call returns at
++        once when the area misses the title bar. */
++    void paintTitleBar(QPainter *painter, const QRectF &repaintRegion);
++
++    //! the height of the title bar, in pixels
++    /*! The value holds the height of the caption font, room for the caption
++        shadow, and two times the TitleBarPad value of the kwinqtcurverc file.
++        A negative pad value drives the sum down, so the floor applies after
++        the pad.
++        \return the height, which is never less than 16 pixels. The value is
++        odd, as in the KDE4 decoration, so a button and a glyph both keep a
++        centre pixel. */
++    qreal titleBarHeight() const;
++
++    //! the width of the side border and of the bottom border, in pixels
++    /*! \param bottom true for the bottom border, false for a side border.
++        \param scale the scale of the screen that shows the window.
++        \return the border width for the border size of the settings, after the
++        OuterBorder key, the InnerBorder key and the EdgePad key change it. The
++        width is zero for the None size, and zero for a side border at the
++        NoSides size. */
++    qreal borderSize(bool bottom, qreal scale) const;
++
++    //! the four borders of the window
++    /*! \param scale the scale of the screen that shows the window.
++        \return the border widths. A border is zero where the window is
++        maximized, where the window touches the screen edge, or where the
++        shaded state hides it. */
++    QMarginsF bordersFor(qreal scale) const;
++
++    //! the corner radius of the top of the window, in pixels
++    /*! \return zero for a maximized window, for a screen with no alpha
++        channel, for the window bit of the square key and for a round key below
++        the full value. Every other window gets 6.0 pixels for a title bar with
++        no appearance, and 8.0 pixels for every other title bar. The KDE4
++        decoration used the same two values. */
++    qreal topRadius() const;
++
++    //! the corner radius of the bottom of the window, in pixels
++    /*! \return zero where topRadius() gives zero. The RoundBottom key of the
++        kwinqtcurverc file selects 6.0 pixels or 1.0 pixel. */
++    qreal bottomRadius() const;
++
++    //! the outline of the whole decoration
++    /*! \return a rectangle with the corner radius of the two radius methods. */
++    QPainterPath framePath() const;
++
++    //! the colour of one window border line
++    /*! \param shadeType the shade that the OuterBorder key or the InnerBorder
++        key holds. paint() draws no line for the no shade value, and it makes
++        no call with that value.
++        \return the light shade of the title bar colour, the border shade of
++        the title bar colour, or the colour of the drop shadow. The no shade
++        value gives the border shade, and so does the shadow value while the
++        CustomShadows key is off. */
++    QColor borderColor(DecorationConfig::Shade shadeType) const;
++
++    //! the buttons at the left end of the title bar
++    KDecoration3::DecorationButtonGroup *m_leftButtons=nullptr;
++    //! the buttons at the right end of the title bar
++    KDecoration3::DecorationButtonGroup *m_rightButtons=nullptr;
++};
++
++}
++
++#endif
+diff --git a/qt6/kdecoration/qtcurvedecorationbutton.cpp b/qt6/kdecoration/qtcurvedecorationbutton.cpp
+new file mode 100644
+index 00000000..72de19ef
+--- /dev/null
++++ b/qt6/kdecoration/qtcurvedecorationbutton.cpp
+@@ -0,0 +1,565 @@
++/*****************************************************************************
++ *   Copyright 2003 - 2010 Craig Drummond <craig.p.drummond@gmail.com>       *
++ *   Copyright 2013 - 2015 Yichao Yu <yyc1992@gmail.com>                     *
++ *                                                                           *
++ *   This program is free software; you can redistribute it and/or modify    *
++ *   it under the terms of the GNU Lesser General Public License as          *
++ *   published by the Free Software Foundation; either version 2.1 of the    *
++ *   License, or (at your option) version 3, or any later version accepted   *
++ *   by the membership of KDE e.V. (or its successor approved by the         *
++ *   membership of KDE e.V.), which shall act as a proxy defined in          *
++ *   Section 6 of version 3 of the license.                                  *
++ *                                                                           *
++ *   This program is distributed in the hope that it will be useful,         *
++ *   but WITHOUT ANY WARRANTY; without even the implied warranty of          *
++ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU       *
++ *   Lesser General Public License for more details.                         *
++ *                                                                           *
++ *   You should have received a copy of the GNU Lesser General Public        *
++ *   License along with this library. If not,                                *
++ *   see <http://www.gnu.org/licenses/>.                                     *
++ *****************************************************************************/
++
++#include "qtcurvedecorationbutton.h"
++
++#include <KDecoration3/DecoratedWindow>
++
++#include <QIcon>
++#include <QPainter>
++#include <QPolygonF>
++#include <QRectF>
++
++#include <qtcurve-utils/color.h>
++
++#include <cmath>
++
++namespace {
++
++//! the smallest side of the line art of a button, in pixels
++const qreal minGlyphSide = 5.0;
++
++//! the entry of the titlebarButtonColors key for one button type
++/*! \param type the button type of the decoration framework.
++    \return the entry, or NUM_TITLEBAR_BUTTONS while the key holds no entry
++    for the type. */
++int
++buttonColorIndex(KDecoration3::DecorationButtonType type)
++{
++    switch (type) {
++    case KDecoration3::DecorationButtonType::Close:
++        return TITLEBAR_CLOSE;
++    case KDecoration3::DecorationButtonType::Minimize:
++        return TITLEBAR_MIN;
++    case KDecoration3::DecorationButtonType::Maximize:
++        return TITLEBAR_MAX;
++    case KDecoration3::DecorationButtonType::ContextHelp:
++        return TITLEBAR_HELP;
++    case KDecoration3::DecorationButtonType::Menu:
++    case KDecoration3::DecorationButtonType::ApplicationMenu:
++        return TITLEBAR_MENU;
++    case KDecoration3::DecorationButtonType::Shade:
++        return TITLEBAR_SHADE;
++    case KDecoration3::DecorationButtonType::OnAllDesktops:
++        return TITLEBAR_ALL_DESKTOPS;
++    case KDecoration3::DecorationButtonType::KeepAbove:
++        return TITLEBAR_KEEP_ABOVE;
++    case KDecoration3::DecorationButtonType::KeepBelow:
++        return TITLEBAR_KEEP_BELOW;
++    default:
++        return NUM_TITLEBAR_BUTTONS;
++    }
++}
++
++//! draw a filled triangle
++/*! \param painter the painter to draw with. The call uses the brush of the
++    painter.
++    \param rect the area of the triangle.
++    \param up true for a triangle that points up, false for a triangle that
++    points down. */
++void
++drawArrow(QPainter *painter, const QRectF &rect, bool up)
++{
++    QPolygonF arrow;
++    if (up) {
++        arrow << QPointF(rect.left(), rect.bottom())
++              << QPointF(rect.right(), rect.bottom())
++              << QPointF(rect.center().x(), rect.top());
++    } else {
++        arrow << QPointF(rect.left(), rect.top())
++              << QPointF(rect.right(), rect.top())
++              << QPointF(rect.center().x(), rect.bottom());
++    }
++    painter->drawPolygon(arrow);
++}
++
++//! draw the symbol of a window
++/*! The symbol is a thin frame with a thick bar along the top edge, as in
++    IconEngine::icon() of the KDE4 decoration.
++    \param painter the painter to draw with. The call draws the frame with the
++    pen and fills the bar with the colour of the pen. The call takes no colour
++    from the brush, and every caller sets Qt::NoBrush, because a brush fills
++    the frame.
++    \param rect the area of the symbol.
++    \param frameWidth the width of the frame, in pixels.
++    \param barHeight the height of the bar, in pixels. */
++void
++drawWindowSymbol(QPainter *painter, const QRectF &rect, qreal frameWidth,
++                 qreal barHeight)
++{
++    const qreal inset = frameWidth / 2.0;
++    painter->drawRect(rect.adjusted(inset, inset, -inset, -inset));
++    painter->fillRect(QRectF(rect.left(), rect.top(), rect.width(), barHeight),
++                      painter->pen().color());
++}
++
++}
++
++namespace QtCurve {
++
++using KDecoration3::DecorationButtonType;
++
++Button::Button(DecorationButtonType type, Decoration *decoration,
++               QObject *parent)
++    : KDecoration3::DecorationButton(type, decoration, parent)
++{
++    connect(this, &KDecoration3::DecorationButton::hoveredChanged,
++            this, [this]() {
++                update();
++            });
++    connect(this, &KDecoration3::DecorationButton::pressedChanged,
++            this, [this]() {
++                update();
++            });
++}
++
++Button::Button(QObject *parent, const QVariantList &args)
++    : Button(args.at(0).value<DecorationButtonType>(),
++             args.at(1).value<Decoration*>(), parent)
++{
++}
++
++Button*
++Button::create(DecorationButtonType type, KDecoration3::Decoration *decoration,
++               QObject *parent)
++{
++    auto *owner = qobject_cast<Decoration*>(decoration);
++    if (!owner) {
++        return nullptr;
++    }
++    auto *button = new Button(type, owner, parent);
++    const auto *decorated = owner->window();
++    switch (type) {
++    case DecorationButtonType::Close:
++        button->setVisible(decorated->isCloseable());
++        connect(decorated, &KDecoration3::DecoratedWindow::closeableChanged,
++                button, &Button::setVisible);
++        break;
++    case DecorationButtonType::Maximize:
++        button->setVisible(decorated->isMaximizeable());
++        connect(decorated, &KDecoration3::DecoratedWindow::maximizeableChanged,
++                button, &Button::setVisible);
++        break;
++    case DecorationButtonType::Minimize:
++        button->setVisible(decorated->isMinimizeable());
++        connect(decorated, &KDecoration3::DecoratedWindow::minimizeableChanged,
++                button, &Button::setVisible);
++        break;
++    case DecorationButtonType::ContextHelp:
++        button->setVisible(decorated->providesContextHelp());
++        connect(decorated,
++                &KDecoration3::DecoratedWindow::providesContextHelpChanged,
++                button, &Button::setVisible);
++        break;
++    case DecorationButtonType::Shade:
++        button->setVisible(decorated->isShadeable());
++        connect(decorated, &KDecoration3::DecoratedWindow::shadeableChanged,
++                button, &Button::setVisible);
++        break;
++    default:
++        break;
++    }
++    return button;
++}
++
++bool
++Button::showsIcon() const
++{
++    const auto *owner = qobject_cast<Decoration*>(decoration());
++    return (owner && type() == KDecoration3::DecorationButtonType::Menu &&
++            owner->options().titlebarIcon == TITLEBAR_ICON_MENU_BUTTON);
++}
++
++bool
++Button::colored() const
++{
++    const auto *owner = qobject_cast<Decoration*>(decoration());
++    if (!owner) {
++        return false;
++    }
++    const int flags = owner->options().titlebarButtons;
++    if (!(flags & TITLEBAR_BUTTON_COLOR)) {
++        return false;
++    }
++    const bool hover = isHovered() || isPressed();
++    if (owner->window()->isActive()) {
++        return hover || !(flags & TITLEBAR_BUTTON_COLOR_MOUSE_OVER);
++    }
++    return ((flags & TITLEBAR_BUTTON_COLOR_MOUSE_OVER) && hover) ||
++        (!(flags & TITLEBAR_BUTTON_COLOR_MOUSE_OVER) &&
++         (flags & TITLEBAR_BUTTON_COLOR_INACTIVE));
++}
++
++QColor
++Button::buttonColor() const
++{
++    const auto *owner = qobject_cast<Decoration*>(decoration());
++    if (!owner) {
++        return QColor();
++    }
++    const Options &opts = owner->options();
++    const auto entry = opts.titlebarButtonColors.find(buttonColorIndex(type()));
++    if (entry == opts.titlebarButtonColors.end()) {
++        return owner->titleBarColor();
++    }
++    return entry->second;
++}
++
++QColor
++Button::glyphColor() const
++{
++    const auto *owner = qobject_cast<Decoration*>(decoration());
++    if (!owner) {
++        return QColor();
++    }
++    const Options &opts = owner->options();
++    const int flags = opts.titlebarButtons;
++    QColor color = owner->fontColor();
++    if (colored() && (flags & TITLEBAR_BUTTON_COLOR_SYMBOL)) {
++        color = buttonColor();
++    } else if (isHovered() && !isPressed() &&
++               !(flags & TITLEBAR_BUTTON_COLOR) &&
++               type() == DecorationButtonType::Close) {
++        color = CLOSE_COLOR;
++    }
++    if (isPressed() || isHovered() ||
++        !(flags & TITLEBAR_BUTTON_HOVER_SYMBOL)) {
++        return color;
++    }
++    // The hover symbol flag fades the glyph while the pointer sits away from
++    // the button.
++    color.setAlphaF(HOVER_BUTTON_ALPHA(color));
++    return color;
++}
++
++bool
++Button::drawFrame(QPainter *painter, const QRectF &rect) const
++{
++    const auto *owner = qobject_cast<Decoration*>(decoration());
++    if (!owner) {
++        return false;
++    }
++    const Options &opts = owner->options();
++    const int flags = opts.titlebarButtons;
++    const bool hover = isHovered() || isPressed();
++    if ((flags & TITLEBAR_BUTTON_NO_FRAME) ||
++        (!hover && (flags & TITLEBAR_BUTTON_HOVER_FRAME)) || showsIcon()) {
++        return false;
++    }
++
++    // The round flag gives a circle. Every other setting gives the corner
++    // radius that the round key of the style asks for. qtcGetRadius() reads
++    // both keys.
++    // The colour symbol flag moves the custom colour to the line art.
++    // QtCurveButton::drawButton() in qt6/kwin/qtcurvebutton.cpp therefore left
++    // the title bar colour on the frame.
++    const QColor base = (colored() &&
++                         !(flags & TITLEBAR_BUTTON_COLOR_SYMBOL)) ?
++        buttonColor() : owner->titleBarColor();
++    // qtcurvebutton.cpp took one pixel of the square for the round flag and
++    // one more for the sunken background flag. The etch of drawLightBevelReal()
++    // in qt6/style/qtcurve.cpp took one further pixel. That route gave a tool
++    // window no round pixel, and KDecoration3 reports no tool window.
++    const qreal inset = 0.5 +
++        ((flags & TITLEBAR_BUTTON_ROUND) ? 1 : 0) +
++        ((flags & TITLEBAR_BUTTON_SUNKEN_BACKGROUND) ? 1 : 0) +
++        (opts.buttonEffect != EFFECT_NONE ? 1 : 0);
++    const QRectF area = rect.adjusted(inset, inset, -inset, -inset);
++    if (area.width() <= 0 || area.height() <= 0) {
++        return false;
++    }
++    const double radius = qtcGetRadius(&opts, int(area.width()),
++                                       int(area.height()),
++                                       WIDGET_MDI_WINDOW_BUTTON,
++                                       RADIUS_EXTERNAL);
++    QPainterPath path;
++    path.addRoundedRect(area, radius, radius);
++    fillGradient(painter, path, base,
++                 isPressed() ? opts.sunkenAppearance :
++                 opts.titlebarButtonAppearance, opts);
++    painter->setBrush(Qt::NoBrush);
++    painter->setPen(QPen(shade(base, shadeFactor(opts, QTC_STD_BORDER),
++                               opts.shading), 1.0));
++    painter->drawPath(path);
++    return true;
++}
++
++void
++Button::drawGlyph(QPainter *painter, const QRectF &rect,
++                  const QColor &color) const
++{
++    const qreal side = qMin(rect.width(), rect.height());
++    // The three widths follow IconEngine::icon() of the KDE4 decoration. A
++    // stroke draws a line. A bar draws the head of a window symbol. A frame
++    // draws the body of a window symbol.
++    const qreal stroke = side > 16 ? 3.0 : side > 4 ? 2.0 : 1.0;
++    const qreal bar = side > 16 ? 4.0 : side > 4 ? 2.0 : 1.0;
++    const qreal frame = side > 16 ? 2.0 : 1.0;
++
++    QPen pen(color);
++    pen.setWidthF(stroke);
++    pen.setCapStyle(Qt::FlatCap);
++    pen.setJoinStyle(Qt::MiterJoin);
++    painter->setPen(pen);
++    painter->setBrush(color);
++
++    switch (type()) {
++    case DecorationButtonType::Close:
++        painter->drawLine(rect.topLeft(), rect.bottomRight());
++        painter->drawLine(rect.topRight(), rect.bottomLeft());
++        break;
++
++    case DecorationButtonType::Maximize:
++        pen.setWidthF(frame);
++        painter->setPen(pen);
++        painter->setBrush(Qt::NoBrush);
++        if (isChecked()) {
++            // A maximized window gets the restore symbol. The style draws the
++            // edges of a window behind, then a whole window in front.
++            const qreal step = qMax(2.0, side / 4.0);
++            painter->fillRect(QRectF(rect.left() + step, rect.top(),
++                                     rect.width() - step, bar), color);
++            painter->fillRect(QRectF(rect.right() - frame, rect.top(), frame,
++                                     rect.height() - step), color);
++            painter->fillRect(QRectF(rect.right() - step,
++                                     rect.bottom() - step - frame, step,
++                                     frame), color);
++            drawWindowSymbol(painter,
++                             QRectF(rect.left(), rect.top() + step,
++                                    rect.width() - step, rect.height() - step),
++                             frame, bar);
++        } else {
++            drawWindowSymbol(painter, rect, frame, bar);
++        }
++        break;
++
++    case DecorationButtonType::Minimize:
++        painter->fillRect(QRectF(rect.left(), rect.bottom() - bar,
++                                 rect.width(), bar), color);
++        break;
++
++    case DecorationButtonType::Menu:
++    case DecorationButtonType::ApplicationMenu: {
++        // The menu glyph of the style is three lines.
++        const qreal gap = side / 3.0;
++        for (int i = 0;i < 3;i++) {
++            painter->fillRect(QRectF(rect.left(), rect.top() + i * gap,
++                                     rect.width(), qMax(1.0, frame)), color);
++        }
++        break;
++    }
++
++    case DecorationButtonType::ContextHelp: {
++        // The style draws the question mark from four strokes. A bar runs
++        // along the top. A bar runs down the right side. A bar runs back to
++        // the centre. A dot closes the mark.
++        const qreal quarter = side / 4.0;
++        pen.setWidthF(frame > 1.0 ? frame : stroke);
++        painter->setPen(pen);
++        painter->setBrush(Qt::NoBrush);
++        QPainterPath mark;
++        mark.moveTo(rect.left() + quarter, rect.top() + quarter);
++        mark.lineTo(rect.center().x(), rect.top());
++        mark.lineTo(rect.right(), rect.top() + quarter);
++        mark.lineTo(rect.center().x(), rect.top() + 2 * quarter);
++        mark.lineTo(rect.center().x(), rect.top() + 3 * quarter);
++        painter->drawPath(mark);
++        painter->fillRect(QRectF(rect.center().x() - frame / 2.0,
++                                 rect.bottom() - frame, frame, frame), color);
++        break;
++    }
++
++    case DecorationButtonType::OnAllDesktops: {
++        painter->setPen(Qt::NoPen);
++        const qreal mark = qMax(2.0, side / 3.0);
++        if (isChecked()) {
++            // A window on every desktop gets one dot in the centre.
++            QRectF dot(0, 0, mark, mark);
++            dot.moveCenter(rect.center());
++            painter->fillRect(dot, color);
++        } else {
++            // A window on one desktop gets a dot in each corner.
++            painter->fillRect(QRectF(rect.left(), rect.top(), mark, mark),
++                              color);
++            painter->fillRect(QRectF(rect.right() - mark, rect.top(), mark,
++                                     mark), color);
++            painter->fillRect(QRectF(rect.left(), rect.bottom() - mark, mark,
++                                     mark), color);
++            painter->fillRect(QRectF(rect.right() - mark, rect.bottom() - mark,
++                                     mark, mark), color);
++        }
++        break;
++    }
++
++    case DecorationButtonType::KeepAbove: {
++        painter->setPen(Qt::NoPen);
++        const qreal half = side / 2.0;
++        if (isChecked()) {
++            drawArrow(painter, QRectF(rect.left(), rect.top(), rect.width(),
++                                      half), true);
++        } else {
++            painter->fillRect(QRectF(rect.left(), rect.top(), rect.width(),
++                                     frame), color);
++        }
++        drawArrow(painter, QRectF(rect.left(), rect.top() + half, rect.width(),
++                                  half), true);
++        break;
++    }
++
++    case DecorationButtonType::KeepBelow: {
++        painter->setPen(Qt::NoPen);
++        const qreal half = side / 2.0;
++        drawArrow(painter, QRectF(rect.left(), rect.top(), rect.width(), half),
++                  false);
++        if (isChecked()) {
++            drawArrow(painter, QRectF(rect.left(), rect.top() + half,
++                                      rect.width(), half), false);
++        } else {
++            painter->fillRect(QRectF(rect.left(), rect.bottom() - frame,
++                                     rect.width(), frame), color);
++        }
++        break;
++    }
++
++    case DecorationButtonType::Shade: {
++        painter->setPen(Qt::NoPen);
++        // The style points the arrow down while the window is open, and up
++        // while the window is shaded. A bar sits under the arrow.
++        drawArrow(painter, QRectF(rect.left(), rect.top(), rect.width(),
++                                  rect.height() - 2 * bar), isChecked());
++        painter->fillRect(QRectF(rect.left(), rect.bottom() - bar,
++                                 rect.width(), bar), color);
++        break;
++    }
++
++    case DecorationButtonType::ExcludeFromCapture: {
++        pen.setWidthF(frame);
++        painter->setPen(pen);
++        painter->setBrush(Qt::NoBrush);
++        drawWindowSymbol(painter, rect, frame, bar);
++        pen.setWidthF(stroke);
++        painter->setPen(pen);
++        painter->drawLine(rect.bottomLeft(), rect.topRight());
++        break;
++    }
++
++    default:
++        break;
++    }
++}
++
++void
++Button::paint(QPainter *painter, const QRectF &repaintRegion)
++{
++    Q_UNUSED(repaintRegion)
++    if (!qobject_cast<Decoration*>(decoration())) {
++        return;
++    }
++    if (type() == DecorationButtonType::Spacer ||
++        type() == DecorationButtonType::Custom) {
++        return;
++    }
++
++    // The room outside the square takes clicks and no paint. geometry() holds
++    // the square and that room, so the paint starts from the square alone.
++    const QRectF area = geometry().marginsRemoved(m_padding);
++    if (area.width() < 2.0 || area.height() < 2.0) {
++        return;
++    }
++    const auto *owner = qobject_cast<Decoration*>(decoration());
++    const Options &opts = owner->options();
++    const int flags = opts.titlebarButtons;
++    const bool hover = isHovered() || isPressed();
++    // QtCurveButton::drawButton() in qt6/kwin/qtcurvebutton.cpp drew no frame
++    // and no line art under the hide on inactive window flag.
++    if (!owner->window()->isActive() && !hover &&
++        (flags & TITLEBAR_BUTTOM_HIDE_ON_INACTIVE_WINDOW)) {
++        return;
++    }
++
++    painter->save();
++    painter->setRenderHint(QPainter::Antialiasing);
++    const bool framed = drawFrame(painter, area);
++
++    if (showsIcon()) {
++        // QtCurveButton::drawButton() in qt6/kwin/qtcurvebutton.cpp drew the
++        // window icon in the menu button, and it drew no line art there.
++        const qreal side = std::floor(qMin(area.width(), area.height()));
++        QRectF box(0, 0, side, side);
++        box.moveCenter(area.center());
++        if (isPressed()) {
++            box.translate(1, 1);
++        }
++        owner->window()->icon().paint(painter, box.toRect());
++        painter->restore();
++        return;
++    }
++
++    if ((flags & TITLEBAR_BUTTON_HOVER_SYMBOL_FULL) && !hover) {
++        // The full hover symbol flag hides the glyph until the pointer reaches
++        // the button.
++        painter->restore();
++        return;
++    }
++
++    // buttonBitmap() of the KDE4 decoration takes four sevenths of the button
++    // away on each axis, then centres the line art in the rest.
++    const qreal side = qMin(area.width(), area.height());
++    int glyphSide = int(qMax(minGlyphSide,
++                             std::round(side - 2.0 * (side / 3.5))));
++    // IconEngine::icon() takes one pixel away from an even side, so the line
++    // art keeps a centre pixel.
++    if (glyphSide % 2 == 0) {
++        glyphSide--;
++    }
++    QRectF glyph(0, 0, glyphSide, glyphSide);
++    glyph.moveCenter(area.center());
++    if (isPressed()) {
++        // The style moves the line art of a sunken button one pixel down and
++        // one pixel right.
++        glyph.translate(1, 1);
++    }
++
++    // drawMdiIcon() in qt6/style/qtcurve.cpp draws the line art a second time
++    // under the line art, in the colour of the title bar effect. A sunken
++    // button and a faded glyph get no second copy.
++    // QtCurveButton::drawButton() in qt6/kwin/qtcurvebutton.cpp took the
++    // shadow effect in place of the etch effect for a button that drew its
++    // frame.
++    const EEffect effect =
++        (opts.titlebarEffect == EFFECT_ETCH && framed ? EFFECT_SHADOW :
++         opts.titlebarEffect);
++    const bool faded = !isPressed() && !isHovered() &&
++        (flags & TITLEBAR_BUTTON_HOVER_SYMBOL);
++    if (!isPressed() && !faded && effect != EFFECT_NONE) {
++        const QColor edge(WINDOW_SHADOW_COLOR(effect));
++        const QColor base = owner->titleBarColor();
++        drawGlyph(painter,
++                  glyph.translated(effect == EFFECT_SHADOW ? 1 : 0, 1),
++                  qtcColorMix(&base, &edge,
++                              WINDOW_TEXT_SHADOW_ALPHA(effect)));
++    }
++    drawGlyph(painter, glyph, glyphColor());
++    painter->restore();
++}
++
++}
+diff --git a/qt6/kdecoration/qtcurvedecorationbutton.h b/qt6/kdecoration/qtcurvedecorationbutton.h
+new file mode 100644
+index 00000000..c11b3d80
+--- /dev/null
++++ b/qt6/kdecoration/qtcurvedecorationbutton.h
+@@ -0,0 +1,128 @@
++/*****************************************************************************
++ *   Copyright 2003 - 2010 Craig Drummond <craig.p.drummond@gmail.com>       *
++ *   Copyright 2013 - 2015 Yichao Yu <yyc1992@gmail.com>                     *
++ *                                                                           *
++ *   This program is free software; you can redistribute it and/or modify    *
++ *   it under the terms of the GNU Lesser General Public License as          *
++ *   published by the Free Software Foundation; either version 2.1 of the    *
++ *   License, or (at your option) version 3, or any later version accepted   *
++ *   by the membership of KDE e.V. (or its successor approved by the         *
++ *   membership of KDE e.V.), which shall act as a proxy defined in          *
++ *   Section 6 of version 3 of the license.                                  *
++ *                                                                           *
++ *   This program is distributed in the hope that it will be useful,         *
++ *   but WITHOUT ANY WARRANTY; without even the implied warranty of          *
++ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU       *
++ *   Lesser General Public License for more details.                         *
++ *                                                                           *
++ *   You should have received a copy of the GNU Lesser General Public        *
++ *   License along with this library. If not,                                *
++ *   see <http://www.gnu.org/licenses/>.                                     *
++ *****************************************************************************/
++
++#ifndef qtcurvedecorationbutton_h
++#define qtcurvedecorationbutton_h
++
++#include "qtcurvedecoration.h"
++
++#include <KDecoration3/DecorationButton>
++
++#include <QColor>
++#include <QMarginsF>
++#include <QRectF>
++#include <QVariantList>
++
++namespace QtCurve {
++
++//! one title bar button of the QtCurve window decoration
++/*! The button draws a frame and a glyph. The glyph follows the line art of the
++    QtCurve style for KDE4. The titlebarButtons key of the style settings
++    selects the shape of the frame, the colour of the frame and the fade of the
++    glyph. The compositor thread owns every button. */
++class Button : public KDecoration3::DecorationButton {
++    Q_OBJECT
++public:
++    //! make a button for the decoration framework
++    /*! \param parent the parent object, or a null pointer.
++        \param args the button type in the first entry and the decoration in
++        the second entry. */
++    explicit Button(QObject *parent, const QVariantList &args);
++    ~Button() override=default;
++
++    //! make a button for a button group
++    /*! \param type the button to make.
++        \param decoration the decoration that holds the button.
++        \param parent the parent object, or a null pointer.
++        \return the new button, or a null pointer if the decoration is not a
++        QtCurve decoration. */
++    static Button *create(KDecoration3::DecorationButtonType type,
++                          KDecoration3::Decoration *decoration,
++                          QObject *parent);
++
++    //! draw the button
++    /*! \param painter the painter of the decoration framework.
++        \param repaintRegion the area that needs paint. The call ignores the
++        area, because a button is small. */
++    void paint(QPainter *painter, const QRectF &repaintRegion) override;
++
++    //! set the room that the button takes outside its square
++    /*! The decoration grows a button that sits at a screen edge, so the button
++        takes every click up to the edge. The frame and the glyph keep the
++        square, and the room stays empty.
++        \param value the room on each side of the square, in pixels. */
++    void setPadding(const QMarginsF &value) { m_padding = value; }
++
++private:
++    //! make a button for a QtCurve decoration
++    /*! \param type the button to make.
++        \param decoration the decoration that holds the button.
++        \param parent the parent object, or a null pointer. */
++    explicit Button(KDecoration3::DecorationButtonType type,
++                    Decoration *decoration, QObject *parent=nullptr);
++
++    //! true while this button holds the window icon
++    /*! \return true for the menu button while the titlebarIcon key holds the
++        menu button value. The button then draws no frame and no line art. */
++    bool showsIcon() const;
++
++    //! true while the button takes a colour of the titlebarButtonColors key
++    /*! coloredMdiButtons() in qt6/style/qtcurve.cpp makes the same test.
++        \return true while the colour key is on, and the window state and the
++        pointer position match the two colour flags. */
++    bool colored() const;
++
++    //! the colour of this button in the titlebarButtonColors key
++    /*! \return the colour of the button type, or the title bar colour while
++        the key holds no colour for the type. */
++    QColor buttonColor() const;
++
++    //! draw the frame of the button
++    /*! The call draws nothing while the no frame flag is on, while the hover
++        frame flag is on and the pointer sits away from the button, and while
++        the button holds the window icon.
++        \param painter the painter to draw with.
++        \param rect the square of the button, without the room outside it.
++        \return true while the call drew a frame. */
++    bool drawFrame(QPainter *painter, const QRectF &rect) const;
++
++    //! draw the line art of the button
++    /*! \param painter the painter to draw with.
++        \param rect the area of the glyph, which is smaller than the button.
++        \param color the colour of the line art. */
++    void drawGlyph(QPainter *painter, const QRectF &rect,
++                   const QColor &color) const;
++
++    //! the colour of the line art
++    /*! \return the button colour for the colour symbol flag, or the caption
++        colour. The close button under the pointer gets the QtCurve close
++        colour. The colour fades while the hover symbol flag is on and the
++        pointer sits away from the button. */
++    QColor glyphColor() const;
++
++    //! the room that the button takes outside its square, in pixels
++    QMarginsF m_padding;
++};
++
++}
++
++#endif
+diff --git a/qt6/kdecoration/qtcurvedecorationconfig.cpp b/qt6/kdecoration/qtcurvedecorationconfig.cpp
+new file mode 100644
+index 00000000..8ad58fd7
+--- /dev/null
++++ b/qt6/kdecoration/qtcurvedecorationconfig.cpp
+@@ -0,0 +1,237 @@
++/*****************************************************************************
++ *   Copyright 2007 - 2010 Craig Drummond <craig.p.drummond@gmail.com>       *
++ *   Copyright 2013 - 2015 Yichao Yu <yyc1992@gmail.com>                     *
++ *                                                                           *
++ *   This program is free software; you can redistribute it and/or modify    *
++ *   it under the terms of the GNU Lesser General Public License as          *
++ *   published by the Free Software Foundation; either version 2.1 of the    *
++ *   License, or (at your option) version 3, or any later version accepted   *
++ *   by the membership of KDE e.V. (or its successor approved by the         *
++ *   membership of KDE e.V.), which shall act as a proxy defined in          *
++ *   Section 6 of version 3 of the license.                                  *
++ *                                                                           *
++ *   This program is distributed in the hope that it will be useful,         *
++ *   but WITHOUT ANY WARRANTY; without even the implied warranty of          *
++ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU       *
++ *   Lesser General Public License for more details.                         *
++ *                                                                           *
++ *   You should have received a copy of the GNU Lesser General Public        *
++ *   License along with this library. If not,                                *
++ *   see <http://www.gnu.org/licenses/>.                                     *
++ *****************************************************************************/
++
++#include "qtcurvedecorationconfig.h"
++
++#include <common/config_file.h>
++
++#include <KColorScheme>
++#include <KConfig>
++#include <KConfigGroup>
++
++#include <QGuiApplication>
++#include <QLatin1String>
++#include <QSettings>
++#include <QString>
++
++#include <qtcurve-utils/shade.h>
++
++namespace {
++
++//! the name of the file that holds the frame settings and the shadow settings
++/*! The settings module of the KDE4 decoration wrote the file. The Plasma 6
++    decoration has no settings module yet, so the file only changes by hand. */
++const char *const kwinConfigFile = "kwinqtcurverc";
++
++//! the group that holds the frame settings
++const char *const frameGroup = "General";
++
++//! the group that holds the shadow of an active window
++const char *const activeShadowGroup = "ActiveShadows";
++
++//! the group that holds the shadow of an inactive window
++const char *const inactiveShadowGroup = "InactiveShadows";
++
++//! the fixed grey of the CT_GRAY colour type
++/*! ShadowConfig::setColorType() in qt6/kwin/qtcurveshadowconfiguration.cpp
++    uses the same colour. */
++const char *const fixedShadowGray = "#393835";
++
++//! read a border shade key
++/*! The KDE4 settings module wrote a boolean value in an older release and a
++    Shade number now, so the reader takes both forms. readShade() in
++    qt6/kwin/qtcurveconfig.cpp does the same.
++    \param group the group that holds the key.
++    \param key the name of the key.
++    \return the shade, or QtCurve::DecorationConfig::SHADE_NONE for an absent key, for an
++    empty value and for a value outside the Shade range. */
++QtCurve::DecorationConfig::Shade
++readShade(const KConfigGroup &group, const char *key)
++{
++    const QString entry = group.readEntry(key, QString());
++    if (entry.isEmpty() || QLatin1String("false") == entry) {
++        return QtCurve::DecorationConfig::SHADE_NONE;
++    }
++    if (QLatin1String("true") == entry) {
++        return QtCurve::DecorationConfig::SHADE_DARK;
++    }
++    const int value = entry.toInt();
++    if (value > QtCurve::DecorationConfig::SHADE_NONE &&
++        value <= QtCurve::DecorationConfig::SHADE_SHADOW) {
++        return QtCurve::DecorationConfig::Shade(value);
++    }
++    return QtCurve::DecorationConfig::SHADE_NONE;
++}
++
++}
++
++namespace QtCurve {
++
++//! the largest contrast value that the decoration accepts
++/*! init() in qt6/style/qtcurve.cpp holds the contrast to the same range. */
++constexpr int maxContrast = 10;
++
++ShadowConfig::ShadowConfig(QPalette::ColorGroup colorGroup)
++    : m_colorGroup(colorGroup)
++{
++    defaults();
++}
++
++void
++ShadowConfig::defaults()
++{
++    m_hOffset = 0;
++    m_vOffset = 5;
++    if (QPalette::Active == m_colorGroup) {
++        m_size = 35;
++        m_shadowType = SH_ACTIVE;
++        setColorType(CT_FOCUS);
++    } else {
++        m_size = 30;
++        m_shadowType = SH_INACTIVE;
++        setColorType(CT_GRAY);
++    }
++}
++
++void
++ShadowConfig::setColorType(ColorType ct)
++{
++    m_colorType = ct;
++    switch (m_colorType) {
++    default:
++    case CT_FOCUS:
++        m_color = KColorScheme(m_colorGroup)
++            .decoration(KColorScheme::FocusColor).color();
++        break;
++    case CT_HOVER:
++        m_color = KColorScheme(m_colorGroup)
++            .decoration(KColorScheme::HoverColor).color();
++        break;
++    case CT_SELECTION:
++        // The KDE4 decoration read the palette of the application. A
++        // decoration plugin runs inside the compositor, so the palette is the
++        // palette of the compositor.
++        m_color = QGuiApplication::palette().color(m_colorGroup,
++                                                   QPalette::Highlight);
++        break;
++    case CT_TITLEBAR:
++        m_color = KColorScheme(m_colorGroup, KColorScheme::Window)
++            .background(m_colorGroup == QPalette::Active ?
++                        KColorScheme::ActiveBackground :
++                        KColorScheme::NormalBackground)
++            .color();
++        break;
++    case CT_GRAY:
++        m_color = QColor(QString::fromLatin1(fixedShadowGray));
++        break;
++    case CT_CUSTOM:
++        break;
++    }
++}
++
++void
++ShadowConfig::load(const KConfig *cfg)
++{
++    const KConfigGroup group(cfg, QString::fromLatin1(
++                                 QPalette::Active == m_colorGroup ?
++                                 activeShadowGroup : inactiveShadowGroup));
++    const ShadowConfig def(m_colorGroup);
++
++    m_size = group.readEntry("Size", def.m_size);
++    m_hOffset = group.readEntry("HOffset", def.m_hOffset);
++    m_vOffset = group.readEntry("VOffset", def.m_vOffset);
++    m_colorType = group.readEntry("ColorType", def.m_colorType);
++    m_shadowType = group.readEntry("ShadowType", def.m_shadowType);
++    if (CT_CUSTOM == m_colorType) {
++        m_color = group.readEntry("Color", def.m_color);
++    }
++    if (m_size < MIN_SIZE || m_size > MAX_SIZE) {
++        m_size = def.m_size;
++    }
++    if (m_hOffset < MIN_OFFSET || m_hOffset > MAX_OFFSET) {
++        m_hOffset = def.m_hOffset;
++    }
++    if (m_vOffset < MIN_OFFSET || m_vOffset > MAX_OFFSET) {
++        m_vOffset = def.m_vOffset;
++    }
++    setColorType(ColorType(m_colorType));
++}
++
++DecorationConfig::DecorationConfig()
++    : m_activeShadow(QPalette::Active),
++      m_inactiveShadow(QPalette::Inactive)
++{
++    // qtcReadConfig() takes the file from the QTCURVE_CONFIG_FILE environment
++    // variable when it is set. It takes the file from the QtCurve directory of
++    // the configuration folder of the user when the variable is not set. The
++    // style reads the same file, so its settings dialogue drives the frame.
++    qtcDefaultSettings(&m_opts);
++    qtcReadConfig(QString(), &m_opts);
++    // qtcReadConfig() leaves the contrast at the built in value. init() in
++    // qt6/style/qtcurve.cpp takes the value from the same key, so the frame
++    // and the widgets keep one contrast.
++    m_opts.contrast = QSettings(QLatin1String("Trolltech"))
++        .value(QLatin1String("/Qt/KDE/contrast"), DEFAULT_CONTRAST).toInt();
++    if (m_opts.contrast < 0 || m_opts.contrast > maxContrast) {
++        m_opts.contrast = DEFAULT_CONTRAST;
++    }
++
++    const KConfig cfg{QString::fromLatin1(kwinConfigFile)};
++    const KConfigGroup group(&cfg, QString::fromLatin1(frameGroup));
++    m_outerBorder = readShade(group, "OuterBorder");
++    m_innerBorder = (SHADE_NONE == m_outerBorder ? SHADE_NONE :
++                     readShade(group, "InnerBorder"));
++    m_roundBottom = group.readEntry("RoundBottom", true);
++    m_customShadows = group.readEntry("CustomShadows", false);
++    m_titleBarPad = group.readEntry("TitleBarPad", 0);
++    m_edgePad = group.readEntry("EdgePad", 0);
++    // load() in qt6/kwin/qtcurveconfig.cpp holds the two pad values inside the
++    // same limits.
++    if (m_titleBarPad < -5 || m_titleBarPad > 10) {
++        m_titleBarPad = 0;
++    }
++    if (m_edgePad < 0 || m_edgePad > 10) {
++        m_edgePad = 0;
++    }
++
++    m_activeShadow.load(&cfg);
++    m_inactiveShadow.load(&cfg);
++}
++
++const DecorationConfig&
++DecorationConfig::instance()
++{
++    static const DecorationConfig config;
++    return config;
++}
++
++double
++shadeFactor(const Options &opts, int index)
++{
++    if (USE_CUSTOM_SHADES(opts)) {
++        return opts.customShades[index];
++    }
++    return qtcShadeGetIntern(opts.contrast, index, opts.darkerBorders,
++                             opts.shading);
++}
++
++}
+diff --git a/qt6/kdecoration/qtcurvedecorationconfig.h b/qt6/kdecoration/qtcurvedecorationconfig.h
+new file mode 100644
+index 00000000..46ec860b
+--- /dev/null
++++ b/qt6/kdecoration/qtcurvedecorationconfig.h
+@@ -0,0 +1,241 @@
++/*****************************************************************************
++ *   Copyright 2007 - 2010 Craig Drummond <craig.p.drummond@gmail.com>       *
++ *   Copyright 2013 - 2015 Yichao Yu <yyc1992@gmail.com>                     *
++ *                                                                           *
++ *   This program is free software; you can redistribute it and/or modify    *
++ *   it under the terms of the GNU Lesser General Public License as          *
++ *   published by the Free Software Foundation; either version 2.1 of the    *
++ *   License, or (at your option) version 3, or any later version accepted   *
++ *   by the membership of KDE e.V. (or its successor approved by the         *
++ *   membership of KDE e.V.), which shall act as a proxy defined in          *
++ *   Section 6 of version 3 of the license.                                  *
++ *                                                                           *
++ *   This program is distributed in the hope that it will be useful,         *
++ *   but WITHOUT ANY WARRANTY; without even the implied warranty of          *
++ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU       *
++ *   Lesser General Public License for more details.                         *
++ *                                                                           *
++ *   You should have received a copy of the GNU Lesser General Public        *
++ *   License along with this library. If not,                                *
++ *   see <http://www.gnu.org/licenses/>.                                     *
++ *****************************************************************************/
++
++#ifndef qtcurvedecorationconfig_h
++#define qtcurvedecorationconfig_h
++
++#include <common/common.h>
++
++#include <QColor>
++#include <QPalette>
++
++class KConfig;
++
++namespace QtCurve {
++
++//! the drop shadow settings of one window state
++/*! The settings module of the KDE4 decoration wrote these values to the
++    kwinqtcurverc file, in the ActiveShadows group and in the InactiveShadows
++    group. The class is a port of ShadowConfig in
++    qt6/kwin/qtcurveshadowconfiguration.h. The decoration reads the file one
++    time, at the first paint, so a change needs a restart of the compositor.
++    The compositor thread owns every instance. */
++class ShadowConfig {
++public:
++    //! the source of the shadow colour
++    enum ColorType {
++        //! the focus colour of the decoration colour set
++        CT_FOCUS = 0,
++        //! the hover colour of the decoration colour set
++        CT_HOVER = 1,
++        //! the selection background of the palette of the application
++        CT_SELECTION = 2,
++        //! the window background of the colour scheme
++        CT_TITLEBAR = 3,
++        //! a fixed dark grey
++        CT_GRAY = 4,
++        //! the colour that the Color key of the group holds
++        CT_CUSTOM = 5
++    };
++
++    //! the window state that a shadow belongs to
++    enum ShadowType {
++        //! the shadow of an active window
++        SH_ACTIVE = 0,
++        //! the shadow of an inactive window
++        SH_INACTIVE = 1
++    };
++
++    //! the smallest shadow size that load() accepts, in pixels
++    static const int MIN_SIZE = 10;
++    //! the largest shadow size that load() accepts, in pixels
++    static const int MAX_SIZE = 100;
++    //! the smallest shadow offset that load() accepts, in percent
++    static const int MIN_OFFSET = 0;
++    //! the largest shadow offset that load() accepts, in percent
++    static const int MAX_OFFSET = 20;
++
++    //! make a shadow configuration with the values of defaults()
++    /*! \param colorGroup the colour group that names the window state.
++        QPalette::Active selects the active shadow. Every other group selects
++        the inactive shadow. */
++    explicit ShadowConfig(QPalette::ColorGroup colorGroup);
++
++    //! give every value the default of the KDE4 decoration
++    /*! The active shadow gets a size of 35 pixels and the focus colour. The
++        inactive shadow gets a size of 30 pixels and the fixed grey. Both get
++        a horizontal offset of 0 percent and a vertical offset of 5 percent. */
++    void defaults();
++
++    //! read the values from the group of this window state
++    /*! A value outside the limits of the class falls back to the default.
++        \param cfg the kwinqtcurverc file. */
++    void load(const KConfig *cfg);
++
++    //! the length of the shadow gradient, in pixels
++    int shadowSize() const { return m_size; }
++
++    //! the offset of the shadow to the right, in percent
++    /*! \return the value of the HOffset key. The gradient length scales it,
++        so the distance in pixels also follows the shadow size. */
++    int horizontalOffset() const { return m_hOffset; }
++
++    //! the offset of the shadow down, in percent
++    /*! \return the value of the VOffset key. The gradient length scales it,
++        so the distance in pixels also follows the shadow size. */
++    int verticalOffset() const { return m_vOffset; }
++
++    //! the window state that names the shadow recipe of the KDE4 decoration
++    /*! \return the value of the ShadowType key. It picks the weight that
++        scales the two offsets. */
++    ShadowType shadowType() const { return ShadowType(m_shadowType); }
++
++    //! the colour of the shadow
++    /*! \return the colour that the colour type selects, or the colour of the
++        Color key for the custom type. */
++    const QColor &color() const { return m_color; }
++
++private:
++    //! give the colour the value that a colour type selects
++    /*! \param ct the colour type. The custom type keeps the current colour. */
++    void setColorType(ColorType ct);
++
++    //! the colour group that names the window state
++    QPalette::ColorGroup m_colorGroup;
++    //! the length of the shadow gradient, in pixels
++    int m_size;
++    //! the offset of the shadow to the right, in percent
++    int m_hOffset;
++    //! the offset of the shadow down, in percent
++    int m_vOffset;
++    //! the colour type, as a ColorType value
++    int m_colorType;
++    //! the window state, as a ShadowType value
++    int m_shadowType;
++    //! the colour of the shadow
++    QColor m_color;
++};
++
++//! every configuration value that the QtCurve window decoration reads
++/*! The class reads the configuration file of the QtCurve style, and it reads
++    the kwinqtcurverc file of the KDE4 decoration. The style file drives the
++    look of the frame. The kwinqtcurverc file drives the border shades and the
++    drop shadow.
++
++    The class reads both files one time, at the first use, because KDecoration3
++    gives no reload signal for a file outside its own settings. A change of
++    either file needs a restart of the compositor.
++
++    The compositor thread owns the single instance. */
++class DecorationConfig {
++public:
++    //! the shade of a window border
++    /*! The values are the Shade values of QtCurveConfig in
++        qt6/kwin/qtcurveconfig.h. The OuterBorder key and the InnerBorder key
++        of the kwinqtcurverc file hold one of them. */
++    enum Shade {
++        //! draw no border
++        SHADE_NONE = 0,
++        //! draw a dark border
++        SHADE_DARK = 1,
++        //! draw a light border
++        SHADE_LIGHT = 2,
++        //! draw a border in the shadow colour
++        SHADE_SHADOW = 3
++    };
++
++    //! the single configuration of this process
++    /*! The first call reads both files.
++        \return the configuration. */
++    static const DecorationConfig &instance();
++
++    //! the settings of the QtCurve style
++    /*! \return the options that qtcReadConfig() read. The QTCURVE_CONFIG_FILE
++        environment variable names the file when it is set. */
++    const Options &options() const { return m_opts; }
++
++    //! the shade of the outer window border
++    Shade outerBorder() const { return m_outerBorder; }
++
++    //! the shade of the inner window border
++    Shade innerBorder() const { return m_innerBorder; }
++
++    //! true while the bottom corners of the window are round
++    bool roundBottom() const { return m_roundBottom; }
++
++    //! true while the decoration draws the shadow that ShadowConfig describes
++    /*! \return the value of the CustomShadows key. A false value gives the
++        window no shadow of the decoration. */
++    bool customShadows() const { return m_customShadows; }
++
++    //! the extra room above and below the caption, in pixels
++    /*! \return the value of the TitleBarPad key, from -5 to 10. The title bar
++        grows by two times this value. */
++    int titleBarPad() const { return m_titleBarPad; }
++
++    //! the extra width of the side border and of the bottom border, in pixels
++    /*! \return the value of the EdgePad key, from 0 to 10. */
++    int edgePad() const { return m_edgePad; }
++
++    //! the drop shadow settings of one window state
++    /*! \param active true for the active window, false for an inactive
++        window. */
++    const ShadowConfig &shadow(bool active) const {
++        return active ? m_activeShadow : m_inactiveShadow;
++    }
++
++private:
++    //! read the configuration file of the style and the kwinqtcurverc file
++    DecorationConfig();
++
++    //! the settings of the QtCurve style
++    Options m_opts;
++    //! the drop shadow of an active window
++    ShadowConfig m_activeShadow;
++    //! the drop shadow of an inactive window
++    ShadowConfig m_inactiveShadow;
++    //! the shade of the outer window border
++    Shade m_outerBorder;
++    //! the shade of the inner window border
++    Shade m_innerBorder;
++    //! true while the bottom corners of the window are round
++    bool m_roundBottom;
++    //! true while the decoration draws its own shadow
++    bool m_customShadows;
++    //! the extra room above and below the caption, in pixels
++    int m_titleBarPad;
++    //! the extra width of the side border and of the bottom border, in pixels
++    int m_edgePad;
++};
++
++//! the shade factor of one entry of the shade table of the style
++/*! shadeColors() in qt6/style/qtcurve.cpp reads the same table.
++    \param opts the settings of the style.
++    \param index the entry, from 0 to QTC_NUM_STD_SHADES - 1. QTC_STD_BORDER
++    names the border entry.
++    \return the custom shade of the settings, or the built in shade for the
++    contrast value of the settings. */
++double shadeFactor(const Options &opts, int index);
++
++}
++
++#endif
