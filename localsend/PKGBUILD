@@ -5,7 +5,7 @@
 
 _pkgname="localsend"
 pkgname="$_pkgname"
-pkgver=1.18.1
+pkgver=1.18.2
 pkgrel=1
 pkgdesc="An open source cross-platform alternative to AirDrop"
 url="https://github.com/localsend/localsend"
@@ -32,7 +32,7 @@ options=('!lto')
 _pkgsrc="$_pkgname-$pkgver"
 _pkgext="tar.gz"
 source=("$_pkgsrc.$_pkgext"::"$url/archive/refs/tags/v$pkgver.$_pkgext")
-sha256sums=('555a73c39e2cfc01ee8cf0033ae11610725829d8289aa9c4794446241d9de2b0')
+sha256sums=('4425dfcf2e016d6540ea44941deb4ba6568201cc47d7f08753606e6e4b2769cd')
 
 prepare() {
   sed -E 's&^(channel) = .*$&\1 = "stable"&' -i "$_pkgsrc/app/rust-toolchain.toml"
