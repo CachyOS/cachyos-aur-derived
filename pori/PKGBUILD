@@ -1,7 +1,7 @@
 # Maintainer: Zoey Bauer <zoey.erin.bauer@gmail.com>
 # Maintainer: Caroline Snyder <hirpeng@gmail.com>
 pkgname=pori
-pkgver=0.0.5
+pkgver=0.0.6
 pkgrel=1
 pkgdesc="Pori: Systemd Mount Manager"
 arch=('x86_64')
@@ -20,7 +20,7 @@ makedepends=('dotnet-sdk-10.0' 'clang')
 # Source tarball from GitHub release
 source=("${pkgname}-${pkgver}.tar.gz::https://github.com/Seafoam-Labs/Pori/archive/v${pkgver}.tar.gz")
 
-sha256sums=('bac1fab245d97125706610faa7808f8e1383545b6b4b45aba84de2bacae7af8f')
+sha256sums=('616e5855dc3ff67538c62e8637314162bb652a1db808f1df38cf86770fddec2d')
 
 build() {
   cd "$srcdir/Pori-${pkgver}"
