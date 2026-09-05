@@ -1,0 +1,5 @@
+[luxtorpeda-bin]
+source = "gitea"
+gitea = "luxtorpeda/luxtorpeda"
+host = "codeberg.org"
+use_max_tag = true
