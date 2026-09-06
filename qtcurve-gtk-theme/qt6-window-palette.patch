@@ -30,8 +30,8 @@ Base.
 Every site now names the role that the Qt 5 style names.
 
 The change sits on the branch work/qt6-window-palette of the local tree.
-The fork wyn/qtcurve does not hold that branch yet, and system/qtcurve has
-no merge request for it.
+The fork wyn/qtcurve holds that branch. Merge request !16 on
+system/qtcurve holds that branch.
 
 Drop this patch when upstream merges the change.
 

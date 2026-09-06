@@ -71,7 +71,7 @@ sha256sums=('d4db624ff455548fffb38277d7080a4380911bc25a12c63a1e653aa47660435f'
             '930253ea839ca5b143dee2c71d7a7cdf7728cc18851732648291f6e451090c47'
             'fb6c3655234306c1af337504d4ad2585c6ba6f415ec07f73cf6f57eefdd7f7f2'
             'cb277efe8faa714de1e907089d14b0ae0ec825bc9f85fd1c1dacefc030b7b7da'
-            'd871f559b1056ce7ee2afa1efea88b96a99961e55fa03480c10cdae26319ab5c')
+            '7f0456744750447e9f6f865783ecf4abcaca6f13731ca4235eaee3debac9bc50')
 
 pkgver() {
 	git -C "$_srcname" log -1 --format=%cd --date=format:%Y%m%d
