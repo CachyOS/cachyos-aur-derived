@@ -1,0 +1,619 @@
+Keep the user sheets whole when a write fails
+
+mergeImport() and removeImport() of the writer deleted the shared gtk.css of
+the user. Then they wrote a new file of the same name in place, so the file
+of the user did not exist between the two steps. Neither function read the
+result of write(), so a write that stopped part way left a part file and the
+function still gave 0. Both functions now take the QSaveFile pattern of
+writeOwned(). They check the byte count of the write and the value of
+commit(), and they give 6 when either one fails. The file of the user then
+holds the old content or the new content. The write mode removes those files
+when the session theme is not QtCurve. That path now gives the code, and it
+takes the import line out before it deletes qtcurve.css.
+
+The four failure functions of the emitter set one static value, and no
+function cleared it. One sheet that failed therefore held the value for the
+life of the process. The watch mode runs one write pass for each change of
+the settings. The daemon therefore refused every pass after the first
+failure, and it printed nothing. Each pass now clears the value at its first
+statement. Watcher::fire() reads the exit code of the pass, and it prints one
+line for a pass that fails.
+
+Two check rows run at build time over a private home. The first row builds a
+large gtk.css and runs the writer under a file size limit. The file keeps
+every byte, and qtcurve.css stays. The second row starts the watch mode and
+gives one pass a fault through the new variable QTC_GTK_TEST_FAULT. The pass
+after it runs. Each row fails on a build that keeps the old code.
+
+The change sits on the branch work/gtk4-theme of the local tree. The push puts
+that branch on the fork wyn/qtcurve. The merge request on system/qtcurve
+follows that push.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/gtk4/CMakeLists.txt b/gtk4/CMakeLists.txt
+index c19f0eb0..c0afb801 100644
+--- a/gtk4/CMakeLists.txt
++++ b/gtk4/CMakeLists.txt
+@@ -603,6 +603,17 @@ if(QTC_GTK3_RENDER)
+     VERBATIM)
+ endif()
+ 
++# The two rows below run the writer over the files of a user, and not over a
++# sheet of the build. Each row holds a private HOME and XDG_CONFIG_HOME, so
++# the run leaves the files of the caller alone.
++set(qtc_writer_work "${CMAKE_CURRENT_BINARY_DIR}/check/writer")
++add_custom_command(TARGET qtcurve-gtk-theme POST_BUILD
++  COMMAND sh "${qtc_check}/assert-keep.sh" "${qtc_writer_command}"
++          "${qtc_writer_work}/keep"
++  COMMAND sh "${qtc_check}/assert-latch.sh" "${qtc_writer_command}"
++          "${qtc_writer_work}/latch"
++  VERBATIM)
++
+ # The cross check against the daemon itself, which the caller asks for. Set
+ # QTC_KDED_NAMES to kded/configvalueprovider.cpp of a kde-gtk-config checkout,
+ # or to the installed kded plugin gtkconfig.so of that daemon.
+diff --git a/gtk4/check/assert-keep.sh b/gtk4/check/assert-keep.sh
+new file mode 100644
+index 00000000..b91d6496
+--- /dev/null
++++ b/gtk4/check/assert-keep.sh
+@@ -0,0 +1,91 @@
++#!/bin/sh
++# assert-keep.sh WRITER WORKDIR: a write that stops must keep the gtk.css of
++# the user whole. The run builds a large gtk.css that holds the import line.
++# Then it runs --remove-gtk under a file size limit that the rewrite passes,
++# so the writer takes SIGXFSZ. HOME and XDG_CONFIG_HOME point into WORKDIR,
++# because --remove-gtk rewrites the files of the caller.
++set -eu
++usage='usage: assert-keep.sh WRITER WORKDIR'
++writer=${1:?$usage}
++work=${2:?$usage}
++
++rm -rf "$work"
++mkdir -p "$work/config/gtk-3.0" "$work/config/gtk-4.0"
++
++# The fixture holds one import line of 23 bytes and 4000 rule lines of 32
++# bytes, so it is 128023 bytes. One unit of ulimit -f is 1024 bytes at most,
++# and the rewrite of 128000 bytes passes that limit in every shell.
++fixture=$work/fixture.css
++printf "@import 'qtcurve.css';\n" > "$fixture"
++awk 'BEGIN { for (i = 0; i < 4000; i++)
++                 printf "label.r%04d { color: #101010; }\n", i }' >> "$fixture"
++tail -n +2 "$fixture" > "$work/want.css"
++cp "$fixture" "$work/config/gtk-4.0/gtk.css"
++cp "$fixture" "$work/config/gtk-3.0/gtk.css"
++printf 'x\n' > "$work/config/gtk-4.0/qtcurve.css"
++printf 'x\n' > "$work/config/gtk-3.0/qtcurve.css"
++
++status=0
++same() {
++    if cmp -s "$1" "$2"; then
++        return 0
++    fi
++    echo "assert-keep: $1 is not the file $2" >&2
++    status=1
++}
++
++# The writer dies on the signal and gives 153, so the run keeps the exit code
++# and reads the two files. ulimit -c 0 stops the core file of that signal, and
++# the shell of the run prints the signal into the log of the run.
++(
++    ulimit -c 0
++    ulimit -f 1
++    code=0
++    HOME=$work XDG_CONFIG_HOME=$work/config "$writer" --remove-gtk || code=$?
++    echo "$code" > "$work/limit.status"
++) > "$work/limit.log" 2>&1
++limited=$(cat "$work/limit.status")
++same "$work/config/gtk-4.0/gtk.css" "$fixture"
++same "$work/config/gtk-3.0/gtk.css" "$fixture"
++if [ $status -eq 0 ]; then
++    echo "assert-keep: the two user sheets keep 128023 bytes under the limit," \
++         "and the writer gave $limited"
++fi
++
++# The write mode takes the same path over a theme that is not QtCurve. The run
++# sets SIGXFSZ to no action, so the writer lives and gives the code of the
++# removal.
++(
++    ulimit -c 0
++    ulimit -f 1
++    trap '' XFSZ
++    code=0
++    GTK_THEME=Breeze HOME=$work XDG_CONFIG_HOME=$work/config "$writer" --write \
++        || code=$?
++    echo "$code" > "$work/write.status"
++) > "$work/write.log" 2>&1
++wrote=$(cat "$work/write.status")
++same "$work/config/gtk-4.0/gtk.css" "$fixture"
++same "$work/config/gtk-3.0/gtk.css" "$fixture"
++if [ "$wrote" -eq 0 ]; then
++    echo "assert-keep: the write mode gave 0 for a removal that failed" >&2
++    status=1
++fi
++if [ ! -f "$work/config/gtk-4.0/qtcurve.css" ]; then
++    echo "assert-keep: the write mode deleted a sheet that gtk.css names" >&2
++    status=1
++fi
++if [ $status -eq 0 ]; then
++    echo "assert-keep: the write mode gave $wrote and kept qtcurve.css"
++fi
++
++# The same run with no limit must remove the import line and keep every other
++# line. The limited run above therefore fails on the write alone.
++HOME=$work XDG_CONFIG_HOME=$work/config "$writer" --remove-gtk \
++    > "$work/free.log" 2>&1
++same "$work/config/gtk-4.0/gtk.css" "$work/want.css"
++same "$work/config/gtk-3.0/gtk.css" "$work/want.css"
++if [ $status -eq 0 ]; then
++    echo "assert-keep: a free run removes the import line and keeps 4000 lines"
++fi
++exit $status
+diff --git a/gtk4/check/assert-latch.sh b/gtk4/check/assert-latch.sh
+new file mode 100644
+index 00000000..ce0f353b
+--- /dev/null
++++ b/gtk4/check/assert-latch.sh
+@@ -0,0 +1,102 @@
++#!/bin/sh
++# assert-latch.sh WRITER WORKDIR: one write pass that fails must not stop the
++# pass after it. The run starts the watch mode over a private home, gives one
++# pass a fault through QTC_GTK_TEST_FAULT, and then takes the fault away. No
++# settings value and no colour file reaches a fault of the emitter, so the
++# environment variable is the one trigger. HOME, XDG_CONFIG_HOME and
++# QTCURVE_CONFIG_DIR point into WORKDIR, because the writer rewrites the files
++# of the caller.
++set -eu
++usage='usage: assert-latch.sh WRITER WORKDIR'
++writer=${1:?$usage}
++work=${2:?$usage}
++
++log=$work/watch.log
++gtk4dir=$work/config/gtk-4.0
++pid=
++
++clean() {
++    if [ -n "$pid" ]; then
++        kill "$pid" 2>/dev/null || true
++    fi
++    chmod 0700 "$gtk4dir" 2>/dev/null || true
++}
++
++# A signal that stops the run leaves the watch mode alive and the directory of
++# the third pass read only. SIGKILL runs no trap, so the run makes WORKDIR
++# writable again before it removes the tree.
++trap clean EXIT
++trap 'clean; exit 1' HUP INT QUIT TERM
++
++if [ -d "$work" ]; then
++    chmod -R u+rwX "$work"
++fi
++rm -rf "$work"
++mkdir -p "$work/config/gtk-3.0" "$work/config/gtk-4.0" "$work/qtcurve"
++
++appearance() {
++    printf '[Settings]\nappearance=%s\n' "$1" > "$work/qtcurve/stylerc"
++}
++
++# The count of the failure lines of one exit code, which Watcher::fire()
++# prints.
++count() {
++    n=$(grep -c "the write failed with the code $1" "$log" 2>/dev/null) || n=0
++    printf '%s\n' "$n"
++}
++
++# wait_for CODE COUNT: waits at most 15 seconds for COUNT failure lines of the
++# exit code CODE. The debounce of the watch mode is 500 ms.
++wait_for() {
++    i=0
++    while [ "$i" -lt 15 ]; do
++        if [ "$(count "$1")" -ge "$2" ]; then
++            return 0
++        fi
++        sleep 1
++        i=$((i + 1))
++    done
++    return 1
++}
++
++appearance gradient
++ulimit -c 0
++HOME=$work XDG_CONFIG_HOME=$work/config QTCURVE_CONFIG_DIR=$work/qtcurve \
++    QTC_GTK_TEST_FAULT=$work/fault "$writer" --watch --force > "$log" 2>&1 &
++pid=$!
++sleep 2
++if ! kill -0 "$pid" 2>/dev/null; then
++    echo "assert-latch: the watch mode stopped at the first pass" >&2
++    exit 1
++fi
++
++# The second pass carries the fault, so it must give the exit code 5.
++: > "$work/fault"
++appearance agua
++if ! wait_for 5 1; then
++    echo "assert-latch: no pass gave the exit code 5 under the fault" >&2
++    exit 1
++fi
++sleep 1
++five=$(count 5)
++
++# The third pass carries no fault, and copyAssets() gives it the exit code 1
++# because the build tree holds no installed asset. The read only directory
++# gives the same code on a machine that holds the assets.
++rm -f "$work/fault"
++chmod 0500 "$gtk4dir"
++appearance soft
++if ! wait_for 1 1; then
++    echo "assert-latch: the pass after the fault kept the exit code 5" >&2
++    exit 1
++fi
++if [ "$(count 5)" -ne "$five" ]; then
++    echo "assert-latch: a pass after the fault gave the exit code 5" >&2
++    exit 1
++fi
++if ! kill -0 "$pid" 2>/dev/null; then
++    echo "assert-latch: the watch mode stopped after the fault" >&2
++    exit 1
++fi
++echo "assert-latch: the fault gave $five failure lines of the code 5, and the" \
++     "pass after it gave a line of its own"
+diff --git a/gtk4/writer/emit.cpp b/gtk4/writer/emit.cpp
+index 71bd4ad4..255fe2b9 100644
+--- a/gtk4/writer/emit.cpp
++++ b/gtk4/writer/emit.cpp
+@@ -97,7 +97,7 @@ Sheet::text() const
+     return m_head + rootBlock() + m_body;
+ }
+ 
+-/** The exit code of the first enumeration value that had no case. */
++/** The exit code of the first failure call of one write pass. */
+ static int emit_error = 0;
+ 
+ void
+@@ -136,12 +136,25 @@ failPair(const QString &selector, const QString &ground, const QString &ink)
+     emit_error = 5;
+ }
+ 
++void
++failTest()
++{
++    fprintf(stderr, "qtcurve-gtk-writer: QTC_GTK_TEST_FAULT sets a fault\n");
++    emit_error = 5;
++}
++
+ int
+ emitError()
+ {
+     return emit_error;
+ }
+ 
++void
++clearEmitError()
++{
++    emit_error = 0;
++}
++
+ Tone
+ fixedTone(const QColor &col)
+ {
+diff --git a/gtk4/writer/emit.h b/gtk4/writer/emit.h
+index 31b5e51a..23f72bf4 100644
+--- a/gtk4/writer/emit.h
++++ b/gtk4/writer/emit.h
+@@ -172,9 +172,22 @@ void failPinned(const QString &selector, const QString &held,
+ void failPair(const QString &selector, const QString &ground,
+               const QString &ink);
+ 
++/**
++ * Records exit code 5 with no fault of the emitter. The build time checks of
++ * the writer reach it through the environment, because no settings value and
++ * no colour file reaches a fault.
++ */
++void failTest();
++
+ /** Returns 5 after a failure call, and 0 while the emitter is sound. */
+ int emitError();
+ 
++/**
++ * Clears the record of every failure call above, so emitError() gives 0. One
++ * write pass calls it before the pass reads the settings.
++ */
++void clearEmitError();
++
+ }
+ }
+ 
+diff --git a/gtk4/writer/main.cpp b/gtk4/writer/main.cpp
+index 8655900b..3b78d8f6 100644
+--- a/gtk4/writer/main.cpp
++++ b/gtk4/writer/main.cpp
+@@ -128,6 +128,17 @@ settingsDir()
+         QStringLiteral("qtcurve/");
+ }
+ 
++/**
++ * Returns true while the file that QTC_GTK_TEST_FAULT names exists. The build
++ * time checks set the variable, and a run of a user leaves it unset.
++ */
++bool
++testFault()
++{
++    const QByteArray env = qgetenv("QTC_GTK_TEST_FAULT");
++    return !env.isEmpty() && QFile::exists(QString::fromLocal8Bit(env));
++}
++
+ /** Prints the path of one file or one directory that the writer deleted. */
+ void
+ printGone(const QString &path)
+@@ -193,31 +204,35 @@ writeDialect(const Options &opts, const Palette &pal, Dialect dialect)
+ }
+ 
+ /**
+- * Deletes the owned files of one dialect and prints each path that it
+- * deletes. A file that is absent is no error.
++ * Takes the import line out of gtk.css, then deletes the owned files of one
++ * dialect and prints each path that it deletes. A file that is absent is no
++ * error, and a failure of gtk.css keeps the old content and the owned files.
+  *
+- * \return 0 on success, and 6 when gtk.css does not open.
++ * \return 0 on success, and 6 when the read or the write of gtk.css fails.
+  */
+ int
+ removeDialect(Dialect dialect)
+ {
+     const QString dir = userDir(dialect);
++    const QString shared = dir + QStringLiteral("/gtk.css");
++    bool changed = false;
++    const int code = removeImport(shared, &changed);
++    if (changed) {
++        printf("qtcurve-gtk-writer: removed the import line of %s\n",
++               shared.toLocal8Bit().constData());
++    }
++    if (code != 0) {
++        return code;
++    }
+     const QString sheet = dir + QStringLiteral("/qtcurve.css");
+     const QString assets = dir + QStringLiteral("/qtcurve-assets");
+-    const QString shared = dir + QStringLiteral("/gtk.css");
+     if (removeOwned(sheet)) {
+         printGone(sheet);
+     }
+     if (removeDir(assets)) {
+         printGone(assets);
+     }
+-    bool changed = false;
+-    const int code = removeImport(shared, &changed);
+-    if (changed) {
+-        printf("qtcurve-gtk-writer: removed the import line of %s\n",
+-               shared.toLocal8Bit().constData());
+-    }
+-    return code;
++    return 0;
+ }
+ 
+ /** Deletes the owned files of both dialects, and returns the exit code. */
+@@ -251,10 +266,12 @@ removeSettings()
+ int
+ runWrite(const Args &args)
+ {
++    clearEmitError();
+     if (!args.force && sessionThemeName() != QLatin1String(themeName)) {
+-        removeDialect(Dialect::Gtk4);
+-        removeDialect(Dialect::Gtk3);
+-        return 0;
++        return removeBoth();
++    }
++    if (testFault()) {
++        failTest();
+     }
+     Options opts;
+     const int read = readOptions(args, opts);
+diff --git a/gtk4/writer/userfile.cpp b/gtk4/writer/userfile.cpp
+index d3dc55e8..9411f640 100644
+--- a/gtk4/writer/userfile.cpp
++++ b/gtk4/writer/userfile.cpp
+@@ -31,6 +31,43 @@ namespace Gtk {
+ 
+ const char *const importStatement = "@import 'qtcurve.css';";
+ 
++/**
++ * Writes content to path through a temporary name in the same directory, and
++ * one rename() then replaces the target.
++ *
++ * \return true when the write takes every byte and commit() holds.
++ */
++static bool
++saveWhole(const QString &path, const QByteArray &content)
++{
++    QSaveFile file(path);
++    if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
++        return false;
++    }
++    return file.write(content) == content.size() && file.commit();
++}
++
++/**
++ * Reads the whole of path into content, and gives an empty content for a file
++ * that is not there.
++ *
++ * \return true when the file opens and the read reaches the end.
++ */
++static bool
++readWhole(const QString &path, QByteArray &content)
++{
++    content.clear();
++    QFile file(path);
++    if (!file.exists()) {
++        return true;
++    }
++    if (!file.open(QIODevice::ReadOnly)) {
++        return false;
++    }
++    content = file.readAll();
++    return file.error() == QFile::NoError;
++}
++
+ int
+ writeOwned(const QString &path, const QByteArray &content)
+ {
+@@ -40,13 +77,7 @@ writeOwned(const QString &path, const QByteArray &content)
+                 dir.toLocal8Bit().constData());
+         return 1;
+     }
+-    QSaveFile file(path);
+-    if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+-        fprintf(stderr, "qtcurve-gtk-writer: cannot write %s\n",
+-                path.toLocal8Bit().constData());
+-        return 1;
+-    }
+-    if (file.write(content) != content.size() || !file.commit()) {
++    if (!saveWhole(path, content)) {
+         fprintf(stderr, "qtcurve-gtk-writer: cannot write %s\n",
+                 path.toLocal8Bit().constData());
+         return 1;
+@@ -88,13 +119,13 @@ mergeImport(const QString &path)
+     if (!QDir().mkpath(QFileInfo(path).absolutePath())) {
+         return 6;
+     }
+-    QFile gtkCss(path);
+-    if (!gtkCss.open(QIODevice::ReadWrite)) {
++    QByteArray contents;
++    if (!readWhole(path, contents)) {
+         fprintf(stderr, "qtcurve-gtk-writer: cannot merge %s\n",
+                 path.toLocal8Bit().constData());
+         return 6;
+     }
+-    QByteArray contents = gtkCss.readAll().trimmed();
++    contents = contents.trimmed();
+     const QByteArray statement(importStatement);
+     if (contents.contains(statement)) {
+         return 0;
+@@ -104,11 +135,11 @@ mergeImport(const QString &path)
+     }
+     contents.append(statement);
+     contents.append('\n');
+-    gtkCss.remove();
+-    if (!gtkCss.open(QIODevice::WriteOnly | QIODevice::Text)) {
++    if (!saveWhole(path, contents)) {
++        fprintf(stderr, "qtcurve-gtk-writer: cannot merge %s\n",
++                path.toLocal8Bit().constData());
+         return 6;
+     }
+-    gtkCss.write(contents);
+     return 0;
+ }
+ 
+@@ -118,13 +149,13 @@ removeImport(const QString &path, bool *changed)
+     if (!QFile::exists(path)) {
+         return 0;
+     }
+-    QFile gtkCss(path);
+-    if (!gtkCss.open(QIODevice::ReadWrite)) {
+-        fprintf(stderr, "qtcurve-gtk-writer: cannot merge %s\n",
++    QByteArray raw;
++    if (!readWhole(path, raw)) {
++        fprintf(stderr, "qtcurve-gtk-writer: cannot remove the import of %s\n",
+                 path.toLocal8Bit().constData());
+         return 6;
+     }
+-    const QByteArray contents = gtkCss.readAll().trimmed();
++    const QByteArray contents = raw.trimmed();
+     QList<QByteArray> kept;
+     const QList<QByteArray> lines = contents.split('\n');
+     for (const QByteArray &one : lines) {
+@@ -139,11 +170,11 @@ removeImport(const QString &path, bool *changed)
+     if (!out.isEmpty()) {
+         out.append('\n');
+     }
+-    gtkCss.remove();
+-    if (!gtkCss.open(QIODevice::WriteOnly | QIODevice::Text)) {
++    if (!saveWhole(path, out)) {
++        fprintf(stderr, "qtcurve-gtk-writer: cannot remove the import of %s\n",
++                path.toLocal8Bit().constData());
+         return 6;
+     }
+-    gtkCss.write(out);
+     if (changed) {
+         *changed = true;
+     }
+diff --git a/gtk4/writer/userfile.h b/gtk4/writer/userfile.h
+index 72ffb7dd..746e1159 100644
+--- a/gtk4/writer/userfile.h
++++ b/gtk4/writer/userfile.h
+@@ -36,7 +36,7 @@ extern const char *const importStatement;
+  * One rename() replaces the target, so a reader sees the old file or the
+  * new file.
+  *
+- * \return 0 on success, and 1 when the file does not open for writing.
++ * \return 0 on success, and 1 when the writer cannot write the file.
+  */
+ int writeOwned(const QString &path, const QByteArray &content);
+ 
+@@ -50,18 +50,20 @@ int copyAssets(const QString &srcDir, const QString &dstDir);
+ 
+ /**
+  * Appends the QtCurve import line to path when the trimmed content of the
+- * file does not hold it. The function writes no byte when the line is there.
++ * file does not hold it. The function writes no byte when the line is there,
++ * and a write that fails keeps the old content of the file.
+  *
+- * \return 0 on success, and 6 when the file does not open.
++ * \return 0 on success, and 6 when the read or the write of the file fails.
+  */
+ int mergeImport(const QString &path);
+ 
+ /**
+  * Removes the QtCurve import line from path and keeps every other line. The
+- * function writes no byte when no line matches.
++ * function writes no byte when no line matches, and a write that fails keeps
++ * the old content of the file.
+  *
+  * \param changed  the call sets it to true when the file loses the line.
+- * \return 0 on success or on a missing file, and 6 when the file does not open.
++ * \return 0 on success or on a missing file, and 6 on a read or write fault.
+  */
+ int removeImport(const QString &path, bool *changed = nullptr);
+ 
+diff --git a/gtk4/writer/watch.cpp b/gtk4/writer/watch.cpp
+index c0f52b5e..22224251 100644
+--- a/gtk4/writer/watch.cpp
++++ b/gtk4/writer/watch.cpp
+@@ -28,6 +28,8 @@
+ #include <QFileInfo>
+ #include <QFileSystemWatcher>
+ 
++#include <stdio.h>
++
+ namespace QtCurve {
+ namespace Gtk {
+ 
+@@ -93,7 +95,11 @@ Watcher::schedule()
+ void
+ Watcher::fire()
+ {
+-    m_write();
++    const int code = m_write();
++    if (code != 0) {
++        fprintf(stderr, "qtcurve-gtk-writer: the write failed with the code"
++                " %d\n", code);
++    }
+ }
+ 
+ }
+diff --git a/gtk4/writer/watch.h b/gtk4/writer/watch.h
+index dd9765db..c355d3e3 100644
+--- a/gtk4/writer/watch.h
++++ b/gtk4/writer/watch.h
+@@ -53,7 +53,10 @@ public:
+ private Q_SLOTS:
+     /** Starts the debounce timer and adds every lost watch path again. */
+     void schedule();
+-    /** Runs the write function once, after the debounce. */
++    /**
++     * Runs the write function once, after the debounce. A pass that gives a
++     * value other than 0 prints one line with that value on standard error.
++     */
+     void fire();
+ 
+ private:

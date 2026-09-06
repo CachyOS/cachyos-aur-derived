@@ -3,67 +3,37 @@
 
 _commit=519f04b08d7a1029b62b871cc8cf408d6fbefc1f
 _srcname=qtcurve
-pkgname=qtcurve
+pkgname=qtcurve-gtk-theme
 pkgver=20260812
-pkgrel=5
-pkgdesc="A configurable set of widget styles for Qt5, Qt6, KDE Frameworks 6, GTK 2, GTK 3 and GTK 4; the GTK theme data is in qtcurve-gtk-theme"
-arch=(x86_64)
+pkgrel=1
+pkgdesc="The QtCurve theme data for GTK 2, GTK 3 and GTK 4; the engines and the writer are in qtcurve"
+arch=(any)
 url="https://invent.kde.org/system/qtcurve"
-license=(LGPL-2.1-only LGPL-3.0-only MIT)
-depends=(
-	cairo
-	frameworkintegration
-	gdk-pixbuf2
-	glib2
-	glibc
-	gtk2
-	karchive
-	kcmutils
-	kcolorscheme
-	kcompletion
-	kconfig
-	kconfigwidgets
-	kcoreaddons
-	kdecoration
-	kguiaddons
-	ki18n
-	kiconthemes
-	kio
-	kwidgetsaddons
-	kwindowsystem
-	kxmlgui
-	libgcc
-	libstdc++
-	libx11
-	libxcb
-	pango
-	perl
-	qt5-base
-	qt5-svg
-	qt5-x11extras
-	qt6-base
-	qt6-svg
-)
+license=(LGPL-2.1-only LGPL-3.0-only)
+depends=()
 optdepends=(
-	# The writer copies the glyphs from the assets directory of the theme.
-	'qtcurve-gtk-theme: QtCurve look in GTK applications'
+	# GTK 3 reads gtk-3.0/gtk.css when the theme name is QtCurve.
+	'gtk3: QtCurve look in GTK 3 applications'
+	# GTK 2 reads gtk-2.0/gtkrc, which names the qtcurve engine of the qtcurve package.
+	'gtk2: QtCurve look in GTK 2 applications'
+	# The GTK page lists a theme directory that holds a gtk-3.* child.
+	'kde-gtk-config: pick QtCurve on the GTK page of the settings'
+	# The writer of qtcurve writes separate user sheets that follow the saved settings.
+	'qtcurve: GTK theme that follows the QtCurve settings'
 )
 makedepends=(
 	cmake
 	extra-cmake-modules
 	git
-	kcmutils
-	kdecoration
+	gtk2
+	kcolorscheme
+	kconfig
+	kcoreaddons
+	qt6-base
+	qt6-svg
 )
-
-conflicts=(
-	qtcurve-gtk2
-	qtcurve-kde
-	qtcurve-qt5
-	qtcurve-utils
-)
-replaces=("${conflicts[@]}")
-install=qtcurve.install
+# qtcurve-gtk2 and qtcurve before 20260812-5 own files of this theme; the named conflict resolves the pair in one transaction.
+conflicts=('qtcurve<20260812-5' 'qtcurve-gtk2')
 source=(
 	"git+https://invent.kde.org/system/qtcurve.git#commit=$_commit"
 	qt6-child-layout-margin.patch
@@ -163,44 +133,48 @@ build() {
 		-DCMAKE_BUILD_TYPE=None \
 		-DCMAKE_INSTALL_PREFIX=/usr \
 		-DCMAKE_INSTALL_LIBDIR=lib \
-		-DKDE_INSTALL_LIBDIR=lib \
 		-DENABLE_QT4=OFF \
-		-DENABLE_QT5=ON \
-		-DQTC_QT5_ENABLE_KDE=OFF \
-		-DENABLE_QT6=ON \
-		-DQTC_QT6_ENABLE_KDE=ON \
-		-DQTC_QT6_ENABLE_KDECORATION=ON \
+		-DENABLE_QT5=OFF \
+		-DENABLE_QT6=OFF \
 		-DENABLE_GTK2=ON \
 		-DENABLE_GTK4=ON \
-		-DBUILD_TESTING=ON
+		-DQTC_INSTALL_PO=OFF \
+		-DBUILD_TESTING=OFF
 	cmake --build "$_srcname/build"
 
 	grep -qF "\"$(git -C "$_srcname" describe)\"" "$_srcname/build/version.cpp"
 }
 
-check() {
-	ctest --test-dir "$_srcname/build" --output-on-failure --no-tests=error -E '^test-printf$'
-}
-
 package() {
-	DESTDIR="$pkgdir" cmake --install "$_srcname/build"
-	rm -r "$pkgdir/usr/share/themes"
-	test ! -e "$pkgdir/usr/share/themes"
+	local stage="$srcdir/stage"
+	rm -rf "$stage"
+	DESTDIR="$stage" cmake --install "$_srcname/build"
 
-	# The style helpers that QtCurve took from Oxygen carry an MIT notice. The
-	# notice names the copyright holder, so the package must ship the text.
-	# Upstream keeps no MIT licence file. Take the text from the comment block
-	# in qt6/style/shadowhelper.cpp.
-	sed -n '/^\/\/ Copyright (c) 2010 Hugo/,/IN THE SOFTWARE\./p' "$_srcname/qt6/style/shadowhelper.cpp" |
-		sed 's|^// \?||' |
-		install -Dm644 /dev/stdin "$pkgdir/usr/share/licenses/$pkgname/MIT"
+	local theme="usr/share/themes/QtCurve"
+	install -d "$pkgdir/usr/share/themes"
+	cp -a "$stage/$theme" "$pkgdir/$theme"
 
-	test -s "$pkgdir/usr/share/licenses/$pkgname/MIT"
-	test -f "$pkgdir/usr/lib/qt/plugins/styles/qtcurve.so"
-	test -f "$pkgdir/usr/lib/qt6/plugins/styles/qtcurve.so"
-	test -f "$pkgdir/usr/lib/qt6/plugins/org.kde.kdecoration3/org.kde.qtcurve.so"
-	test -f "$pkgdir/usr/lib/qt6/plugins/org.kde.kdecoration3.kcm/kcm_qtcurvedecoration.so"
-	test -x "$pkgdir/usr/bin/qtcurve-gtk-writer"
-	test -s "$pkgdir/etc/xdg/autostart/qtcurve-gtk-writer.desktop"
-	readelf -d "$pkgdir/usr/lib/qt/plugins/styles/qtcurve.so" | grep -q libQt5X11Extras
+	local t="$pkgdir/$theme"
+	test -s "$t/assets/qtc-arrow-down.svg"
+	test -s "$t/assets/qtc-arrow-left.svg"
+	test -s "$t/assets/qtc-arrow-right.svg"
+	test -s "$t/assets/qtc-arrow-up.svg"
+	test -s "$t/assets/qtc-bullet.svg"
+	test -s "$t/assets/qtc-check.svg"
+	test -s "$t/assets/qtc-dash.svg"
+	test -s "$t/gtk-2.0/gtkrc"
+	test -s "$t/gtk-2.0/icons3"
+	test -s "$t/gtk-2.0/icons4"
+	test -s "$t/gtk-2.0/kdeglobals"
+	test -s "$t/gtk-2.0/map_kde_icons.pl"
+	test -s "$t/gtk-3.0/gtk.css"
+	test -s "$t/gtk-3.0/gtk-dark.css"
+	test -s "$t/gtk-4.0/gtk.css"
+	test -s "$t/gtk-4.0/gtk-dark.css"
+	test -s "$t/mozilla/preferences-rev.xml"
+	test -s "$t/mozilla/QtCurve.css"
+	test -s "$t/mozilla/QtCurve-KDEButtonOrder.css"
+
+	test "$(find "$t" ! -type d | wc -l)" -eq 19
+	test -z "$(find "$pkgdir" ! -type d ! -path "$t/*")"
 }

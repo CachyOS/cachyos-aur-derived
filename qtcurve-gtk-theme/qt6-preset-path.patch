@@ -1,0 +1,79 @@
+Load a saved preset from its own file path
+
+setupPresets() reads the preset files of the configuration directories.
+It computes the absolute path of each file, and then keeps the bare file
+name. The preset map therefore holds a name that resolves against the
+working directory of the process.
+
+Every reader of the map needs a path. setPreset() gives the name of the
+preset to qtcReadConfig() and to KConfig. These calls do not find the
+file, so the dialog applies the default settings. The colour pickers
+then show black, and the check boxes show the default flags. A save
+after that load writes the default settings over the settings file of
+the user.
+
+The delete button tests the name against the home directory of the user.
+The test fails for a bare name, so the button stays off for a preset
+that the dialog found at the start. savePreset() stores the full path,
+so the map holds two kinds of name.
+
+This change keeps the absolute path that the search computes. The map
+then holds one kind of name. The load reads the file of the preset from
+any working directory. The export and import paths keep their behaviour.
+
+The delete button now works for a preset of the home directory. A preset
+outside that directory stays a system preset, because the home directory
+test still fails for it.
+
+The Qt 5 dialog holds the same code and takes the same change.
+
+The change sits on the branch work/preset-path of the local tree. The fork
+wyn/qtcurve holds that branch. Merge request !12 on system/qtcurve holds that
+branch as the source.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/qt5/config/qtcurveconfig.cpp b/qt5/config/qtcurveconfig.cpp
+index 68d11854..518abb6d 100644
+--- a/qt5/config/qtcurveconfig.cpp
++++ b/qt5/config/qtcurveconfig.cpp
+@@ -1722,7 +1722,7 @@ QtCurveConfig::setupPresets(const Options &currentStyle,
+     // TODO custom filter and figure out what directory to use.
+     QStringList files;
+     {
+-        // Make unique list of relative paths
++        // Make a unique list of absolute paths
+         QHash<QString, QString> files_map;
+         QStringList dirs = QStandardPaths::locateAll(QStandardPaths::GenericConfigLocation,
+                                                      QStringLiteral("QtCurve"),
+@@ -1734,7 +1734,7 @@ QtCurveConfig::setupPresets(const Options &currentStyle,
+                 if (!files_map.contains(file)) {
+                     auto abspath = d.absoluteFilePath(file);
+                     files_map.insert(file, abspath);
+-                    files.append(file);
++                    files.append(abspath);
+                 }
+             }
+         }
+diff --git a/qt6/config/qtcurveconfig.cpp b/qt6/config/qtcurveconfig.cpp
+index 0c891ce3..91c2fd4a 100644
+--- a/qt6/config/qtcurveconfig.cpp
++++ b/qt6/config/qtcurveconfig.cpp
+@@ -1722,7 +1722,7 @@ QtCurveConfig::setupPresets(const Options &currentStyle,
+     // TODO custom filter and figure out what directory to use.
+     QStringList files;
+     {
+-        // Make unique list of relative paths
++        // Make a unique list of absolute paths
+         QHash<QString, QString> files_map;
+         QStringList dirs = QStandardPaths::locateAll(QStandardPaths::GenericConfigLocation,
+                                                      QStringLiteral("QtCurve"),
+@@ -1734,7 +1734,7 @@ QtCurveConfig::setupPresets(const Options &currentStyle,
+                 if (!files_map.contains(file)) {
+                     auto abspath = d.absoluteFilePath(file);
+                     files_map.insert(file, abspath);
+-                    files.append(file);
++                    files.append(abspath);
+                 }
+             }
+         }
