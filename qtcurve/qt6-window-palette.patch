@@ -1,0 +1,190 @@
+Read the window colour from QPalette::Window in the Qt 6 style
+
+The Qt 5 style reads QPalette::Background for the window colour.
+Background is the deprecated name of QPalette::Window. Commit 52d0de6a3
+replaced the deprecated names, and put QPalette::Base in the place of
+Background. Base is the colour of a text entry. The Qt 6 style therefore
+builds the window shade ladder m_backgroundCols from the colour of a
+text entry.
+
+The ladder gives the ground of a popup menu and the ground of a menu bar
+that the darken option shades. It also gives the background of a scroll
+bar and the background role that unpolish() puts back. The fill behind a
+radio button in an OpenOffice window comes from the ladder as well. A
+colour scheme that gives the window and the text entry different colours
+shows each of these in the entry colour.
+
+polish() sets QPalette::Disabled with two equal statements. Both must
+read the active window colour, and both read the active entry colour.
+The second statement must also write the disabled window colour, and
+writes the disabled entry colour again. QtCurve therefore leaves the
+disabled window colour of the theme in place.
+
+exportQt() writes the palette of the user to ~/.qt/qtrc for a Qt 3
+program. Its array of colour roles lost the Window entry, so each
+[Palette] key holds fifteen colours. A Qt 3 reader takes the list by
+position. It therefore reads the shadow colour as the window colour, and
+finds no colour for the last role. The entry returns to the array, after
+Base.
+
+Every site now names the role that the Qt 5 style names.
+
+The change sits on the branch work/qt6-window-palette of the local tree.
+The fork wyn/qtcurve does not hold that branch yet, and system/qtcurve has
+no merge request for it.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/qt6/config/qtcurveconfig.cpp b/qt6/config/qtcurveconfig.cpp
+index 0c891ce3..f6657ec6 100644
+--- a/qt6/config/qtcurveconfig.cpp
++++ b/qt6/config/qtcurveconfig.cpp
+@@ -2129,6 +2129,7 @@ void QtCurveConfig::exportQt()
+                                      QPalette::BrightText,
+                                      QPalette::ButtonText,
+                                      QPalette::Base,
++                                     QPalette::Window,
+                                      QPalette::Shadow,
+                                      QPalette::Highlight,
+                                      QPalette::HighlightedText,
+diff --git a/qt6/style/qtcurve.cpp b/qt6/style/qtcurve.cpp
+index 2cf76a44..544df361 100644
+--- a/qt6/style/qtcurve.cpp
++++ b/qt6/style/qtcurve.cpp
+@@ -440,7 +440,7 @@ void Style::init(bool initial)
+         opts.contrast=DEFAULT_CONTRAST;
+ 
+     shadeColors(QApplication::palette().color(QPalette::Active, QPalette::Highlight), m_highlightCols);
+-    shadeColors(QApplication::palette().color(QPalette::Active, QPalette::Base), m_backgroundCols);
++    shadeColors(QApplication::palette().color(QPalette::Active, QPalette::Window), m_backgroundCols);
+     shadeColors(QApplication::palette().color(QPalette::Active, QPalette::Button), m_buttonCols);
+ 
+     // Set defaults for Hover and Focus, these will be changed when KDE4 palette is applied...
+@@ -654,7 +654,7 @@ void Style::init(bool initial)
+         }
+     }
+ 
+-    setMenuColors(QApplication::palette().color(QPalette::Active, QPalette::Base));
++    setMenuColors(QApplication::palette().color(QPalette::Active, QPalette::Window));
+ 
+     switch(opts.shadeCheckRadio)
+     {
+diff --git a/qt6/style/qtcurve_api.cpp b/qt6/style/qtcurve_api.cpp
+index 0d3a2fb7..c3edb164 100644
+--- a/qt6/style/qtcurve_api.cpp
++++ b/qt6/style/qtcurve_api.cpp
+@@ -258,7 +258,7 @@ void Style::polish(QPalette &palette)
+     bool newHighlight(newContrast ||
+                       m_highlightCols[ORIGINAL_SHADE]!=palette.color(QPalette::Active, QPalette::Highlight)),
+         newGray(newContrast ||
+-                m_backgroundCols[ORIGINAL_SHADE]!=palette.color(QPalette::Active, QPalette::Base)),
++                m_backgroundCols[ORIGINAL_SHADE]!=palette.color(QPalette::Active, QPalette::Window)),
+         newButton(newContrast ||
+                   m_buttonCols[ORIGINAL_SHADE]!=palette.color(QPalette::Active, QPalette::Button)),
+         newSlider(m_sliderCols && m_highlightCols!=m_sliderCols && SHADE_BLEND_SELECTED == opts.shadeSliders &&
+@@ -286,7 +286,7 @@ void Style::polish(QPalette &palette)
+                         m_sortedLvColors!=m_progressCols && m_checkRadioSelCols!=m_progressCols && (newContrast || newButton));
+ 
+     if (newGray) {
+-        shadeColors(palette.color(QPalette::Active, QPalette::Base), m_backgroundCols);
++        shadeColors(palette.color(QPalette::Active, QPalette::Window), m_backgroundCols);
+         if (oneOf(opts.bgndImage.type, IMG_PLAIN_RINGS, IMG_BORDERED_RINGS,
+                   IMG_SQUARE_RINGS) ||
+             oneOf(opts.menuBgndImage.type, IMG_PLAIN_RINGS,
+@@ -311,7 +311,7 @@ void Style::polish(QPalette &palette)
+ //     if(opts.coloredMouseOver)
+ //         shadeColors(QApplication::palette().color(QPalette::Active, QPalette::Highlight), m_mouseOverCols);
+ 
+-    setMenuColors(palette.color(QPalette::Active, QPalette::Base));
++    setMenuColors(palette.color(QPalette::Active, QPalette::Window));
+ 
+     if (newSlider) {
+         shadeColors(midColor(m_highlightCols[ORIGINAL_SHADE],
+@@ -410,9 +410,9 @@ void Style::polish(QPalette &palette)
+                      m_backgroundCols[QTC_STD_BORDER]);
+ 
+     palette.setColor(QPalette::Disabled, QPalette::Base,
+-                     palette.color(QPalette::Active, QPalette::Base));
+-    palette.setColor(QPalette::Disabled, QPalette::Base,
+-                     palette.color(QPalette::Active, QPalette::Base));
++                     palette.color(QPalette::Active, QPalette::Window));
++    palette.setColor(QPalette::Disabled, QPalette::Window,
++                     palette.color(QPalette::Active, QPalette::Window));
+ 
+     // Fix KDE4's palette...
+     if (palette.color(QPalette::Active, QPalette::Highlight) !=
+@@ -953,7 +953,7 @@ void Style::unpolish(QWidget *widget)
+         widget->setAttribute(Qt::WA_Hover, false);
+ 
+         if(qtcIsCustomBgnd(opts))
+-            widget->setBackgroundRole(QPalette::Base);
++            widget->setBackgroundRole(QPalette::Window);
+ 
+         if(SHADE_WINDOW_BORDER==opts.shadeMenubars || opts.customMenuTextColor || SHADE_BLEND_SELECTED==opts.shadeMenubars ||
+            SHADE_SELECTED==opts.shadeMenubars || (SHADE_CUSTOM==opts.shadeMenubars &&TOO_DARK(m_menubarCols[ORIGINAL_SHADE])))
+@@ -1266,7 +1266,7 @@ bool Style::eventFilter(QObject *object, QEvent *event)
+ 
+             // In case the gradient uses alpha, we need to fill with the background colour - this makes it consistent with Gtk.
+             if(100==opts.menuBgndOpacity)
+-                p.fillRect(r, opt.palette.brush(QPalette::Base));
++                p.fillRect(r, opt.palette.brush(QPalette::Window));
+             drawBackground(&p, widget, BGND_MENU);
+             if (opts.popupBorder) {
+                 EGradientBorder border=qtcGetGradient(opts.menuBgndAppearance, &opts)->border;
+@@ -4222,7 +4222,7 @@ Style::drawControl(ControlElement element, const QStyleOption *option,
+ 
+         painter->save();
+         if(opts.flatSbarButtons && !qtcIsFlat(opts.sbarBgndAppearance) /*&& SCROLLBAR_NONE!=opts.scrollbarType*/)
+-            drawBevelGradientReal(palette.brush(QPalette::Base).color(), painter, r, state&State_Horizontal, false,
++            drawBevelGradientReal(palette.brush(QPalette::Window).color(), painter, r, state&State_Horizontal, false,
+                                   opts.sbarBgndAppearance, WIDGET_SB_BGND);
+ 
+         QStyleOption opt(*option);
+@@ -5800,7 +5800,7 @@ void Style::drawComplexControl(ComplexControl control, const QStyleOptionComplex
+             }
+             if (!opts.gtkScrollViews ||
+                 (opts.flatSbarButtons && !qtcIsFlat(opts.sbarBgndAppearance)))
+-                drawBevelGradientReal(palette.brush(QPalette::Base).color(), painter, r, horiz, false,
++                drawBevelGradientReal(palette.brush(QPalette::Window).color(), painter, r, horiz, false,
+                                       opts.sbarBgndAppearance, WIDGET_SB_BGND);
+ 
+             if(noButtons || opts.flatSbarButtons)
+diff --git a/qt6/style/qtcurve_primitive.cpp b/qt6/style/qtcurve_primitive.cpp
+index 531c6beb..59beff52 100644
+--- a/qt6/style/qtcurve_primitive.cpp
++++ b/qt6/style/qtcurve_primitive.cpp
+@@ -1271,11 +1271,11 @@ Style::drawPrimitivePanelMenu(PrimitiveElement, const QStyleOption *option,
+     const QColor *bgCols;
+     QColor altCols[TOTAL_SHADES+1];
+     if (theThemedApp==APP_KWIN && w
+-            && w->palette().color(QPalette::Active, QPalette::Base)
+-                != QApplication::palette().color(QPalette::Active, QPalette::Base)) {
+-//         qWarning() << "drawPrimitivePanelMenu: widget" << w << "bgCol" << w->palette().color(QPalette::Active, QPalette::Base)
+-//             << "differs from app bgCol" << QApplication::palette().color(QPalette::Active, QPalette::Base);
+-        shadeColors(w->palette().color(QPalette::Active, QPalette::Base), altCols);
++            && w->palette().color(QPalette::Active, QPalette::Window)
++                != QApplication::palette().color(QPalette::Active, QPalette::Window)) {
++//         qWarning() << "drawPrimitivePanelMenu: widget" << w << "bgCol" << w->palette().color(QPalette::Active, QPalette::Window)
++//             << "differs from app bgCol" << QApplication::palette().color(QPalette::Active, QPalette::Window);
++        shadeColors(w->palette().color(QPalette::Active, QPalette::Window), altCols);
+         bgCols = use = altCols;
+     } else {
+         use = popupMenuCols(option);
+@@ -1298,7 +1298,7 @@ Style::drawPrimitivePanelMenu(PrimitiveElement, const QStyleOption *option,
+     // In case the gradient uses alpha, we need to fill with the background
+     // colour - this makes it consistent with Gtk.
+     if (opts.menuBgndOpacity == 100) {
+-        painter->fillRect(r, option->palette.brush(QPalette::Base));
++        painter->fillRect(r, option->palette.brush(QPalette::Window));
+     }
+     drawBackground(painter, bgCols[ORIGINAL_SHADE], r,
+                    opts.menuBgndOpacity, BGND_MENU, opts.menuBgndAppearance);
+@@ -1524,7 +1524,7 @@ Style::drawPrimitiveIndicatorRadioButton(PrimitiveElement,
+                                  State_Selected));
+ 
+     if (isOO) {
+-        painter->fillRect(r, palette.brush(QPalette::Base));
++        painter->fillRect(r, palette.brush(QPalette::Window));
+     }
+     if (selectedOOMenu) {
+         drawPrimitive(PE_IndicatorCheckBox, option, painter, widget);

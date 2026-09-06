@@ -38,6 +38,7 @@ pkgbase = qtcurve-gtk-theme
 	source = gtk4-theme.patch
 	source = gtk4-theme-colors.patch
 	source = gtk4-writer-robustness.patch
+	source = qt6-window-palette.patch
 	sha256sums = d4db624ff455548fffb38277d7080a4380911bc25a12c63a1e653aa47660435f
 	sha256sums = 60d6c52289f3b6e7c0645bb9acaa96a769801f66e77f50cd5551b7e613611152
 	sha256sums = e4219281d09f042bac722d7ab6a6784b9b56ea34129e8b877942c91770d9a912
@@ -55,5 +56,6 @@ pkgbase = qtcurve-gtk-theme
 	sha256sums = 930253ea839ca5b143dee2c71d7a7cdf7728cc18851732648291f6e451090c47
 	sha256sums = fb6c3655234306c1af337504d4ad2585c6ba6f415ec07f73cf6f57eefdd7f7f2
 	sha256sums = cb277efe8faa714de1e907089d14b0ae0ec825bc9f85fd1c1dacefc030b7b7da
+	sha256sums = d871f559b1056ce7ee2afa1efea88b96a99961e55fa03480c10cdae26319ab5c
 
 pkgname = qtcurve-gtk-theme

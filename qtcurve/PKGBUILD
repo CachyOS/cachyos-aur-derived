@@ -5,7 +5,7 @@ _commit=519f04b08d7a1029b62b871cc8cf408d6fbefc1f
 _srcname=qtcurve
 pkgname=qtcurve
 pkgver=20260812
-pkgrel=5
+pkgrel=6
 pkgdesc="A configurable set of widget styles for Qt5, Qt6, KDE Frameworks 6, GTK 2, GTK 3 and GTK 4; the GTK theme data is in qtcurve-gtk-theme"
 arch=(x86_64)
 url="https://invent.kde.org/system/qtcurve"
@@ -82,6 +82,7 @@ source=(
 	gtk4-theme.patch
 	gtk4-theme-colors.patch
 	gtk4-writer-robustness.patch
+	qt6-window-palette.patch
 )
 sha256sums=('d4db624ff455548fffb38277d7080a4380911bc25a12c63a1e653aa47660435f'
             '60d6c52289f3b6e7c0645bb9acaa96a769801f66e77f50cd5551b7e613611152'
@@ -99,7 +100,8 @@ sha256sums=('d4db624ff455548fffb38277d7080a4380911bc25a12c63a1e653aa47660435f'
             'b664adba323966cd357a24e1be1f220633d2b261b764b0d86273bf6960da8601'
             '930253ea839ca5b143dee2c71d7a7cdf7728cc18851732648291f6e451090c47'
             'fb6c3655234306c1af337504d4ad2585c6ba6f415ec07f73cf6f57eefdd7f7f2'
-            'cb277efe8faa714de1e907089d14b0ae0ec825bc9f85fd1c1dacefc030b7b7da')
+            'cb277efe8faa714de1e907089d14b0ae0ec825bc9f85fd1c1dacefc030b7b7da'
+            'd871f559b1056ce7ee2afa1efea88b96a99961e55fa03480c10cdae26319ab5c')
 
 pkgver() {
 	git -C "$_srcname" log -1 --format=%cd --date=format:%Y%m%d
@@ -153,6 +155,8 @@ prepare() {
 	# The patch keeps a user sheet whole when a write fails.
 	git -C "$_srcname" add -A
 	git -C "$_srcname" apply --3way "$srcdir/gtk4-writer-robustness.patch"
+	# The patch reads the window colour of the Qt 6 style from QPalette::Window.
+	patch -Np1 -d "$_srcname" -i "$srcdir/qt6-window-palette.patch"
 }
 
 build() {
