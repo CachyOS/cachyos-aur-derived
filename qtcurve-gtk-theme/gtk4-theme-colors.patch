@@ -29,9 +29,9 @@ window label paint a cue of a state that showed none.
 paths.txt binds every caption, ground, ink and derived line, alphas.txt
 every translucent value, and shades.txt every shade factor.
 
-The change sits on the branch work/gtk4-theme of the local tree. The push puts
-that branch on the fork wyn/qtcurve. The merge request on system/qtcurve
-follows that push.
+The change sits on the branch work/gtk4-theme of the local tree, as the second
+commit. The fork wyn/qtcurve holds that branch. Merge request !15 on
+system/qtcurve holds that branch.
 
 Drop this patch when upstream merges the change.
 

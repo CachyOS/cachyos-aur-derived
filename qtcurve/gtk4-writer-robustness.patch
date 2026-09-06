@@ -25,9 +25,9 @@ every byte, and qtcurve.css stays. The second row starts the watch mode and
 gives one pass a fault through the new variable QTC_GTK_TEST_FAULT. The pass
 after it runs. Each row fails on a build that keeps the old code.
 
-The change sits on the branch work/gtk4-theme of the local tree. The push puts
-that branch on the fork wyn/qtcurve. The merge request on system/qtcurve
-follows that push.
+The change sits on the branch work/gtk4-theme of the local tree, as the third
+commit. The fork wyn/qtcurve holds that branch. Merge request !15 on
+system/qtcurve holds that branch.
 
 Drop this patch when upstream merges the change.
 

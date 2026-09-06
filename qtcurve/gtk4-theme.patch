@@ -117,9 +117,9 @@ theme name works for a user who never saved. Both outputs come from one emitter,
 byte compare guards against drift. The header table names every option that the theme
 drops, with the CSS limit that blocks it.
 
-The change sits on the branch work/gtk4-theme of the local tree. The push puts
-that branch on the fork wyn/qtcurve. The merge request on system/qtcurve
-follows that push.
+The change sits on the branch work/gtk4-theme of the local tree, as the first
+commit. The fork wyn/qtcurve holds that branch. Merge request !15 on
+system/qtcurve holds that branch.
 
 Drop this patch when upstream merges the change.
 
