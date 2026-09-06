@@ -1,6 +1,6 @@
 pkgbase = coolercontrol
 	pkgdesc = A program to monitor and control your cooling devices
-	pkgver = 4.3.1
+	pkgver = 5.0.0
 	pkgrel = 1
 	url = https://gitlab.com/coolercontrol/coolercontrol
 	arch = x86_64
@@ -14,7 +14,7 @@ pkgbase = coolercontrol
 	depends = glibc
 	depends = hicolor-icon-theme
 	depends = coolercontrold
-	source = https://gitlab.com/coolercontrol/coolercontrol/-/releases/4.3.1/downloads/packages/coolercontrol-4.3.1.tar.gz
-	sha256sums = 00ab5fd9a7a24bd003c2d1d34f78bf50487f46499c68a07d7f8d32e199643082
+	source = https://gitlab.com/coolercontrol/coolercontrol/-/releases/5.0.0/downloads/packages/coolercontrol-5.0.0.tar.gz
+	sha256sums = ebdc2e5aa4d4e380d71d10c3e3d22de3f93f3b49ef78255f3183a1d734801ffe
 
 pkgname = coolercontrol
