@@ -1,0 +1,242 @@
+Put the shadow setting on the popup menu page
+
+The Popup menus page carries the settings that act on the popup window
+as a whole. Row 15 gives it a border and row 16 colours it. The new
+check box continues that run.
+
+The border and the shadow are already a pair in the dialog. The tooltip
+of Border popupmenus tells the user to keep the border unless the
+window manager draws a shadow. One half of that pair had a switch and
+the other had none.
+
+The label reads Drop shadow, which pairs the switch with Drop shadow
+size on the Advanced Settings page. A user then reads the two as one
+control and its size. The word custom keeps the Use custom shadows
+setting of the Window Manager page apart from both.
+
+All three dialogs take the same six edits. The Qt 4 and Qt 5 dialogs
+carry the same widgets at the same rows, and parity is the norm of the
+tree.
+
+The change sits on the branch work/popup-shadow of the local tree, as
+the third commit. The fork wyn/qtcurve holds that branch. Merge request
+!19 on system/qtcurve holds that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/qt4/config/qtcurveconfig.cpp b/qt4/config/qtcurveconfig.cpp
+index 47ac103a..7da67fb2 100644
+--- a/qt4/config/qtcurveconfig.cpp
++++ b/qt4/config/qtcurveconfig.cpp
+@@ -1057,6 +1057,7 @@ QtCurveConfig::QtCurveConfig(QWidget *parent)
+     connect(borderMenuitems, SIGNAL(toggled(bool)), SLOT(updateChanged()));
+     connect(shadePopupMenu, SIGNAL(toggled(bool)), SLOT(shadePopupMenuChanged()));
+     connect(popupBorder, SIGNAL(toggled(bool)), SLOT(updateChanged()));
++    connect(popupShadow, SIGNAL(toggled(bool)), SLOT(updateChanged()));
+     connect(progressAppearance, SIGNAL(currentIndexChanged(int)), SLOT(updateChanged()));
+     connect(progressColor, SIGNAL(currentIndexChanged(int)), SLOT(progressColorChanged()));
+     connect(customProgressColor, SIGNAL(changed(const QColor &)), SLOT(updateChanged()));
+@@ -3056,6 +3057,7 @@ void QtCurveConfig::setOptions(Options &opts)
+     opts.borderMenuitems=borderMenuitems->isChecked();
+     opts.shadePopupMenu=shadePopupMenu->isChecked();
+     opts.popupBorder=popupBorder->isChecked();
++    opts.popupShadow=popupShadow->isChecked();
+     opts.progressAppearance=(EAppearance)progressAppearance->currentIndex();
+     opts.progressColor=(EShade)progressColor->currentIndex();
+     opts.customProgressColor=customProgressColor->color();
+@@ -3336,6 +3338,7 @@ void QtCurveConfig::setWidgetOptions(const Options &opts)
+     borderMenuitems->setChecked(opts.borderMenuitems);
+     shadePopupMenu->setChecked(opts.shadePopupMenu);
+     popupBorder->setChecked(opts.popupBorder);
++    popupShadow->setChecked(opts.popupShadow);
+     progressAppearance->setCurrentIndex(opts.progressAppearance);
+     progressColor->setCurrentIndex(opts.progressColor);
+     customProgressColor->setColor(opts.customProgressColor);
+@@ -3717,6 +3720,7 @@ bool QtCurveConfig::settingsChanged(const Options &opts)
+          borderMenuitems->isChecked()!=opts.borderMenuitems ||
+          shadePopupMenu->isChecked()!=opts.shadePopupMenu ||
+          popupBorder->isChecked()!=opts.popupBorder ||
++         popupShadow->isChecked()!=opts.popupShadow ||
+          defBtnIndicator->currentIndex()!=(int)opts.defBtnIndicator ||
+          sliderThumbs->currentIndex()!=(int)opts.sliderThumbs ||
+          handles->currentIndex()!=(int)opts.handles ||
+diff --git a/qt4/config/qtcurveconfigbase.ui b/qt4/config/qtcurveconfigbase.ui
+index 37612e78..c7d9271e 100644
+--- a/qt4/config/qtcurveconfigbase.ui
++++ b/qt4/config/qtcurveconfigbase.ui
+@@ -3366,6 +3366,23 @@
+          </property>
+         </widget>
+        </item>
++       <item row="17" column="0">
++        <widget class="QLabel" name="popupShadowLabel">
++         <property name="text">
++          <string>Drop shadow:</string>
++         </property>
++        </widget>
++       </item>
++       <item row="17" column="1">
++        <widget class="QCheckBox" name="popupShadow">
++         <property name="toolTip">
++          <string>&lt;p&gt;If enabled, QtCurve gives a drop shadow to menus, tooltips, combo box lists, and detached toolbars and dock windows.&lt;/p&gt;&lt;p&gt;The Drop shadow size box on the Advanced Settings page sets how far the shadow reaches.&lt;/p&gt;&lt;p&gt;A new value applies to the applications that start after the change.&lt;/p&gt;</string>
++         </property>
++         <property name="text">
++          <string>Enabled</string>
++         </property>
++        </widget>
++       </item>
+       </layout>
+      </widget>
+      <widget class="QWidget" name="page_22">
+@@ -4701,6 +4718,7 @@
+   <tabstop>customMenuStripeColor</tabstop>
+   <tabstop>menuStripeAppearance</tabstop>
+   <tabstop>popupBorder</tabstop>
++  <tabstop>popupShadow</tabstop>
+   <tabstop>toolbarAppearance</tabstop>
+   <tabstop>handles</tabstop>
+   <tabstop>toolbarSeparators</tabstop>
+diff --git a/qt5/config/qtcurveconfig.cpp b/qt5/config/qtcurveconfig.cpp
+index 68d11854..0fec93e5 100644
+--- a/qt5/config/qtcurveconfig.cpp
++++ b/qt5/config/qtcurveconfig.cpp
+@@ -1027,6 +1027,7 @@ QtCurveConfig::QtCurveConfig(QWidget *parent)
+                 crButton, roundAllTabs, borderTab, borderInactiveTab,
+                 invertBotTab, doubleGtkComboArrow, stdSidebarButtons,
+                 toolbarTabs, centerTabText, borderMenuitems, popupBorder,
++                popupShadow,
+                 windowBorder_fill, windowBorder_separator, lvLines, lvButton,
+                 drawStatusBarFrames, menubarMouseOver,
+                 shadeMenubarOnlyWhenActive, thin_menuitems, thin_buttons,
+@@ -3079,6 +3080,7 @@ void QtCurveConfig::setOptions(Options &opts)
+     opts.borderMenuitems=borderMenuitems->isChecked();
+     opts.shadePopupMenu=shadePopupMenu->isChecked();
+     opts.popupBorder=popupBorder->isChecked();
++    opts.popupShadow=popupShadow->isChecked();
+     opts.progressAppearance=(EAppearance)progressAppearance->currentIndex();
+     opts.progressColor=(EShade)progressColor->currentIndex();
+     opts.customProgressColor=customProgressColor->color();
+@@ -3361,6 +3363,7 @@ void QtCurveConfig::setWidgetOptions(const Options &opts)
+     borderMenuitems->setChecked(opts.borderMenuitems);
+     shadePopupMenu->setChecked(opts.shadePopupMenu);
+     popupBorder->setChecked(opts.popupBorder);
++    popupShadow->setChecked(opts.popupShadow);
+     progressAppearance->setCurrentIndex(opts.progressAppearance);
+     progressColor->setCurrentIndex(opts.progressColor);
+     customProgressColor->setColor(opts.customProgressColor);
+@@ -3742,6 +3745,7 @@ bool QtCurveConfig::settingsChanged(const Options &opts)
+          borderMenuitems->isChecked()!=opts.borderMenuitems ||
+          shadePopupMenu->isChecked()!=opts.shadePopupMenu ||
+          popupBorder->isChecked()!=opts.popupBorder ||
++         popupShadow->isChecked()!=opts.popupShadow ||
+          defBtnIndicator->currentIndex()!=(int)opts.defBtnIndicator ||
+          sliderThumbs->currentIndex()!=(int)opts.sliderThumbs ||
+          handles->currentIndex()!=(int)opts.handles ||
+diff --git a/qt5/config/qtcurveconfigbase.ui b/qt5/config/qtcurveconfigbase.ui
+index 40ce4b7f..7c9f4920 100644
+--- a/qt5/config/qtcurveconfigbase.ui
++++ b/qt5/config/qtcurveconfigbase.ui
+@@ -3430,6 +3430,23 @@
+          </property>
+         </widget>
+        </item>
++       <item row="17" column="0">
++        <widget class="QLabel" name="popupShadowLabel">
++         <property name="text">
++          <string>Drop shadow:</string>
++         </property>
++        </widget>
++       </item>
++       <item row="17" column="1">
++        <widget class="QCheckBox" name="popupShadow">
++         <property name="toolTip">
++          <string>&lt;p&gt;If enabled, QtCurve gives a drop shadow to menus, tooltips, combo box lists, and detached toolbars and dock windows.&lt;/p&gt;&lt;p&gt;The Drop shadow size box on the Advanced Settings page sets how far the shadow reaches.&lt;/p&gt;&lt;p&gt;A new value applies to the applications that start after the change.&lt;/p&gt;</string>
++         </property>
++         <property name="text">
++          <string>Enabled</string>
++         </property>
++        </widget>
++       </item>
+       </layout>
+      </widget>
+      <widget class="QWidget" name="page_22">
+@@ -4744,6 +4761,7 @@
+   <tabstop>customMenuStripeColor</tabstop>
+   <tabstop>menuStripeAppearance</tabstop>
+   <tabstop>popupBorder</tabstop>
++  <tabstop>popupShadow</tabstop>
+   <tabstop>toolbarAppearance</tabstop>
+   <tabstop>handles</tabstop>
+   <tabstop>toolbarSeparators</tabstop>
+diff --git a/qt6/config/qtcurveconfig.cpp b/qt6/config/qtcurveconfig.cpp
+index 0c891ce3..c6f51542 100644
+--- a/qt6/config/qtcurveconfig.cpp
++++ b/qt6/config/qtcurveconfig.cpp
+@@ -1027,6 +1027,7 @@ QtCurveConfig::QtCurveConfig(QWidget *parent)
+                 crButton, roundAllTabs, borderTab, borderInactiveTab,
+                 invertBotTab, doubleGtkComboArrow, stdSidebarButtons,
+                 toolbarTabs, centerTabText, borderMenuitems, popupBorder,
++                popupShadow,
+                 windowBorder_fill, windowBorder_separator, lvLines, lvButton,
+                 drawStatusBarFrames, menubarMouseOver,
+                 shadeMenubarOnlyWhenActive, thin_menuitems, thin_buttons,
+@@ -3054,6 +3055,7 @@ void QtCurveConfig::setOptions(Options &opts)
+     opts.borderMenuitems=borderMenuitems->isChecked();
+     opts.shadePopupMenu=shadePopupMenu->isChecked();
+     opts.popupBorder=popupBorder->isChecked();
++    opts.popupShadow=popupShadow->isChecked();
+     opts.progressAppearance=(EAppearance)progressAppearance->currentIndex();
+     opts.progressColor=(EShade)progressColor->currentIndex();
+     opts.customProgressColor=customProgressColor->color();
+@@ -3336,6 +3338,7 @@ void QtCurveConfig::setWidgetOptions(const Options &opts)
+     borderMenuitems->setChecked(opts.borderMenuitems);
+     shadePopupMenu->setChecked(opts.shadePopupMenu);
+     popupBorder->setChecked(opts.popupBorder);
++    popupShadow->setChecked(opts.popupShadow);
+     progressAppearance->setCurrentIndex(opts.progressAppearance);
+     progressColor->setCurrentIndex(opts.progressColor);
+     customProgressColor->setColor(opts.customProgressColor);
+@@ -3717,6 +3720,7 @@ bool QtCurveConfig::settingsChanged(const Options &opts)
+          borderMenuitems->isChecked()!=opts.borderMenuitems ||
+          shadePopupMenu->isChecked()!=opts.shadePopupMenu ||
+          popupBorder->isChecked()!=opts.popupBorder ||
++         popupShadow->isChecked()!=opts.popupShadow ||
+          defBtnIndicator->currentIndex()!=(int)opts.defBtnIndicator ||
+          sliderThumbs->currentIndex()!=(int)opts.sliderThumbs ||
+          handles->currentIndex()!=(int)opts.handles ||
+diff --git a/qt6/config/qtcurveconfigbase.ui b/qt6/config/qtcurveconfigbase.ui
+index 54e2a96d..71201a55 100644
+--- a/qt6/config/qtcurveconfigbase.ui
++++ b/qt6/config/qtcurveconfigbase.ui
+@@ -3430,6 +3430,23 @@
+          </property>
+         </widget>
+        </item>
++       <item row="17" column="0">
++        <widget class="QLabel" name="popupShadowLabel">
++         <property name="text">
++          <string>Drop shadow:</string>
++         </property>
++        </widget>
++       </item>
++       <item row="17" column="1">
++        <widget class="QCheckBox" name="popupShadow">
++         <property name="toolTip">
++          <string>&lt;p&gt;If enabled, QtCurve gives a drop shadow to menus, tooltips, combo box lists, and detached toolbars and dock windows.&lt;/p&gt;&lt;p&gt;The Drop shadow size box on the Advanced Settings page sets how far the shadow reaches.&lt;/p&gt;&lt;p&gt;A new value applies to the applications that start after the change.&lt;/p&gt;</string>
++         </property>
++         <property name="text">
++          <string>Enabled</string>
++         </property>
++        </widget>
++       </item>
+       </layout>
+      </widget>
+      <widget class="QWidget" name="page_22">
+@@ -4744,6 +4761,7 @@
+   <tabstop>customMenuStripeColor</tabstop>
+   <tabstop>menuStripeAppearance</tabstop>
+   <tabstop>popupBorder</tabstop>
++  <tabstop>popupShadow</tabstop>
+   <tabstop>toolbarAppearance</tabstop>
+   <tabstop>handles</tabstop>
+   <tabstop>toolbarSeparators</tabstop>
