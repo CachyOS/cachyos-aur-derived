@@ -5,7 +5,7 @@ _commit=519f04b08d7a1029b62b871cc8cf408d6fbefc1f
 _srcname=qtcurve
 pkgname=qtcurve-gtk-theme
 pkgver=20260812
-pkgrel=1
+pkgrel=2
 pkgdesc="The QtCurve theme data for GTK 2, GTK 3 and GTK 4; the engines and the writer are in qtcurve"
 arch=(any)
 url="https://invent.kde.org/system/qtcurve"
@@ -34,6 +34,77 @@ makedepends=(
 )
 # qtcurve-gtk2 and qtcurve before 20260812-5 own files of this theme; the named conflict resolves the pair in one transaction.
 conflicts=('qtcurve<20260812-5' 'qtcurve-gtk2')
+# The fix patches of the seven work branches, in the order that the branches
+# merge. A file name states the branch and the position of the commit in that
+# branch, and the header of a file holds the whole commit message. The array
+# keeps the apply order, and source and prepare() both read it.
+_fixes=(
+	config-io-01-undo-the-kconfig-escapes-when-the-style.patch
+	config-io-02-write-the-application-lists-in-one-stable.patch
+	config-io-03-take-the-default-when-a-number-in-the-config.patch
+	config-io-04-read-every-boolean-in-the-config-with-one.patch
+	config-io-05-reject-a-non-finite-shade-or-alpha-value.patch
+	config-io-06-check-every-config-value-against-the-range.patch
+	config-io-07-drop-the-dead-legacy-store-of-gbfactor.patch
+	config-io-08-match-a-config-name-against-the-value-set-of.patch
+	config-io-09-read-a-custom-shade-colour-of-black-as-a.patch
+	config-io-10-give-the-last-two-custom-colours-their.patch
+	config-io-11-report-a-colour-text-that-does-not-parse.patch
+	config-io-12-demote-config-values-in-the-style-build-only.patch
+	config-io-13-give-each-illegal-option-pair-one-repair.patch
+	config-io-14-write-sliderfill-through-the-appearance.patch
+	config-io-15-copy-the-image-sidecars-from-the-default.patch
+	config-io-16-reject-a-gradient-value-that-holds-a-partial.patch
+	config-io-17-give-the-gradient-stop-order-a-consistent.patch
+	config-io-18-skip-a-custom-gradient-with-no-stop-in-the.patch
+	style-paint-01-stop-different-paints-sharing-one-cached.patch
+	style-paint-02-paint-the-default-indicator-on-the-default.patch
+	style-paint-03-draw-a-shadow-for-the-shadowed-toolbar.patch
+	style-paint-04-keep-the-progress-animation-timer-while-a.patch
+	style-paint-05-free-the-status-bar-frame-from-the-menu.patch
+	style-paint-06-keep-the-menu-opaque-when-the-gradient.patch
+	style-paint-07-blend-the-shine-of-a-background-over-the.patch
+	style-paint-08-bound-the-lookup-of-a-title-bar-button.patch
+	style-paint-09-toggle-a-status-bar-that-the-window-builds.patch
+	style-paint-10-blend-the-menu-bar-and-the-title-bar-for-the.patch
+	style-paint-11-apply-the-background-opacity-to-a-tiled.patch
+	style-paint-12-fill-an-inactive-tab-with-the-opacity-of-the.patch
+	style-paint-13-darken-the-menu-stripe-of-a-lightened-popup.patch
+	style-paint-14-free-the-tab-tint-from-the-highlight-clip.patch
+	style-paint-15-shade-the-border-of-a-flat-selection.patch
+	style-paint-16-keep-the-drag-exceptions-across-a-settings.patch
+	style-paint-17-pad-the-left-edge-of-a-centred-tab-label.patch
+	style-paint-18-match-the-two-lines-of-a-sunken-separator.patch
+	style-paint-19-offset-a-menu-section-by-the-stripe-width.patch
+	style-paint-20-etch-a-radio-button-with-the-custom-dark.patch
+	style-paint-21-draw-the-border-of-a-faded-menu-item.patch
+	perf-01-skip-the-widget-property-chain-for-opaque.patch
+	image-dialog-01-accept-the-full-scale-range-of-the.patch
+	image-dialog-02-disable-the-scale-boxes-while-the-scale-box.patch
+	image-dialog-03-check-the-range-of-the-stored-image-position.patch
+	image-dialog-04-build-the-image-file-url-from-the-local-path.patch
+	image-dialog-05-use-one-name-rule-for-the-installed.patch
+	presets-01-scan-the-preset-save-location-for-presets.patch
+	presets-02-abort-the-export-when-the-archive-does-not.patch
+	presets-03-set-the-version-of-a-saved-preset-record.patch
+	presets-04-assemble-an-imported-preset-in-the-right.patch
+	dialog-state-01-load-the-style-dialog-with-the-signals.patch
+	dialog-state-02-show-the-drop-shadow-size-the-dialog-was.patch
+	dialog-state-03-disable-each-dialog-input-that-no-style-read.patch
+	dialog-state-04-repair-the-custom-gradient-stop-editor.patch
+	dialog-state-05-hold-the-custom-shade-boxes-above-the-off.patch
+	dialog-state-06-populate-the-shade-page-from-the-style.patch
+	dialog-state-07-report-a-change-of-the-sub-menu-close-delay.patch
+	dialog-state-08-carry-the-whole-password-character-code.patch
+	dialog-state-09-match-the-window-border-interlock-to-the.patch
+	dialog-state-10-free-the-tab-tint-and-the-popup-shade-factor.patch
+	dialog-state-11-pair-the-background-image-label-with-its.patch
+	wm-kcm-01-report-window-manager-edits-to-the-style.patch
+	wm-kcm-02-tell-the-window-manager-to-reload-after.patch
+	wm-kcm-03-keep-the-loaded-shadow-colour-type-in-range.patch
+	wm-kcm-04-keep-the-stated-keys-of-the-window-manager.patch
+)
+
 source=(
 	"git+https://invent.kde.org/system/qtcurve.git#commit=$_commit"
 	qt6-child-layout-margin.patch
@@ -57,6 +128,7 @@ source=(
 	popup-shadow-off.patch
 	popup-shadow-dialog.patch
 	gtk4-popup-shadow.patch
+	"${_fixes[@]}"
 )
 sha256sums=('d4db624ff455548fffb38277d7080a4380911bc25a12c63a1e653aa47660435f'
             '60d6c52289f3b6e7c0645bb9acaa96a769801f66e77f50cd5551b7e613611152'
@@ -65,7 +137,7 @@ sha256sums=('d4db624ff455548fffb38277d7080a4380911bc25a12c63a1e653aa47660435f'
             '1e615faef30ded051d8713b5707c4693bc5f4b9eb8438f99d9f59f40faec3f42'
             '87ade57a7f738a5584bb9991fdc9f3b489a308d5710ef69f54a8802b50997a93'
             '32ecb48317edb4b51e4f086fae161a827b7f5650abd2cc60f454b64888c11876'
-            'e3646a64f35da08d5ca772408bdb8e91e6faaa0abd12e8f8949d9548dfe050bd'
+            '93e9b4476df1a9d1426b3f18ee8060ab179e45bcf78f7cd520a4005fccaf3bc5'
             'db521126121105d4b375976e4e33b25488953b22d8280086a279040fecaf16c0'
             '3e8c93c4f8a38cb81a48aff2f43e300a945a842a61efb431937061acf5d08174'
             '4f437130cf4c8f1699061eba733b038804c76e417deb0c70b2885e83fb0037bf'
@@ -79,7 +151,71 @@ sha256sums=('d4db624ff455548fffb38277d7080a4380911bc25a12c63a1e653aa47660435f'
             'fcb47fc623b5659d1164f4fbe05b685c9d8d72d6c5d2c203301920913a53cf95'
             'f22df8e93cdf91dbcf39f48eecb5397690239d36f0ecd6c2b9008d86287d4071'
             'fcbc1c3f64e09db2b0f6b8732dc21433d20310adfa59ead0c3c9ff83c57bdebd'
-            '0e2ff92fce90bd25f8f8605bc70012eabc233300e64818c59f9566ce30166899')
+            '6202bbde0cd35b77dc8385907dc528d7a9c6bb943570818b5e03baebbb40be00'
+            'f38c4c782df9cbd45d8aa59ceed68563747210fecf8c236bb84e49ec86476883'
+            '21e7f7568deef15e332462792b365416365e82c348563c305ccda2960e55493b'
+            '7907760ca5d06952480912367545f2a33b511343fd0b8d00c71a252985c77e6f'
+            '595c52fc7df83bf6860798160b2a1b3be75bae2115e48756757d404a44a9879d'
+            'd35246e30f2a9b87e7e814d0a9b3b5f1ea338de2ce01a333910b5f99695ae320'
+            '7e9ede16785022f6dbbab0d631e2725aba908ac0e437cd85cf2515627191f1b7'
+            '5474e864faf90c183f009a315217eb267599987fdca00217139d45b3950c88cb'
+            'a54eccdbda86e572eef6a83b335f1f043669945d334448216192bcf2cf643b7a'
+            'ab4cedcf5f5ef0fc2d77a35853cca663f9ac82788f20c44cab3c6950d985c972'
+            '11bf4be3cd79cefc5527d4e8be7b4659ae6b23f60c7f972824200707442aab10'
+            '922160303f4d8a851484a7add261385bda486b8dc757952860de5323e9fdee5e'
+            'b8efddaf6805177163a6eb36f515f97cb50ee671e6ed29ea3119d49100950be2'
+            '794d9e97f74de758573c2bef137d4d4cdd5da1f4f99faf341d2ec5f21ce4f8a9'
+            '2344f8410ddc24a8036e7754ce22ada4f70f309ff3b36d233d75b09d854584bc'
+            '9aa3fe65603bc0859f04c1a47b4e204c40f33a00eeef191fc8840a8778a722cd'
+            '4bd9b6e136af25ca1bd9f9cb81911e58fa856841714a4371c224e2124250a838'
+            '4e17585dc4760be93a89c117f5675b0559061c0a1db42550b2d47484ca699384'
+            '0ae398bb6e65a2a25a18b5aa4b26c56e6e9859b1ca534c572073299df279d483'
+            'ad914819339e91bc65b83fab8cdcf0a5b54c0c763eec7527fa3b49e9144e8eb9'
+            '02a01c41927d4843d9c453a540bc83febaba76ed7b9efdc71634de20d24f4431'
+            '68f1261ac579ec940765016cadd79ddfde9a584912664e09eb0b7044fac733b2'
+            'b0a6db35e56829711ca4f60bf098b7fef77a75e56be86b242132d8c6fbf7f793'
+            '6e5ce2cd16746f4c3c1497d67a209390c725a5a82defa6e4e506ea7041dbb6ee'
+            '8f038e678b87bd3b9ce6c2f817dc02d0b481d665df45e93860eb622f151c0fe2'
+            '373efe890645361bb6e08d71b1b45f3862956b6619a089dc4c721b498677d87f'
+            'b3a5f2a2ade787fa70ec52f31e6204c010959d5376aef282cde0320973455970'
+            '6a46fd7273bb20d43ec0872578676ca89cbbdc2904822e7a9e0db79302801389'
+            '97910eb97e43d1d5ff856895980152f55b0fdcfef31e1049dfa22c2b2b5fd06b'
+            '1f676431530c36497b784b8d42d4cdb972492f7b860f2c138a2646f74af42c24'
+            'f3867dc8f41e2f462051dfa30d61a39ff85e45d8c6d9cabc843dae6d299f8527'
+            '4f360cf462b3dab0b803ab7134f65ead4c315ea2e4e8fa235d2e5cd48fc63917'
+            '9720586244a668b624f02eeb377674d480a111691f28a62b4821ed0722af0d6e'
+            'd5d804781bb3b471bafe12fe4b9984c5709a95e67f04b527328b3bb58ce016f7'
+            '19935a08bfab84dd6d3ae9fc4d01dcf5be9a784d31d4ddfc5242e88b59ed67d3'
+            '117059033d9406fa1214ae145f501d5db2c4cfa43ba81d06f9f88e7899aafd3e'
+            'a3581e27666eeca170c768bc3452a48ed04f37a39533db969ee37ecb129fd09e'
+            '79a8ee92a1e023d46d90db40081f038b66adf35b576ebff6f24e053c35f22b31'
+            'c0f7553bf2384453c077bc45f58b45e5c24a45fe16fe7dd1f8149c70b7325f70'
+            'bf02057200ddb6d198804e47ea260bd92620ca256166bce21740b5a141793c06'
+            'dc4ad264820d51e924f7bea1c831783f24c7b209db9cd891ed5cf5cecfbe747c'
+            'd1d9bd888736fb1403871b752087f259a9b3b92c72de35b66318cb8831f1205f'
+            '6b56dd164802604d11b656f11d22fb4332d6705dad283713c330bd3fb137b72d'
+            'bbfefdf71774a54b1339caceeeec3a74104a002d11db53c8e3539d07ede42f3b'
+            'af3d34d2939a97ef39887e0a42bf3288954ddc43e0757c07d1623ad7cd2a2e03'
+            '68d9c188e2fa5049be126c3f64e320bb26146ef3550339471111c7c87c5ef9dc'
+            '90f5ba7e310e967b756fd7b6d444235eaaa5d6735355f7baef6ce418858f07b0'
+            '8627f1aa90218170b08279fd35cc3c720d666c7e6d88a7ad4e2732b6c983ed1f'
+            '2180fc902788362ddf0f73102d6012308dd8ba76c9244a0754f5dd533b215f66'
+            '5349e9de38a677316375815b11662aa5fc6fb3dab2034dd41fc9b48ce07de7d5'
+            'd3fc248f6f2a80bd4ac9f26e3bf1f104455087586ef6bc9c5750b69f7396aad0'
+            '5c1d6e45869d2bc9a4a6a9e568cbdce5af97c8d6e978364ef57d945606310567'
+            '80e5eba77cc9370461af24c1c5100d98bceb2ff91fd9777859015f397d2afe39'
+            '24067ef4e720e8753b6fbf5eb5336891e7d1f812b97b239eea4cf1b443b146bb'
+            '295a46817bf4c01df587f55542946b86702ee37331cfa84efa212595baa400dc'
+            'b550f7b12e463667d0cd7df1451e3bed5232a10e2cdddadf2721d25cdf7c33a9'
+            '06502ff5285f9c62809b5074e231498b0880b9e036dcf57845c03e17c2bcd7ee'
+            '3653dd92530743446eafb7fa3c4c014218c1be1208ba1b6a84d3805d2140d225'
+            'f0f182af3f803115cf5ad59cea052b4e3ba82f36662878da4422476c614f5aeb'
+            'e30111fc60d70ccd59aa799b2723556f9c178c8e6404b930617479e82fab5622'
+            '3862047a38feaaa04ed2f10604e8c21cf2323bf20603e284c5419bacbd715476'
+            '08a038e8f08dd86b76c8a2c16b3a27b63c437689826dd5f96489980cf4369c91'
+            'e856d2a53c1cfe8bc86ee59b7687e73b30eb7b50019a366e0a170d3df1fa9426'
+            '6ed37338b6449da1f3ce82148c4809f1735b44741e6a3e79dc72e0bb53232fee'
+            'c628df9a864260399162bff4d51f1112f796e1f9ce28c16646685a9b6d3e956c')
 
 pkgver() {
 	git -C "$_srcname" log -1 --format=%cd --date=format:%Y%m%d
@@ -147,6 +283,13 @@ prepare() {
 	# to the text that patch 18 wrote.
 	git -C "$_srcname" add -A
 	git -C "$_srcname" apply --3way "$srcdir/gtk4-popup-shadow.patch"
+
+	# Each file of _fixes holds one commit of a work branch. The files apply in
+	# the order of the array, which is the order that the branches merge.
+	local _fix
+	for _fix in "${_fixes[@]}"; do
+		patch -Np1 -d "$_srcname" -i "$srcdir/$_fix"
+	done
 }
 
 build() {

@@ -23,9 +23,78 @@ reloads KWin at once. The help text of "Titlebar text padding:" now states
 that the pad changes the title bar alone. Out of scope: a per button size, the
 window icon size and the title alignment option of Breeze.
 
+Colour the decoration buttons from the settings
+
+The Plasma 6 decoration reads three flags of the titlebarButtons key
+nowhere. The icon colour flag, the standard colour flag and the hover
+colour flag therefore change no pixel of a window decoration. The 18 icon
+colour pickers also reach no window decoration.
+
+Read the three flags where the decoration picks its colours. Under the
+icon colour flag the line art takes a colour of the titlebarButtonColors
+key. It reads the second block of the key for an active window and the
+third block for an inactive window. Under the hover colour flag the line
+art of a button under the pointer takes the hover colour of the colour
+scheme. Under the standard colour flag the frame takes the button colour
+of the palette.
+
+drawMdiControl() in qt6/style/qtcurve.cpp and QtCurveButton::drawButton()
+in qt6/kwin/qtcurvebutton.cpp read the same flags in the same order. A
+window decoration therefore matches an MDI window of the style again.
+
+Draw the arrow glyphs and the sunken button ground
+
+The Plasma 6 decoration reads two flags of the titlebarButtons key
+nowhere. The arrow flag therefore leaves the minimize glyph and the
+maximize glyph unchanged. The sunken background flag only moves the
+button frame one pixel inward. It draws no ground, so the promise of a
+drawn background goes unmet.
+
+Read the arrow flag in the glyph painter. The minimize button then takes
+an arrow that points down. The maximize button takes an arrow that points
+up. The restore button takes two frames. drawIcon() in
+qt6/style/qtcurve.cpp draws the same three shapes.
+
+Draw the ground of the sunken background flag under each button group,
+between the title bar and the buttons. drawSunkenBevel() in
+qt6/kwin/qtcurveclient.cpp drew the same gradient over the same area. A
+group of one button keeps no ground, as it did there.
+
+Blend the title bar into the window background
+
+The Plasma 6 decoration reads the blend flag of the windowBorder key
+nowhere. The option that blends the title bar colour into the background
+colour therefore changes no pixel of a window decoration.
+
+Give the last stop of the title bar gradient the window background at no
+alpha under the blend flag. The bottom of the title bar then fades into
+the fill under it. drawBevelGradientReal() in qt6/style/qtcurve.cpp
+clears the last stop of an MDI window title bar the same way.
+
+The reader keeps the blend flag with the colour title bar only flag
+alone. That flag paints the window background under the title bar. The
+fade therefore always reaches the background colour of the option.
+
+Take the menubar colour for the title bar
+
+The Plasma 6 decoration reads the menubar colour flag of the windowBorder
+key nowhere. The option that gives the title bar the menubar colour
+therefore changes no pixel of a window decoration.
+
+Build the menubar colour from the shadeMenubars key and return it from
+the title bar colour under the flag. setMenuColors() in
+qt6/style/qtcurve.cpp builds the same colour for the menubar of an
+application, so the title bar and the menubar under it hold one colour.
+An inactive window keeps the title bar colour while the shade menubar
+only when active key is on, as paintEvent() in
+qt6/kwin/qtcurveclient.cpp did.
+
+The window border value of the shadeMenubars key needs no arm, because
+the reader drops the flag for that value.
+
 The change sits on the branch work/kdecoration3 of the local tree, as the third
-commit. The fork wyn/qtcurve holds that branch. Merge request !9 on
-system/qtcurve holds that branch.
+commit and the four commits after it. The fork wyn/qtcurve holds that branch.
+Merge request !9 on system/qtcurve holds that branch.
 
 Drop this patch when upstream merges the change.
 
@@ -251,7 +320,7 @@ index af1473d5..d51c6261 100644
    <tabstop>innerBorder</tabstop>
    <tabstop>titleBarPad</tabstop>
 diff --git a/qt6/kdecoration/qtcurvedecoration.cpp b/qt6/kdecoration/qtcurvedecoration.cpp
-index 826318e1..1a2a1901 100644
+index 826318e1..a3b46b73 100644
 --- a/qt6/kdecoration/qtcurvedecoration.cpp
 +++ b/qt6/kdecoration/qtcurvedecoration.cpp
 @@ -75,6 +75,26 @@ const qreal buttonVerticalPad = 3.0;
@@ -315,7 +384,147 @@ index 826318e1..1a2a1901 100644
  //! find the button at one end of a button group that takes a click
  /*! DecorationButtonGroup::updateLayout() puts the buttons from the left under
      a left to right layout, and from the right under a right to left layout.
-@@ -589,24 +636,46 @@ Decoration::titleBarAppearance() const
+@@ -505,6 +552,63 @@ fillBackground(QPainter *painter, const QPainterPath &path, const QColor &base,
+     QtCurve::fillGradient(painter, path, base, opts.bgndAppearance, opts);
+ }
+ 
++//! draw the sunken ground of a title bar button group
++/*! drawSunkenBevel() in qt6/kwin/qtcurveclient.cpp drew the same shape under
++    each button group of the KDE4 decoration.
++    \param painter the painter to draw with.
++    \param rect the area of the ground.
++    \param base the colour under the ground. The two alpha values of the
++    gradient follow the value of this colour.
++    \param opts the settings of the style. The round flag of the
++    titlebarButtons key and the round key select the corner radius. */
++void
++drawSunkenBevel(QPainter *painter, const QRectF &rect, const QColor &base,
++                const Options &opts)
++{
++    const qreal radius =
++        (opts.titlebarButtons & TITLEBAR_BUTTON_ROUND) ? rect.height() / 2.0 :
++        opts.round > ROUND_FULL ? 5.0 : opts.round > ROUND_SLIGHT ? 3.0 : 2.0;
++    QColor dark(Qt::black);
++    QColor light(Qt::white);
++    dark.setAlphaF(SUNKEN_BEVEL_DARK_ALPHA(base));
++    light.setAlphaF(SUNKEN_BEVEL_LIGHT_ALPHA(base));
++    QLinearGradient gradient(rect.topLeft(), rect.bottomLeft());
++    gradient.setColorAt(0, dark);
++    gradient.setColorAt(1, light);
++    QPainterPath path;
++    path.addRoundedRect(rect, radius, radius);
++    painter->fillPath(path, QBrush(gradient));
++}
++
++//! the area behind the buttons of one group
++/*! \param group the button group, or a null pointer.
++    \return the union of the squares of the visible buttons. A spacer and a
++    custom button count for nothing. A null pointer, and a group of one
++    button, gives an empty rectangle. paintEvent() in
++    qt6/kwin/qtcurveclient.cpp drew no ground under a lone button. */
++QRectF
++buttonGround(const KDecoration3::DecorationButtonGroup *group)
++{
++    if (!group) {
++        return QRectF();
++    }
++    QRectF ground;
++    int count = 0;
++    const auto buttons = group->buttons();
++    for (const KDecoration3::DecorationButton *button : buttons) {
++        if (!button->isVisible() ||
++            button->type() == KDecoration3::DecorationButtonType::Spacer ||
++            button->type() == KDecoration3::DecorationButtonType::Custom) {
++            continue;
++        }
++        count++;
++        ground =
++            ground.united(static_cast<const QtCurve::Button*>(button)
++                          ->squareGeometry());
++    }
++    return count > 1 ? ground : QRectF();
++}
++
+ }
+ 
+ namespace QtCurve {
+@@ -522,7 +626,7 @@ shade(const QColor &base, double factor, Shading shading)
+ 
+ void
+ fillGradient(QPainter *painter, const QPainterPath &path, const QColor &base,
+-             EAppearance app, const Options &opts)
++             EAppearance app, const Options &opts, const QColor &blendTo)
+ {
+     if (qtcIsFlat(app)) {
+         painter->fillPath(path, base);
+@@ -536,6 +640,13 @@ fillGradient(QPainter *painter, const QPainterPath &path, const QColor &base,
+         colour.setAlphaF(stop.alpha * base.alphaF());
+         gradient.setColorAt(stop.pos, colour);
+     }
++    // drawBevelGradientReal() in qt6/style/qtcurve.cpp gives the last stop of
++    // a blended title bar the window background at no alpha.
++    if (blendTo.isValid() && !grad->stops.empty()) {
++        QColor clear(blendTo);
++        clear.setAlphaF(0);
++        gradient.setColorAt(grad->stops.rbegin()->pos, clear);
++    }
+     // drawBevelGradientReal() in qt6/style/qtcurve.cpp adds the same two
+     // stops to an agua shape above AGUA_MAX, so a tall button keeps the
+     // gradient of a short one.
+@@ -567,8 +678,51 @@ Decoration::options() const
+ QColor
+ Decoration::titleBarColor() const
+ {
++    const Options &opts = options();
++    const bool active = window()->isActive();
++    // The menubar colour flag gives the title bar the menubar colour. A
++    // window then keeps one colour over the title bar and the menubar under
++    // it. The shadeMenubarOnlyWhenActive key holds the title bar colour on an
++    // inactive window, as paintEvent() in qt6/kwin/qtcurveclient.cpp did.
++    if ((opts.windowBorder & WINDOW_BORDER_USE_MENUBAR_COLOR_FOR_TITLEBAR) &&
++        (active || !opts.shadeMenubarOnlyWhenActive)) {
++        return menuBarColor();
++    }
++    return window()->color(active ? ColorGroup::Active : ColorGroup::Inactive,
++                           ColorRole::TitleBar);
++}
++
++QColor
++Decoration::menuBarColor() const
++{
++    const Options &opts = options();
++    // setMenuColors() in qt6/style/qtcurve.cpp builds the menubar colours from
++    // the base colour of the palette and from the selection colour. A
++    // decoration plugin runs inside the compositor, so the palette is the
++    // palette of the compositor.
++    const QPalette palette = QGuiApplication::palette();
++    const QColor base = palette.color(QPalette::Active, QPalette::Base);
++    const QColor selection = palette.color(QPalette::Active,
++                                           QPalette::Highlight);
++    switch (opts.shadeMenubars) {
++    case SHADE_BLEND_SELECTED:
++        return midColor(selection, base);
++    case SHADE_SELECTED:
++        return IS_GLASS(opts.appearance) ?
++            shade(selection, MENUBAR_GLASS_SELECTED_DARK_FACTOR,
++                  opts.shading) : selection;
++    case SHADE_CUSTOM:
++        return opts.customMenubarsColor;
++    case SHADE_DARKEN:
++        return shade(base, MENUBAR_DARK_FACTOR, opts.shading);
++    default:
++        break;
++    }
++    // menuColors() in qt6/style/qtcurve.cpp gives a menubar of the no shade
++    // value the window background. The reader drops the menubar colour flag
++    // for the window border value, so no other value reaches this line.
+     return window()->color(window()->isActive() ? ColorGroup::Active :
+-                           ColorGroup::Inactive, ColorRole::TitleBar);
++                           ColorGroup::Inactive, ColorRole::Frame);
+ }
+ 
+ QColor
+@@ -589,24 +743,46 @@ Decoration::titleBarAppearance() const
  qreal
  Decoration::buttonSize() const
  {
@@ -372,7 +581,7 @@ index 826318e1..1a2a1901 100644
  }
  
  qreal
-@@ -847,6 +916,12 @@ Decoration::init()
+@@ -847,6 +1023,12 @@ Decoration::init()
              this, &Decoration::updateButtonsGeometryDelayed);
      connect(config.get(), &KDecoration3::DecorationSettings::reconfigured,
              this, &Decoration::updateButtonsGeometryDelayed);
@@ -385,11 +594,83 @@ index 826318e1..1a2a1901 100644
  
      auto *decorated = window();
      connect(decorated, &KDecoration3::DecoratedWindow::activeChanged,
+@@ -1093,8 +1275,16 @@ Decoration::paintTitleBar(QPainter *painter, const QRectF &repaintRegion)
+     // CC_TitleBar in qt6/style/qtcurve_api.cpp draws no title bar fill under
+     // KWin for the none appearance, so the paint below it stays.
+     if (titleBarAppearance() != APPEARANCE_NONE) {
++        // The blend flag fades the bottom of the title bar into the window
++        // background. The colour title bar only flag paints that background
++        // under the title bar, and the reader keeps the blend flag with that
++        // flag alone.
++        const QColor blendTo =
++            (opts.windowBorder & WINDOW_BORDER_BLEND_TITLEBAR) ?
++            window()->color(window()->isActive() ? ColorGroup::Active :
++                            ColorGroup::Inactive, ColorRole::Frame) : QColor();
+         fillGradient(painter, barPath, titleBarColor(), titleBarAppearance(),
+-                     opts);
++                     opts, blendTo);
+     }
+     painter->restore();
+ 
+@@ -1156,6 +1346,24 @@ Decoration::paintTitleBar(QPainter *painter, const QRectF &repaintRegion)
+                       caption);
+     painter->restore();
+ 
++    // The sunken background flag draws a ground under each button group.
++    // Button::drawFrame() takes one further pixel of every square, so the
++    // ground shows around each button.
++    if (opts.titlebarButtons & TITLEBAR_BUTTON_SUNKEN_BACKGROUND) {
++        painter->save();
++        painter->setRenderHint(QPainter::Antialiasing);
++        painter->setPen(Qt::NoPen);
++        const QColor base = titleBarColor();
++        for (const KDecoration3::DecorationButtonGroup *group :
++                 {m_leftButtons, m_rightButtons}) {
++            const QRectF ground = buttonGround(group);
++            if (!ground.isEmpty()) {
++                drawSunkenBevel(painter, ground, base, opts);
++            }
++        }
++        painter->restore();
++    }
++
+     if (m_leftButtons) {
+         m_leftButtons->paint(painter, repaintRegion);
+     }
 diff --git a/qt6/kdecoration/qtcurvedecoration.h b/qt6/kdecoration/qtcurvedecoration.h
-index b03ea96f..7506651b 100644
+index b03ea96f..ca91a2c9 100644
 --- a/qt6/kdecoration/qtcurvedecoration.h
 +++ b/qt6/kdecoration/qtcurvedecoration.h
-@@ -101,6 +101,11 @@ public:
+@@ -55,9 +55,13 @@ QColor shade(const QColor &base, double factor, Shading shading);
+     \param path the shape to fill.
+     \param base the colour that the shade factors of the gradient act on.
+     \param app the appearance to draw.
+-    \param opts the settings of the style. */
++    \param opts the settings of the style.
++    \param blendTo the colour of the last stop of the gradient, at no alpha.
++    The shape then fades into the paint under it. An invalid colour holds the
++    shade of the last stop. */
+ void fillGradient(QPainter *painter, const QPainterPath &path,
+-                  const QColor &base, EAppearance app, const Options &opts);
++                  const QColor &base, EAppearance app, const Options &opts,
++                  const QColor &blendTo=QColor());
+ 
+ //! the QtCurve window decoration for Plasma 6
+ /*! The decoration draws the title bar, the caption, the buttons and the window
+@@ -86,8 +90,10 @@ public:
+     const Options &options() const;
+ 
+     //! the colour under the title bar gradient
+-    /*! \return the title bar colour of the active window group, or of the
+-        inactive window group. */
++    /*! \return the menubar colour, or the title bar colour of the active
++        window group or of the inactive window group. The menubar colour needs
++        the menubar colour flag of the windowBorder key. It also needs an
++        active window, or the shadeMenubarOnlyWhenActive key off. */
+     QColor titleBarColor() const;
+ 
+     //! the colour of the caption and of the button glyphs
+@@ -101,6 +107,11 @@ public:
      EAppearance titleBarAppearance() const;
  
      //! the length of one side of a square title bar button, in pixels
@@ -401,7 +682,7 @@ index b03ea96f..7506651b 100644
      qreal buttonSize() const;
  
  public Q_SLOTS:
-@@ -164,14 +169,40 @@ private:
+@@ -164,14 +175,40 @@ private:
      void paintTitleBar(QPainter *painter, const QRectF &repaintRegion);
  
      //! the height of the title bar, in pixels
@@ -444,11 +725,38 @@ index b03ea96f..7506651b 100644
  
      //! the width of the side border and of the bottom border, in pixels
      /*! \param bottom true for the bottom border, false for a side border.
+@@ -216,6 +253,13 @@ private:
+         CustomShadows key is off. */
+     QColor borderColor(DecorationConfig::Shade shadeType) const;
+ 
++    //! the menubar colour of the style
++    /*! The shadeMenubars key of the style settings selects the colour, and
++        setMenuColors() in qt6/style/qtcurve.cpp builds the same colour for the
++        menubar of an application.
++        \return the colour. */
++    QColor menuBarColor() const;
++
+     //! the copy of DecorationConfig::generation() of the last reconfigure()
+     /*! The constructor takes the current value. reconfigure() reads the files
+         again while the two values are the same, because no other decoration
 diff --git a/qt6/kdecoration/qtcurvedecorationbutton.cpp b/qt6/kdecoration/qtcurvedecorationbutton.cpp
-index 72de19ef..8bd638b1 100644
+index 72de19ef..7114376d 100644
 --- a/qt6/kdecoration/qtcurvedecorationbutton.cpp
 +++ b/qt6/kdecoration/qtcurvedecorationbutton.cpp
-@@ -36,7 +36,25 @@
+@@ -24,8 +24,12 @@
+ 
+ #include <KDecoration3/DecoratedWindow>
+ 
++#include <KColorScheme>
++
++#include <QGuiApplication>
+ #include <QIcon>
+ #include <QPainter>
++#include <QPalette>
+ #include <QPolygonF>
+ #include <QRectF>
+ 
+@@ -36,7 +40,25 @@
  namespace {
  
  //! the smallest side of the line art of a button, in pixels
@@ -475,16 +783,157 @@ index 72de19ef..8bd638b1 100644
  
  //! the entry of the titlebarButtonColors key for one button type
  /*! \param type the button type of the decoration framework.
-@@ -305,7 +323,7 @@ Button::drawFrame(QPainter *painter, const QRectF &rect) const
+@@ -70,6 +92,31 @@ buttonColorIndex(KDecoration3::DecorationButtonType type)
+     }
+ }
+ 
++//! the hover colour of the colour scheme
++/*! QtCurveHandler::hoverCol() in qt6/kwin/qtcurvehandler.cpp read the same
++    colour for the line art of a button under the pointer.
++    \param active true for an active window, false for an inactive window.
++    \return the decoration hover colour of the matching colour group. */
++QColor
++hoverColor(bool active)
++{
++    return KColorScheme(active ? QPalette::Active : QPalette::Inactive)
++        .decoration(KColorScheme::HoverColor).color();
++}
++
++//! the standard button colour of the palette
++/*! QtCurveButton::drawButton() in qt6/kwin/qtcurvebutton.cpp left this colour
++    in the palette of the style option for the standard colour flag. A
++    decoration plugin runs inside the compositor, so the palette is the palette
++    of the compositor.
++    \return the button colour of the active colour group. */
++QColor
++standardButtonColor()
++{
++    return QGuiApplication::palette().color(QPalette::Active,
++                                            QPalette::Button);
++}
++
+ //! draw a filled triangle
+ /*! \param painter the painter to draw with. The call uses the brush of the
+     painter.
+@@ -233,13 +280,35 @@ Button::glyphColor() const
+     }
+     const Options &opts = owner->options();
+     const int flags = opts.titlebarButtons;
++    const bool active = owner->window()->isActive();
+     QColor color = owner->fontColor();
+-    if (colored() && (flags & TITLEBAR_BUTTON_COLOR_SYMBOL)) {
++    // The icon colour flag takes the line art colour from the
++    // titlebarButtonColors key. An active window reads the second block of the
++    // key, and an inactive window reads the third block. drawMdiControl() in
++    // qt6/style/qtcurve.cpp reads the same two blocks.
++    const int index = buttonColorIndex(type());
++    bool custom = false;
++    if ((flags & TITLEBAR_BUTTON_ICON_COLOR) && index < NUM_TITLEBAR_BUTTONS) {
++        const auto entry = opts.titlebarButtonColors.find(
++            index + NUM_TITLEBAR_BUTTONS * (active ? 1 : 2));
++        if (entry != opts.titlebarButtonColors.end()) {
++            color = entry->second;
++            custom = true;
++        }
++    } else if (colored() && (flags & TITLEBAR_BUTTON_COLOR_SYMBOL)) {
+         color = buttonColor();
+-    } else if (isHovered() && !isPressed() &&
+-               !(flags & TITLEBAR_BUTTON_COLOR) &&
+-               type() == DecorationButtonType::Close) {
+-        color = CLOSE_COLOR;
++        custom = true;
++    }
++    // The hover colour flag gives the hover colour to the line art of a button
++    // under the pointer. The close button takes the QtCurve close colour
++    // instead. A colour of the titlebarButtonColors key holds against both.
++    if (!custom && isHovered() && !isPressed() &&
++        !(flags & TITLEBAR_BUTTON_COLOR)) {
++        if (type() == DecorationButtonType::Close) {
++            color = CLOSE_COLOR;
++        } else if (flags & TITLEBAR_BUTTON_USE_HOVER_COLOR) {
++            color = hoverColor(active);
++        }
+     }
+     if (isPressed() || isHovered() ||
+         !(flags & TITLEBAR_BUTTON_HOVER_SYMBOL)) {
+@@ -269,12 +338,19 @@ Button::drawFrame(QPainter *painter, const QRectF &rect) const
+     // The round flag gives a circle. Every other setting gives the corner
+     // radius that the round key of the style asks for. qtcGetRadius() reads
+     // both keys.
++    // The standard colour flag gives the frame the button colour of the
++    // palette. The colour mouse over flag holds the title bar colour on a
++    // button away from the pointer, while the colour flag is off.
++    const bool standard = (flags & TITLEBAR_BUTTON_STD_COLOR) &&
++        (hover || !(flags & TITLEBAR_BUTTON_COLOR_MOUSE_OVER) ||
++         (flags & TITLEBAR_BUTTON_COLOR));
+     // The colour symbol flag moves the custom colour to the line art.
+     // QtCurveButton::drawButton() in qt6/kwin/qtcurvebutton.cpp therefore left
+     // the title bar colour on the frame.
+     const QColor base = (colored() &&
+                          !(flags & TITLEBAR_BUTTON_COLOR_SYMBOL)) ?
+-        buttonColor() : owner->titleBarColor();
++        buttonColor() :
++        (standard ? standardButtonColor() : owner->titleBarColor());
+     // qtcurvebutton.cpp took one pixel of the square for the round flag and
+     // one more for the sunken background flag. The etch of drawLightBevelReal()
+     // in qt6/style/qtcurve.cpp took one further pixel. That route gave a tool
+@@ -305,8 +381,10 @@ Button::drawFrame(QPainter *painter, const QRectF &rect) const
  
  void
  Button::drawGlyph(QPainter *painter, const QRectF &rect,
 -                  const QColor &color) const
 +                  const QColor &color, qreal margin) const
  {
++    const auto *owner = qobject_cast<Decoration*>(decoration());
++    const int flags = owner ? owner->options().titlebarButtons : 0;
      const qreal side = qMin(rect.width(), rect.height());
      // The three widths follow IconEngine::icon() of the KDE4 decoration. A
-@@ -374,6 +392,11 @@ Button::drawGlyph(QPainter *painter, const QRectF &rect,
+     // stroke draws a line. A bar draws the head of a window symbol. A frame
+@@ -329,10 +407,24 @@ Button::drawGlyph(QPainter *painter, const QRectF &rect,
+         break;
+ 
+     case DecorationButtonType::Maximize:
++        if ((flags & TITLEBAR_BUTTOM_ARROW_MIN_MAX) && !isChecked()) {
++            // The arrow flag gives the maximize button an arrow that points
++            // up.
++            painter->setPen(Qt::NoPen);
++            drawArrow(painter, rect, true);
++            break;
++        }
+         pen.setWidthF(frame);
+         painter->setPen(pen);
+         painter->setBrush(Qt::NoBrush);
+-        if (isChecked()) {
++        if (flags & TITLEBAR_BUTTOM_ARROW_MIN_MAX) {
++            // The arrow flag gives the restore button two frames, one inside
++            // the other.
++            const qreal edge = frame / 2.0;
++            painter->drawRect(rect.adjusted(edge, edge, -edge, -edge));
++            painter->drawRect(rect.adjusted(frame + edge, frame + edge,
++                                            -(frame + edge), -(frame + edge)));
++        } else if (isChecked()) {
+             // A maximized window gets the restore symbol. The style draws the
+             // edges of a window behind, then a whole window in front.
+             const qreal step = qMax(2.0, side / 4.0);
+@@ -353,8 +445,15 @@ Button::drawGlyph(QPainter *painter, const QRectF &rect,
+         break;
+ 
+     case DecorationButtonType::Minimize:
+-        painter->fillRect(QRectF(rect.left(), rect.bottom() - bar,
+-                                 rect.width(), bar), color);
++        if (flags & TITLEBAR_BUTTOM_ARROW_MIN_MAX) {
++            // The arrow flag gives the minimize button an arrow that points
++            // down.
++            painter->setPen(Qt::NoPen);
++            drawArrow(painter, rect, false);
++        } else {
++            painter->fillRect(QRectF(rect.left(), rect.bottom() - bar,
++                                     rect.width(), bar), color);
++        }
+         break;
+ 
+     case DecorationButtonType::Menu:
+@@ -374,6 +473,11 @@ Button::drawGlyph(QPainter *painter, const QRectF &rect,
          // the centre. A dot closes the mark.
          const qreal quarter = side / 4.0;
          pen.setWidthF(frame > 1.0 ? frame : stroke);
@@ -496,7 +945,16 @@ index 72de19ef..8bd638b1 100644
          painter->setPen(pen);
          painter->setBrush(Qt::NoBrush);
          QPainterPath mark;
-@@ -525,12 +548,15 @@ Button::paint(QPainter *painter, const QRectF &repaintRegion)
+@@ -481,7 +585,7 @@ Button::paint(QPainter *painter, const QRectF &repaintRegion)
+ 
+     // The room outside the square takes clicks and no paint. geometry() holds
+     // the square and that room, so the paint starts from the square alone.
+-    const QRectF area = geometry().marginsRemoved(m_padding);
++    const QRectF area = squareGeometry();
+     if (area.width() < 2.0 || area.height() < 2.0) {
+         return;
+     }
+@@ -525,12 +629,15 @@ Button::paint(QPainter *painter, const QRectF &repaintRegion)
      // away on each axis, then centres the line art in the rest.
      const qreal side = qMin(area.width(), area.height());
      int glyphSide = int(qMax(minGlyphSide,
@@ -516,7 +974,7 @@ index 72de19ef..8bd638b1 100644
      QRectF glyph(0, 0, glyphSide, glyphSide);
      glyph.moveCenter(area.center());
      if (isPressed()) {
-@@ -556,9 +582,10 @@ Button::paint(QPainter *painter, const QRectF &repaintRegion)
+@@ -556,9 +663,10 @@ Button::paint(QPainter *painter, const QRectF &repaintRegion)
          drawGlyph(painter,
                    glyph.translated(effect == EFFECT_SHADOW ? 1 : 0, 1),
                    qtcColorMix(&base, &edge,
@@ -530,10 +988,35 @@ index 72de19ef..8bd638b1 100644
  }
  
 diff --git a/qt6/kdecoration/qtcurvedecorationbutton.h b/qt6/kdecoration/qtcurvedecorationbutton.h
-index c11b3d80..4811a601 100644
+index c11b3d80..2250a1cc 100644
 --- a/qt6/kdecoration/qtcurvedecorationbutton.h
 +++ b/qt6/kdecoration/qtcurvedecorationbutton.h
-@@ -108,9 +108,13 @@ private:
+@@ -37,7 +37,8 @@ namespace QtCurve {
+ //! one title bar button of the QtCurve window decoration
+ /*! The button draws a frame and a glyph. The glyph follows the line art of the
+     QtCurve style for KDE4. The titlebarButtons key of the style settings
+-    selects the shape of the frame, the colour of the frame and the fade of the
++    selects the shape and the colour of the frame. The key also selects the
++    fade of the glyph, and the shape of the minimize glyph and the maximize
+     glyph. The compositor thread owns every button. */
+ class Button : public KDecoration3::DecorationButton {
+     Q_OBJECT
+@@ -72,6 +73,14 @@ public:
+         \param value the room on each side of the square, in pixels. */
+     void setPadding(const QMarginsF &value) { m_padding = value; }
+ 
++    //! the square of the button
++    /*! \return the geometry of the button, without the room that setPadding()
++        holds. The frame and the glyph stay inside this square. */
++    QRectF squareGeometry() const
++    {
++        return geometry().marginsRemoved(m_padding);
++    }
++
+ private:
+     //! make a button for a QtCurve decoration
+     /*! \param type the button to make.
+@@ -108,15 +117,20 @@ private:
      //! draw the line art of the button
      /*! \param painter the painter to draw with.
          \param rect the area of the glyph, which is smaller than the button.
@@ -548,7 +1031,18 @@ index c11b3d80..4811a601 100644
 +                   const QColor &color, qreal margin) const;
  
      //! the colour of the line art
-     /*! \return the button colour for the colour symbol flag, or the caption
+-    /*! \return the button colour for the colour symbol flag, or the caption
+-        colour. The close button under the pointer gets the QtCurve close
+-        colour. The colour fades while the hover symbol flag is on and the
+-        pointer sits away from the button. */
++    /*! \return a colour of the titlebarButtonColors key for the icon colour
++        flag or the colour symbol flag, or the caption colour. A button under
++        the pointer takes the QtCurve close colour or the hover colour of the
++        colour scheme. The colour fades while the hover symbol flag is on and
++        the pointer sits away from the button. */
+     QColor glyphColor() const;
+ 
+     //! the room that the button takes outside its square, in pixels
 diff --git a/qt6/kdecoration/qtcurvedecorationconfig.cpp b/qt6/kdecoration/qtcurvedecorationconfig.cpp
 index a1499af2..d09c2b3b 100644
 --- a/qt6/kdecoration/qtcurvedecorationconfig.cpp

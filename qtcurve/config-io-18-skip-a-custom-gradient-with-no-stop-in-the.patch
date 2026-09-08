@@ -1,0 +1,41 @@
+Skip a custom gradient with no stop in the writer
+
+The config dialog can take the last stop out of a custom gradient. The
+gradient then keeps its entry in the option set with an empty stop
+container. The writer holds no test for that state, so it emits the name
+of the border alone.
+
+The reader takes no such value. It drops the gradient of every key that
+holds a value. It rebuilds the gradient only from a value of five
+elements at least. The border of the saved gradient therefore does not
+come back. The file also carries a key that no read ever uses.
+
+Write no key for a gradient with no stop. The write then matches what
+the reader takes. A gradient with one stop or more keeps its exact text.
+The container adds the end stops, so the value holds two stops at least.
+
+An absent key means the built-in gradient. The two gradients that the
+defaults define therefore come back with their built-in stops after a
+save and a load. The empty state that the discarded key left behind does
+not come back.
+
+The change sits on the branch work/config-io of the local tree, as commit 18 of 18.
+A new merge request on system/qtcurve takes that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/qt6/common/config_file.cpp b/qt6/common/config_file.cpp
+index f97bad21..fa6bf8f0 100644
+--- a/qt6/common/config_file.cpp
++++ b/qt6/common/config_file.cpp
+@@ -2566,7 +2566,9 @@ bool qtcWriteConfig(KConfig *cfg, const Options &opts, const Options &def, bool
+ 
+             QTextStream(&gradKey) << "customgradient" << i - APPEARANCE_CUSTOM1 + 1;
+ 
+-            if (cg == opts.customGradient.end()) {
++            // A value of this key holds two stops at least, so a gradient
++            // with no stop takes no value.
++            if (cg == opts.customGradient.end() || (*cg).second.stops.empty()) {
+                 CFG.deleteEntry(gradKey);
+             }
+             else {

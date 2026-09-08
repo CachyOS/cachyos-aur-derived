@@ -1,0 +1,75 @@
+Keep the stated keys of the window manager file
+
+The writer of the shadow groups dropped a key whose value equalled the default
+of the group. The default colour comes from the colour scheme, so a custom
+colour that equalled the scheme colour of the moment never reached the file.
+The reader hands the type Custom that scheme colour when the file holds no
+colour of its own. The shadow therefore followed each later change of the
+scheme, while the page still showed Custom.
+
+The page also built an empty set of window manager settings for each save, and
+it never read the file into that set. A key that the page owns no row for,
+such as Grouping, therefore held its default and lost the line of the user.
+
+Write the Color key for every save of the type Custom. Keep a key that the
+file already holds, and drop only a default value that the file never held.
+Read the file into the settings before the page copies its rows into them.
+
+Every key keeps its name and its value set, so an older reader still reads the
+file.
+
+The change sits on the branch work/wm-kcm of the local tree, as commit 4 of 4.
+A new merge request on system/qtcurve takes that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/qt6/kwin/qtcurveshadowconfiguration.cpp b/qt6/kwin/qtcurveshadowconfiguration.cpp
+index 02bd1c56..ceaf7c5f 100644
+--- a/qt6/kwin/qtcurveshadowconfiguration.cpp
++++ b/qt6/kwin/qtcurveshadowconfiguration.cpp
+@@ -115,12 +115,14 @@ void ShadowConfig::load(KConfig *cfg)
+     setColorType((ColorType)m_colorType);
+ }
+ 
+-#define WRITE_ENTRY(name, field) do {           \
+-        if (def.field == field) {               \
+-            group.deleteEntry(name);            \
+-        } else {                                \
+-            group.writeEntry(name, field);      \
+-        }                                       \
++// Keep a key that the file already holds, because the user saw its value.
++// Drop a key that the file never held and that carries the default value.
++#define WRITE_ENTRY(name, field) do {                   \
++        if (group.hasKey(name) || def.field != field) { \
++            group.writeEntry(name, field);              \
++        } else {                                        \
++            group.deleteEntry(name);                    \
++        }                                               \
+     } while (0)
+ 
+ void ShadowConfig::save(KConfig *cfg)
+@@ -137,7 +139,9 @@ void ShadowConfig::save(KConfig *cfg)
+     if (m_colorType != CT_CUSTOM) {
+         group.deleteEntry("Color");
+     } else {
+-        WRITE_ENTRY("Color", m_color);
++        // The default colour comes from the colour scheme of the moment, so
++        // the file must hold the custom colour even when the two agree.
++        group.writeEntry("Color", m_color);
+     }
+ }
+ 
+diff --git a/qt6/kwinconfig/qtcurvekwinconfig.cpp b/qt6/kwinconfig/qtcurvekwinconfig.cpp
+index c199579b..caf904ec 100644
+--- a/qt6/kwinconfig/qtcurvekwinconfig.cpp
++++ b/qt6/kwinconfig/qtcurvekwinconfig.cpp
+@@ -191,6 +191,9 @@ void KWinConfig::save(KConfig *c)
+ 
+     KWin::QtCurveConfig config;
+ 
++    // The page does not own every key of the group. Read the file first, so
++    // that a key which the page does not show keeps the value of the file.
++    config.load(cfg, c ? KWIN_GROUP : nullptr);
+     config.setBorderSize((KWin::QtCurveConfig::Size)borderSize->currentIndex());
+     config.setRoundBottom(roundBottom->isChecked());
+     config.setOuterBorder((KWin::QtCurveConfig::Shade)outerBorder->currentIndex());

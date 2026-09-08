@@ -1,0 +1,125 @@
+Demote config values in the style build only
+
+The config dialog compiles config_file.cpp with CONFIG_DIALOG, and four
+classes of value demotion run in that build as well as in the style
+build. Nine appearance combos offer Raised or Bevelled, which the reader
+rewrites to Flat or Standard gradient. Each appearance combo offers 23
+custom gradients, where the defaults define two, and the reader rewrites
+an undefined one to the general appearance. The slider width spin box
+takes five and seven, where the reader clears the thin groove box. The
+group box shade factor takes zero, where the reader turns the shaded
+frame into a plain one. A reopened dialog therefore shows a value the
+user never chose, and the next Apply writes that value over the file.
+
+Run each demotion in the style build alone, beside the Agua rewrites
+that already sit there. The style keeps the render it has today, the
+file and the dialog keep the stored value, and the round trip closes.
+
+Give tbarBtnAppearance the custom gradient check that the other 23
+appearance fields hold. Without the check an undefined gradient reaches
+qtcGetGradient, which answers the raised form in place of the general
+appearance.
+
+The change sits on the branch work/config-io of the local tree, as commit 12 of 18.
+A new merge request on system/qtcurve takes that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/qt6/common/config_file.cpp b/qt6/common/config_file.cpp
+index 49ab39c0..39b1bc69 100644
+--- a/qt6/common/config_file.cpp
++++ b/qt6/common/config_file.cpp
+@@ -965,6 +965,9 @@ static void readDoubleList(QtCConfig &cfg, const char *key, double *list, int co
+                                 def->ENTRY);                            \
+     } while (0)
+ 
++#ifndef CONFIG_DIALOG
++// Give the style a gradient it can paint in place of an undefined one. The
++// dialog holds the stored value, so the file survives a reopen.
+ static void checkAppearance(EAppearance *ap, Options *opts)
+ {
+     if(*ap>=APPEARANCE_CUSTOM1 && *ap<(APPEARANCE_CUSTOM1+NUM_CUSTOM_GRAD))
+@@ -977,11 +980,13 @@ static void checkAppearance(EAppearance *ap, Options *opts)
+         }
+     }
+ }
++#endif
+ 
+ void qtcDefaultSettings(Options *opts);
+ 
+ void qtcCheckConfig(Options *opts)
+ {
++#ifndef CONFIG_DIALOG
+     /* **Must** check appearance first, as the rest will default to this */
+     checkAppearance(&opts->appearance, opts);
+     checkAppearance(&opts->bgndAppearance, opts);
+@@ -1007,10 +1012,14 @@ void qtcCheckConfig(Options *opts)
+     checkAppearance(&opts->sbarBgndAppearance, opts);
+     checkAppearance(&opts->sliderFill, opts);
+     checkAppearance(&opts->tooltipAppearance, opts);
++    checkAppearance(&opts->tbarBtnAppearance, opts);
++#endif
+ 
+     if(SHADE_BLEND_SELECTED==opts->shadeCheckRadio)
+         opts->shadeCheckRadio=SHADE_SELECTED;
+ 
++#ifndef CONFIG_DIALOG
++    /* The style paints these values as another entry of the same combo. */
+     if(APPEARANCE_BEVELLED==opts->toolbarAppearance)
+         opts->toolbarAppearance=APPEARANCE_GRADIENT;
+     else if(APPEARANCE_RAISED==opts->toolbarAppearance)
+@@ -1039,6 +1048,7 @@ void qtcCheckConfig(Options *opts)
+         opts->menuStripeAppearance=APPEARANCE_FLAT;
+     else if(APPEARANCE_BEVELLED==opts->menuStripeAppearance)
+         opts->menuStripeAppearance=APPEARANCE_GRADIENT;
++#endif
+ 
+     if(opts->highlightFactor<MIN_HIGHLIGHT_FACTOR || opts->highlightFactor>MAX_HIGHLIGHT_FACTOR)
+         opts->highlightFactor=DEFAULT_HIGHLIGHT_FACTOR;
+@@ -1069,8 +1079,11 @@ void qtcCheckConfig(Options *opts)
+     if(opts->sliderWidth<MIN_SLIDER_WIDTH_ROUND)
+         opts->square|=SQUARE_SB_SLIDER;
+ 
++#ifndef CONFIG_DIALOG
++    /* A groove below this width has no room for the thin form. */
+     if(opts->sliderWidth<MIN_SLIDER_WIDTH_THIN_GROOVE)
+         opts->thinSbarGroove=false;
++#endif
+ 
+     if(opts->sliderWidth<DEFAULT_SLIDER_WIDTH)
+         opts->sliderThumbs=LINE_NONE;
+@@ -1089,8 +1102,11 @@ void qtcCheckConfig(Options *opts)
+     if(opts->animatedProgress && !opts->stripedProgress)
+         opts->animatedProgress=false;
+ 
++#ifndef CONFIG_DIALOG
++    /* A shade factor of zero paints the plain frame. */
+     if(0==opts->gbFactor && FRAME_SHADED==opts->groupBox)
+         opts->groupBox=FRAME_PLAIN;
++#endif
+ 
+     if(opts->gbFactor<MIN_GB_FACTOR || opts->gbFactor>MAX_GB_FACTOR)
+         opts->gbFactor=DEF_GB_FACTOR;
+@@ -1461,16 +1477,20 @@ bool qtcReadConfig(const QString &file, Options *opts, Options *defOpts, bool ch
+             CFG_READ_APPEARANCE(titlebarAppearance, APP_ALLOW_NONE);
+             CFG_READ_APPEARANCE(inactiveTitlebarAppearance, APP_ALLOW_NONE);
+ 
++            if((opts->windowBorder&WINDOW_BORDER_BLEND_TITLEBAR) && !(opts->windowBorder&WINDOW_BORDER_COLOR_TITLEBAR_ONLY))
++                opts->windowBorder-=WINDOW_BORDER_BLEND_TITLEBAR;
++#ifndef CONFIG_DIALOG
++            /* The decoration paints these values as another entry of the same
++               combo. */
+             if(APPEARANCE_BEVELLED==opts->titlebarAppearance)
+                 opts->titlebarAppearance=APPEARANCE_GRADIENT;
+             else if(APPEARANCE_RAISED==opts->titlebarAppearance)
+                 opts->titlebarAppearance=APPEARANCE_FLAT;
+-            if((opts->windowBorder&WINDOW_BORDER_BLEND_TITLEBAR) && !(opts->windowBorder&WINDOW_BORDER_COLOR_TITLEBAR_ONLY))
+-                opts->windowBorder-=WINDOW_BORDER_BLEND_TITLEBAR;
+             if(APPEARANCE_BEVELLED==opts->inactiveTitlebarAppearance)
+                 opts->inactiveTitlebarAppearance=APPEARANCE_GRADIENT;
+             else if(APPEARANCE_RAISED==opts->inactiveTitlebarAppearance)
+                 opts->inactiveTitlebarAppearance=APPEARANCE_FLAT;
++#endif
+             CFG_READ_APPEARANCE(titlebarButtonAppearance, APP_ALLOW_BASIC);
+             CFG_READ_SHADING(shading);
+             CFG_READ_IMAGE(bgndImage);

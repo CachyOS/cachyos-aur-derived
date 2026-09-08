@@ -1,0 +1,34 @@
+Scan the preset save location for presets
+
+The dialog saves a preset into the generic data location, but it scanned
+the generic config location for the preset list. A saved preset therefore
+never came back into the list, and the presets that an installation puts
+into the data folder stayed hidden.
+
+Scan the data location before the config location. The scan keeps the
+first file of each name. A preset in the data location therefore wins,
+and a preset in the config folder stays in the list.
+
+The change sits on the branch work/presets of the local tree, as commit 1 of 4.
+A new merge request on system/qtcurve takes that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/qt6/config/qtcurveconfig.cpp b/qt6/config/qtcurveconfig.cpp
+index 9abaef8a..bd6344c2 100644
+--- a/qt6/config/qtcurveconfig.cpp
++++ b/qt6/config/qtcurveconfig.cpp
+@@ -1790,9 +1790,12 @@ QtCurveConfig::setupPresets(const Options &currentStyle,
+     {
+         // Make a unique list of absolute paths
+         QHash<QString, QString> files_map;
+-        QStringList dirs = QStandardPaths::locateAll(QStandardPaths::GenericConfigLocation,
++        QStringList dirs = QStandardPaths::locateAll(QStandardPaths::GenericDataLocation,
+                                                      QStringLiteral("QtCurve"),
+                                                      QStandardPaths::LocateDirectory);
++        dirs += QStandardPaths::locateAll(QStandardPaths::GenericConfigLocation,
++                                          QStringLiteral("QtCurve"),
++                                          QStandardPaths::LocateDirectory);
+         for (const QString &dir: dirs) {
+             const QDir d(dir);
+             const QStringList fileNames = d.entryList(QStringList() << QStringLiteral("*" EXTENSION));
