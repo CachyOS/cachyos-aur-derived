@@ -6,7 +6,8 @@
 : "${_support_headless_testing:=false}"
 : "${_use_cuda:=true}" # nvenc; set to false to build without CUDA support
 
-: "${_commit:=14ffa6fdaa53f7b51512be2b3d24f3939695403c}"
+# TODO(vnepogodin): fix that manual shit
+: "${_commit:=019b1ba661d829e334706557a3e2bdc3d2374591}"
 
 pkgname='sunshine'
 pkgver=2026.909.131945
@@ -31,12 +32,14 @@ fi
 depends=(
   'avahi'
   'curl'
+  'gcc-libs'
+  'gtk3'
+  'hicolor-icon-theme'
   'libayatana-appindicator'
   'libcap'
   'libdrm'
   'libevdev'
   'libmfx'
-  'libnotify'
   'libpipewire'
   'libpulse'
   'libva'
@@ -49,30 +52,31 @@ depends=(
   'numactl'
   'openssl'
   'opus'
+  'qt6-base'
+  'qt6-svg'
   'udev'
   'vulkan-icd-loader'
   'which'
 )
 
 makedepends=(
+  "gcc${_gcc_dep_suffix}"
   'appstream'
   'appstream-glib'
   'cmake'
   'cuda'
   'desktop-file-utils'
-  "gcc${_gcc_dep_suffix}"
   'git'
   'make'
   'nodejs'
   'npm'
   'python-jinja'  # required by the glad OpenGL/EGL loader generator
-  'python-pkg_resources'  # required by glad with setuptools >= 81
-  'python-setuptools'  # required for glad OpenGL/EGL loader generated, v2.0.0
   'shaderc'
 )
 
 checkdepends=(
   'gcovr'
+  'imagemagick'
 )
 
 optdepends=(
@@ -82,8 +86,8 @@ optdepends=(
 provides=()
 conflicts=()
 
-source=("$pkgname::git+https://github.com/LizardByte/Sunshine.git#commit=${_commit}")
-sha256sums=('7513055d9e0f32da48cc45b91bcdffbcabdbd005482e3458ebcbcdda3c1fa170')
+source=("$pkgname::git+https://github.com/LizardByte/Sunshine.git#tag=v$pkgver")
+sha256sums=('e81e7bf8850b83fa9f1962169842260c46e3d2339767a74d5203466f897e1e0f')
 
 # Options Handling
 if [[ "${_use_cuda::1}" == "d" ]] && pacman -Qi cuda &> /dev/null; then
@@ -117,12 +121,13 @@ fi
 
 prepare() {
     cd "$pkgname"
-    git submodule update --recursive --init
+    git submodule update --recursive --init --depth 1
 }
 
 build() {
     export BRANCH="master"
-    export BUILD_VERSION="2026.516.143833"
+    export BUILD_VERSION="${pkgver}"
+    # what if we don't specify commit???
     export COMMIT="${_commit}"
 
     export CC="gcc${_gcc_env_suffix}"
@@ -185,7 +190,9 @@ check() {
       export CXX="g++${_gcc_env_suffix}"
 
       cd "${srcdir}/build/tests"
-      ./test_sunshine --gtest_color=yes --gtest_output=xml:test_results.xml
+      # Do not silently upload misleading coverage if the gcov runtime cannot
+      # write profile data, such as when its version differs from the compiler.
+      GCOV_EXIT_AT_ERROR=1 ./test_sunshine --gtest_color=yes --gtest_output=xml:test_results.xml
 
       # Generate coverage report
       # Run gcovr from the build directory (where all .gcda/.gcno files are)
