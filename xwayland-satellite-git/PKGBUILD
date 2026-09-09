@@ -23,8 +23,14 @@ makedepends=(
 )
 provides=(${_pkgname})
 conflicts=(${_pkgname})
-source=("git+$url.git")
-b2sums=('SKIP')
+source=(
+    "git+$url.git"
+    "https://github.com/Supreeeme/xwayland-satellite/pull/494.patch"
+)
+b2sums=(
+    'SKIP'
+    '4ac7dacdd8f2fa98512bd1e7f21a9b488c5ca8686b441ce9d55f7d219731525581de72fd1eb2660a5a1b34f390fcb784c7a4ccbcc1cc839cb94df34c18d7f4b0'
+)
 
 pkgver() {
 	cd ${_pkgname}
@@ -35,6 +41,8 @@ prepare() {
 	cd ${_pkgname}
 	export RUSTUP_TOOLCHAIN=stable
 	export CARGO_HOME="${srcdir}"/.cargo
+    patch -p1 -i ../494.patch
+
 	sed 's|/usr/local|/usr|' -i resources/${_pkgname}.service
 	cargo fetch --locked --target "$(rustc -vV | sed -n 's/host: //p')"
 }
