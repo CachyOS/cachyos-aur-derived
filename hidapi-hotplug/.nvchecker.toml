@@ -1,0 +1,4 @@
+[hidapi-hotplug]
+source = "git"
+git = "https://gitlab.com/OpenRGBDevelopers/hidapi-hotplug.git"
+prefix = "hidapi-"
