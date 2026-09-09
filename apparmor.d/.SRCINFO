@@ -20,7 +20,14 @@ pkgbase = apparmor.d
 	sha512sums = SKIP
 
 pkgname = apparmor.d
-	pkgdesc = Full set of apparmor profiles (complain mode)
+	arch = any
+	depends = apparmor
+	depends = apparmor.d-base
+	depends = apparmor.d-tools
 
-pkgname = apparmor.d.enforced
-	pkgdesc = Full set of apparmor profiles (enforced mode)
+pkgname = apparmor.d-base
+	pkgdesc = Full set of apparmor profiles (base abstractions, tunables, and booleans)
+	arch = any
+
+pkgname = apparmor.d-tools
+	pkgdesc = Full set of apparmor profiles (userland toolings)

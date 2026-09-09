@@ -2,7 +2,11 @@
 # shellcheck disable=SC2034,SC2154,SC2164
 
 pkgbase=apparmor.d
-pkgname=(apparmor.d apparmor.d.enforced)
+pkgname=(
+  apparmor.d
+  apparmor.d-base
+  apparmor.d-tools
+)
 pkgver=0.4913.0
 pkgrel=1
 pkgdesc="Full set of apparmor profiles"
@@ -27,50 +31,28 @@ build() {
   export CGO_CXXFLAGS="${CXXFLAGS}"
   export CGO_LDFLAGS="${LDFLAGS}"
   export GOPATH="${srcdir}"
-  export GOFLAGS="-buildmode=pie -trimpath -ldflags=-linkmode=external -mod=readonly -modcacherw -tags=dev"
+  export GOFLAGS="-buildmode=pie -trimpath -ldflags=-linkmode=external -mod=readonly -modcacherw"
   export DISTRIBUTION=arch
-  local -A modes=(
-    # Mapping of modes to just build target
-    [default]=complain
-    [enforced]=enforce
-  )
-  for mode in "${!modes[@]}"; do
-    just build=".build/$mode" "${modes[$mode]}"
-  done
-}
-
-_conflicts() {
-  local mode="$1"
-  local pattern=".$mode"
-  if [[ "$mode" == "default" ]]; then
-    pattern=""
-  else
-    echo "$pkgbase"
-  fi
-  for pkg in "${pkgname[@]}"; do
-    if [[ "$pkg" == "${pkgbase}${pattern}" ]]; then
-      continue
-    fi
-    echo "$pkg"
-  done
-}
-
-_install() {
-  local mode="${1:?}"
-  cd "$srcdir/$pkgbase-$pkgver"
-  just build=".build/$mode" destdir="$pkgdir" install
+  just prebuild
 }
 
 package_apparmor.d() {
-  mode=default
-  pkgdesc="$pkgdesc (complain mode)"
-  mapfile -t conflicts < <(_conflicts $mode)
-  _install $mode
+  depends=('apparmor' 'apparmor.d-base' 'apparmor.d-tools')
+  arch=("any")
+  cd "$srcdir/$pkgbase-$pkgver"
+  just destdir="$pkgdir" install-profiles
 }
 
-package_apparmor.d.enforced() {
-  mode=enforced
-  pkgdesc="$pkgdesc (enforced mode)"
-  mapfile -t conflicts < <(_conflicts $mode)
-  _install $mode
+package_apparmor.d-base() {
+  pkgdesc="$pkgdesc (base abstractions, tunables, and booleans)"
+  arch=("any")
+  cd "$srcdir/$pkgbase-$pkgver"
+  just destdir="$pkgdir" install-base
 }
+
+package_apparmor.d-tools() {
+  pkgdesc="$pkgdesc (userland toolings)"
+  cd "$srcdir/$pkgbase-$pkgver"
+  just destdir="$pkgdir" install-tools
+}
+
