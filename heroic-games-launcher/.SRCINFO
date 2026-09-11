@@ -1,0 +1,32 @@
+pkgbase = heroic-games-launcher
+	pkgdesc = An Open Source Launcher for GOG, Epic Games and Amazon Games
+	pkgver = 2.22.1
+	pkgrel = 1
+	url = https://heroicgameslauncher.com/
+	arch = x86_64
+	license = GPL-3.0-only
+	makedepends = desktop-file-utils
+	makedepends = git
+	makedepends = nodejs
+	makedepends = pnpm
+	depends = which
+	depends = electron43
+	depends = hicolor-icon-theme
+	depends = sh
+	depends = python
+	depends = libgcc
+	depends = glibc
+	depends = zlib-ng-compat
+	optdepends = gamemode
+	optdepends = gamescope
+	optdepends = mangohud
+	source = heroic-games-launcher::git+https://github.com/Heroic-Games-Launcher/HeroicGamesLauncher.git#tag=v2.22.1
+	source = heroic-games-launcher-5818.patch::https://github.com/Heroic-Games-Launcher/HeroicGamesLauncher/pull/5818.patch
+	source = heroic-games-launcher-5877.patch::https://github.com/Heroic-Games-Launcher/HeroicGamesLauncher/pull/5877.patch
+	source = heroic.sh
+	sha256sums = cabb6f90e46f34f4af7388e3ab7c40ddd3502cda73fbeb145d40080d8f76d995
+	sha256sums = 6659c5b2ccd503fd02417ca81a87fb062477cd8cde7fb270e7c05131d9bf3b6e
+	sha256sums = fadb28b05ce74b0af7d709e5b728c6aeab6cd937b80a9f86dbf065e6d83a4022
+	sha256sums = df5fb2b5afc70f46a63913846c4f5d55372584a1468173833fe5106db2303c07
+
+pkgname = heroic-games-launcher
