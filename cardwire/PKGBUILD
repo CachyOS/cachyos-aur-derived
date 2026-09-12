@@ -3,12 +3,12 @@
 
 pkgname=cardwire
 pkgver=0.12.2
-pkgrel=1
+pkgrel=2
 pkgdesc='GPU manager for Wayland systems using eBPF LSM hooks'
 arch=('x86_64')
 url='https://github.com/OpenGamingCollective/cardwire'
 license=('GPL-3.0-only')
-depends=('dbus' 'fontconfig' 'gcc-libs' 'glib2' 'glibc' 'hwdata'
+depends=('dbus' 'fontconfig' 'glib2' 'glibc' 'hicolor-icon-theme' 'hwdata' 'libgcc'
          'libglvnd' 'libxcb' 'libxkbcommon' 'sqlite' 'systemd'
          'systemd-libs' 'upower' 'vulkan-icd-loader' 'wayland' 'xdg-utils')
 makedepends=('clang' 'pkgconf' 'rust' 'rust-src')
