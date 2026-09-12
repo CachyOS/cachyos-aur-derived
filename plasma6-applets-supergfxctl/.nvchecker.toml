@@ -1,4 +1,0 @@
-[plasma6-applets-supergfxctl]
-source = "git"
-git = "https://gitlab.com/Jhyub/supergfxctl-plasmoid.git"
-prefix = "v"
