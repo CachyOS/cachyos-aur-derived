@@ -15,7 +15,7 @@ optdepends=(
 	# GTK 3 reads gtk-3.0/gtk.css when the theme name is QtCurve.
 	'gtk3: QtCurve look in GTK 3 applications'
 	# GTK 2 reads gtk-2.0/gtkrc, which names the qtcurve engine of the qtcurve package.
-	'gtk2: QtCurve look in GTK 2 applications'
+	'gtk2: QtCurve look in GTK 2 applications; the look needs the engine from the qtcurve package'
 	# The GTK page lists a theme directory that holds a gtk-3.* child.
 	'kde-gtk-config: pick QtCurve on the GTK page of the settings'
 	# The writer of qtcurve writes separate user sheets that follow the saved settings.
