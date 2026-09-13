@@ -1,3 +1,11 @@
+_start_notice() {
+	cat <<'EOF'
+The GTK theme follows the QtCurve settings through a watch process. The
+process starts at each login. To start it now, run:
+systemctl --user start qtcurve-gtk-writer.service
+EOF
+}
+
 _notice() {
 	cat <<'EOF'
 The QtCurve style dialogue writes GTK theme files into your home directory.
@@ -9,10 +17,12 @@ EOF
 }
 
 post_install() {
+	_start_notice
 	_notice
 }
 
 post_upgrade() {
+	_start_notice
 	_notice
 }
 

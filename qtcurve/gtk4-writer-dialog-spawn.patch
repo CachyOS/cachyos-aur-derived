@@ -1,0 +1,140 @@
+Start the watch mode from the dialog save
+
+The save of the dialog spawned the write mode, which ran one pass and
+stopped. A fresh install and a dead watch process therefore held no
+watcher until the next login, and the GTK theme followed no later edit.
+
+The spawn now starts the watch mode. The two locks decide what the spawn
+becomes. A watch process that already runs takes the spawn to the code 0
+in milliseconds. That process writes the settings, because the dialog
+writes stylerc before the spawn. A session with no watch process gets
+one from the spawn, and the double fork of qtcSpawn() holds it past the
+life of the dialog.
+
+The commit therefore stands on the loser behaviour of the daemon lock,
+which the first two arms of assert-lock pin.
+
+No headless check can drive the dialog of Qt, so the new check reads the
+argument vector in the source. It also fails on a row of the write mode
+anywhere else in the file, which stops a second spawn of that mode.
+
+The change sits on the branch work/gtk4-theme of the local tree, as the
+eleventh commit. The fork wyn/qtcurve holds that branch. Merge request !15 on
+system/qtcurve holds that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/gtk4/CMakeLists.txt b/gtk4/CMakeLists.txt
+index bfb1afc2..9186d67d 100644
+--- a/gtk4/CMakeLists.txt
++++ b/gtk4/CMakeLists.txt
+@@ -648,6 +648,13 @@ add_custom_command(TARGET qtcurve-gtk-theme POST_BUILD
+           "${qtc_writer_work}/reexec"
+   VERBATIM)
+ 
++# The save of the dialog of Qt 6 spawns the writer, and the flag of that
++# spawn is a contract of the two trees.
++add_custom_command(TARGET qtcurve-gtk-theme POST_BUILD
++  COMMAND sh "${qtc_check}/assert-dialog-spawn.sh"
++          "${CMAKE_CURRENT_SOURCE_DIR}/../qt6/config/qtcurveconfig.cpp"
++  VERBATIM)
++
+ # The cross check against the daemon itself, which the caller asks for. Set
+ # QTC_KDED_NAMES to kded/configvalueprovider.cpp of a kde-gtk-config checkout,
+ # or to the installed kded plugin gtkconfig.so of that daemon.
+diff --git a/gtk4/check/assert-dialog-spawn.sh b/gtk4/check/assert-dialog-spawn.sh
+new file mode 100644
+index 00000000..0f627128
+--- /dev/null
++++ b/gtk4/check/assert-dialog-spawn.sh
+@@ -0,0 +1,71 @@
++#!/bin/sh
++# assert-dialog-spawn.sh SOURCE: the save of the dialog must start the watch
++# mode of the writer. SOURCE is the source file of the dialog. The run then
++# puts the write mode back in a copy of that file, and it fails if the check
++# passes the copy.
++set -eu
++usage='usage: assert-dialog-spawn.sh SOURCE'
++src=${1:?$usage}
++
++tmp=$(mktemp -d)
++trap 'rm -rf "$tmp"' EXIT
++
++# vector FILE: prints the rows of the argument vector of the spawn.
++vector() {
++    awk '/gtkWriter\[\] = \{/,/\};/' "$1"
++}
++
++# check FILE: gives 0 when the three contracts hold. It names the first
++# contract that fails on the standard error.
++check() {
++    c_file=$1
++
++    # 1. The file holds the argument vector of the spawn.
++    block=$(vector "$c_file")
++    if [ -z "$block" ]; then
++        echo "assert-dialog-spawn: $c_file holds no argument vector" >&2
++        return 1
++    fi
++
++    # 2. The vector names the watch mode.
++    case $block in
++        *'"--watch"'*) ;;
++        *) echo "assert-dialog-spawn: the vector of $c_file names no" \
++                "'--watch'" >&2
++           return 1;;
++    esac
++
++    # 3. No row of the file names the write mode, so no later edit can put a
++    # second spawn of that mode back.
++    if grep -qF '"--write"' "$c_file"; then
++        echo "assert-dialog-spawn: $c_file names '--write'" >&2
++        return 1
++    fi
++    return 0
++}
++
++if ! check "$src"; then
++    echo "assert-dialog-spawn: the source fails the check" >&2
++    exit 1
++fi
++
++# The control below breaks one contract in a copy of the source, and the check
++# must fail over that copy.
++
++# control NAME FILE: the check must fail over the file that the caller gives.
++control() {
++    name=$1
++    shift
++    if check "$@" 2> "$tmp/control.log"; then
++        echo "assert-dialog-spawn: the check passed the control copy of $name" \
++            >&2
++        exit 1
++    fi
++}
++
++# The write mode in the vector, which writes one pass and starts no watch.
++sed 's/"--watch"/"--write"/' "$src" > "$tmp/write.cpp"
++control write "$tmp/write.cpp"
++
++echo "assert-dialog-spawn: the save of the dialog starts the watch mode," \
++     "and the check rejects the control copy of the write mode"
+diff --git a/qt6/config/qtcurveconfig.cpp b/qt6/config/qtcurveconfig.cpp
+index d39d052b..9d5f647d 100644
+--- a/qt6/config/qtcurveconfig.cpp
++++ b/qt6/config/qtcurveconfig.cpp
+@@ -1307,9 +1307,12 @@ void QtCurveConfig::save()
+     qputenv(QTCURVE_PREVIEW_CONFIG, "");
+ 
+     // qtcSpawn() reports no error, so an absent writer costs the GTK theme
+-    // alone and the Qt settings still reach the disk.
++    // alone and the Qt settings still reach the disk. The spawn starts the
++    // watch mode, and a watch process that already runs makes the spawn stop
++    // at once. That process then writes the saved settings, because it
++    // watches stylerc.
+     static const char *const gtkWriter[] = {
+-        "qtcurve-gtk-writer", "--write", nullptr
++        "qtcurve-gtk-writer", "--watch", nullptr
+     };
+     qtcSpawn(gtkWriter[0], gtkWriter, nullptr, nullptr);
+ }

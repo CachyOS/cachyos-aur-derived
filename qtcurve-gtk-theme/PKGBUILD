@@ -5,7 +5,7 @@ _commit=68a3b41753b66a2f00cf98667a68458961f5cb25
 _srcname=qtcurve
 pkgname=qtcurve-gtk-theme
 pkgver=20260909
-pkgrel=1
+pkgrel=2
 pkgdesc="The QtCurve theme data for GTK 2, GTK 3 and GTK 4; the engines and the writer are in qtcurve"
 arch=(any)
 url="https://invent.kde.org/system/qtcurve"
@@ -130,6 +130,11 @@ source=(
 	gtk4-popup-shadow.patch
 	"${_fixes[@]}"
 	gtk4-tab-geometry.patch
+	gtk4-check-success-lines.patch
+	gtk4-writer-lock.patch
+	gtk4-writer-reexec.patch
+	gtk4-writer-unit.patch
+	gtk4-writer-dialog-spawn.patch
 )
 sha256sums=('e01dbf05c24c11a3660e6185a9a7607d0838d4560ab717d44b449e9520476f6e'
             '60d6c52289f3b6e7c0645bb9acaa96a769801f66e77f50cd5551b7e613611152'
@@ -217,7 +222,12 @@ sha256sums=('e01dbf05c24c11a3660e6185a9a7607d0838d4560ab717d44b449e9520476f6e'
             'e856d2a53c1cfe8bc86ee59b7687e73b30eb7b50019a366e0a170d3df1fa9426'
             '6ed37338b6449da1f3ce82148c4809f1735b44741e6a3e79dc72e0bb53232fee'
             'c628df9a864260399162bff4d51f1112f796e1f9ce28c16646685a9b6d3e956c'
-            '8434c1d2d9c2535a35007cbeff1e36328dd8dbf713a4c55da118ab822d36a649')
+            '8434c1d2d9c2535a35007cbeff1e36328dd8dbf713a4c55da118ab822d36a649'
+            '98eca18e821278b23658c57ed67abb63b55ddd4f12b340511127436423497385'
+            'd7b9751140ec76fbe9132ee5cba6c5ffbdcd292c0374026dc581848667dc405c'
+            '2f40590efc73c2df811b93a341b9a6737092647e5248c721f72f090b3eda6029'
+            '390f92b47341e8f2207ef17724b0ff60f56cae1a812095fc180dc52d38787b35'
+            '7bcef7ed080217326a386c845d9b9005396858c346edbc1d07cc8b5a4c0e87df')
 
 pkgver() {
 	git -C "$_srcname" log -1 --format=%cd --date=format:%Y%m%d
@@ -296,6 +306,25 @@ prepare() {
 	# The patch holds one notebook tab geometry across the tab states. No file of
 	# the _fixes group touches gtk4, so the patch takes the end of the order.
 	patch -Np1 -d "$_srcname" -i "$srcdir/gtk4-tab-geometry.patch"
+
+	# The patch names the injected control in the success line of two checks.
+	patch -Np1 -d "$_srcname" -i "$srcdir/gtk4-check-success-lines.patch"
+	# The patch gives the writer a daemon lock and a write lock. The patch
+	# adds files, so it takes the three way merge of git.
+	git -C "$_srcname" add -A
+	git -C "$_srcname" apply --3way "$srcdir/gtk4-writer-lock.patch"
+	# The patch starts the new image of the writer after a binary change. The
+	# patch adds files, so it takes the three way merge of git.
+	git -C "$_srcname" add -A
+	git -C "$_srcname" apply --3way "$srcdir/gtk4-writer-reexec.patch"
+	# The patch installs a systemd user unit beside the autostart file. The
+	# patch adds files, so it takes the three way merge of git.
+	git -C "$_srcname" add -A
+	git -C "$_srcname" apply --3way "$srcdir/gtk4-writer-unit.patch"
+	# The patch starts the watch mode from the dialog save. The patch adds a
+	# check file, so it takes the three way merge of git.
+	git -C "$_srcname" add -A
+	git -C "$_srcname" apply --3way "$srcdir/gtk4-writer-dialog-spawn.patch"
 }
 
 build() {

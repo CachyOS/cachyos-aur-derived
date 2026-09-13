@@ -1,0 +1,620 @@
+Start the new image of the writer after a binary change
+
+A package update replaces the binary of the writer. The daemon kept the
+old image until the next login, and the sheets stayed old.
+
+The daemon now watches its own image path and the directory of that
+path. A package manager unlinks the old file and extracts a new inode. A
+watch of the file alone therefore dies with the file that it watches.
+
+The daemon runs one probe of the new image before it starts it. A new
+image can be half extracted, or it can miss a library, or it can give
+the code 1. A daemon that starts such an image dies with it. The probe
+is the sheet mode, which reads no bus, takes no lock, needs no display
+and writes no file. A probe that fails keeps the old image.
+
+The daemon reads the path again only after another change of the file. A
+file that stays broken gives one line and not a stream.
+
+The probe does not use the saved arguments. A pass that changes the
+files of the user in the middle of a swap costs more. A new image that
+drops a flag starts and then stops at the parse.
+
+execv(2) keeps the pid, and a lock of flock(2) belongs to the open file
+description. The daemon lock therefore crosses the exec with no open
+window. The new image takes the descriptor over after it reads st_dev
+and st_ino of the descriptor and of the lock path.
+
+An image that no directory holds again leaves the old image alive. A
+different program at the image path also runs, because the path is the
+contract of the operator.
+
+The change sits on the branch work/gtk4-theme of the local tree, as the
+ninth commit. The fork wyn/qtcurve holds that branch. Merge request !15 on
+system/qtcurve holds that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/gtk4/CMakeLists.txt b/gtk4/CMakeLists.txt
+index b289e005..cebef9f2 100644
+--- a/gtk4/CMakeLists.txt
++++ b/gtk4/CMakeLists.txt
+@@ -20,6 +20,7 @@ set(qtcurve_gtk_writer_SRCS
+   writer/userfile.cpp
+   writer/watch.cpp
+   writer/lock.cpp
++  writer/reexec.cpp
+   "${CMAKE_CURRENT_SOURCE_DIR}/../qt6/common/common.cpp"
+   "${CMAKE_CURRENT_SOURCE_DIR}/../qt6/common/config_file.cpp")
+ 
+@@ -643,6 +644,8 @@ add_custom_command(TARGET qtcurve-gtk-theme POST_BUILD
+           "${qtc_writer_work}/latch"
+   COMMAND sh "${qtc_check}/assert-lock.sh" "${qtc_writer_command}"
+           "${qtc_writer_work}/lock"
++  COMMAND sh "${qtc_check}/assert-reexec.sh" "${qtc_writer_command}"
++          "${qtc_writer_work}/reexec"
+   VERBATIM)
+ 
+ # The cross check against the daemon itself, which the caller asks for. Set
+diff --git a/gtk4/check/assert-reexec.sh b/gtk4/check/assert-reexec.sh
+new file mode 100644
+index 00000000..2f9ad07d
+--- /dev/null
++++ b/gtk4/check/assert-reexec.sh
+@@ -0,0 +1,184 @@
++#!/bin/sh
++# assert-reexec.sh WRITER WORKDIR: the watch mode must run a new image of its
++# own binary, and it must keep the old image when the new one fails. The run
++# copies the writer into a private directory and starts the watch mode over
++# that copy. It then replaces the copy as a package manager does: unlink, and
++# then a new inode at the same path. An exec keeps the pid, so a pid that stays
++# with a new link of /proc/PID/exe is the proof of the exec. HOME,
++# XDG_CONFIG_HOME and QTCURVE_CONFIG_DIR point into WORKDIR, because the writer
++# rewrites the files of the caller. Every wait is a counted poll of steps of
++# one second, so no arm can stop the build.
++set -eu
++usage='usage: assert-reexec.sh WRITER WORKDIR'
++writer=${1:?$usage}
++work=${2:?$usage}
++
++conf=$work/config
++qtc=$work/qtcurve
++bin=$work/bin/writer
++lock=$conf/qtcurve-gtk-writer.lock
++log=$work/watch.log
++pids=
++last=
++code=0
++
++clean() {
++    for p in $pids; do
++        kill "$p" 2>/dev/null || true
++    done
++}
++
++# A signal that stops the run leaves a writer of the run alive. The trap takes
++# it away, and SIGKILL runs no trap.
++trap clean EXIT
++trap 'clean; exit 1' HUP INT QUIT TERM
++
++rm -rf "$work"
++mkdir -p "$conf/gtk-3.0" "$conf/gtk-4.0" "$qtc" "$work/bin"
++printf '[Settings]\nappearance=gradient\n' > "$qtc/stylerc"
++ulimit -c 0
++
++fail() {
++    echo "assert-reexec: $1" >&2
++    exit 1
++}
++
++# running PID: gives 0 while the process PID runs. A process that ended and
++# waits for its parent holds the state Z, and it does not run.
++running() {
++    state=$(sed -n 's/^State:[[:space:]]*//p' "/proc/$1/status" 2>/dev/null) ||
++        return 1
++    case $state in
++        Z*|'') return 1;;
++        *) return 0;;
++    esac
++}
++
++# start IMAGE LOG ARGS...: starts one run of IMAGE over the private home, and
++# holds the pid of that run in the variable last.
++start() {
++    image=$1
++    out=$2
++    shift 2
++    HOME=$work XDG_CONFIG_HOME=$conf QTCURVE_CONFIG_DIR=$qtc \
++        "$image" "$@" > "$out" 2>&1 &
++    last=$!
++    pids="$pids $last"
++}
++
++# wait_exit PID LIMIT NAME: waits at most LIMIT seconds for the run PID to
++# end, and holds the exit code of that run in the variable code. A run that
++# stays at the limit takes a signal, and the check fails.
++wait_exit() {
++    i=0
++    while [ "$i" -lt "$2" ]; do
++        if ! running "$1"; then
++            code=0
++            wait "$1" || code=$?
++            return 0
++        fi
++        sleep 1
++        i=$((i + 1))
++    done
++    kill "$1" 2>/dev/null || true
++    fail "$3 runs after $2 seconds"
++}
++
++# wait_file LIMIT FILE NAME: waits at most LIMIT seconds for the file FILE to
++# hold a byte.
++wait_file() {
++    i=0
++    while [ "$i" -lt "$1" ]; do
++        if [ -s "$2" ]; then
++            return 0
++        fi
++        sleep 1
++        i=$((i + 1))
++    done
++    fail "$3"
++}
++
++# wait_count LIMIT FILE TEXT COUNT NAME: waits at most LIMIT seconds for the
++# file FILE to hold COUNT lines of the text TEXT.
++wait_count() {
++    i=0
++    while [ "$i" -lt "$1" ]; do
++        n=$(grep -cF "$3" "$2" 2>/dev/null) || n=0
++        if [ "$n" -ge "$4" ]; then
++            return 0
++        fi
++        sleep 1
++        i=$((i + 1))
++    done
++    fail "$5"
++}
++
++# link PID: prints the target of /proc/PID/exe. The kernel adds the text
++# " (deleted)" to the target of an image that no directory holds.
++link() {
++    readlink "/proc/$1/exe" 2>/dev/null || true
++}
++
++# 1. The watch mode runs over a copy of the writer in a private directory.
++cp "$writer" "$bin"
++chmod 0755 "$bin"
++start "$bin" "$log" --watch --force
++daemon=$last
++sleep 2
++running "$daemon" || fail "the watch mode stopped at the first pass"
++wait_file 15 "$lock" "the watch mode wrote no pid into the daemon lock"
++
++# 2. An image path that is absent for a moment, as an extract of a package
++# holds it, must not stop the watch mode.
++rm -f "$bin"
++sleep 1
++running "$daemon" || fail "the watch mode stopped at an absent image"
++
++# 3. A new inode at the image path gives a new image, and the exec keeps the
++# pid. The link of /proc/PID/exe names the new inode.
++cp "$writer" "$bin.new"
++chmod 0755 "$bin.new"
++mv -f "$bin.new" "$bin"
++wait_count 15 "$log" "starts the new image" 1 \
++    "the watch mode started no new image"
++running "$daemon" || fail "the watch mode stopped at the new image"
++if [ "$(link "$daemon")" != "$bin" ]; then
++    fail "the watch mode holds no new image after the exec"
++fi
++
++# 4. The daemon lock crossed the exec, so a second watch instance stops.
++start "$writer" "$work/watch2.log" --watch --force
++wait_exit "$last" 10 "the second watch instance"
++if [ "$code" -ne 0 ]; then
++    fail "the second watch instance gave the code $code and not 0"
++fi
++grep -qF "a watch instance runs with the pid" "$work/watch2.log" ||
++    fail "the daemon lock did not cross the exec"
++
++# 5. An image that gives a code other than 0 fails the probe, and the watch
++# mode keeps the old image. A design with no probe runs this image and dies.
++printf '#!/bin/sh\nexit 1\n' > "$bin.bad"
++chmod 0755 "$bin.bad"
++mv -f "$bin.bad" "$bin"
++wait_count 15 "$log" "keeps the old image" 1 \
++    "the watch mode kept no old image over the image that fails"
++running "$daemon" || fail "the watch mode stopped at the image that fails"
++case $(link "$daemon") in
++    *" (deleted)") ;;
++    *) fail "the watch mode does not hold the old image after the probe";;
++esac
++
++# 6. The next change of the image path runs the probe again, which proves the
++# loop of the image after the exec is alive.
++cp "$writer" "$bin.new2"
++chmod 0755 "$bin.new2"
++mv -f "$bin.new2" "$bin"
++wait_count 15 "$log" "starts the new image" 2 \
++    "the watch mode started no new image after the image that fails"
++running "$daemon" || fail "the watch mode stopped at the second new image"
++if [ "$(link "$daemon")" != "$bin" ]; then
++    fail "the watch mode holds no new image after the second exec"
++fi
++
++echo "assert-reexec: the watch mode started 2 new images under one pid, and" \
++     "it kept the old image over the control image that gives the code 1"
+diff --git a/gtk4/writer/main.cpp b/gtk4/writer/main.cpp
+index f39d7731..3244f859 100644
+--- a/gtk4/writer/main.cpp
++++ b/gtk4/writer/main.cpp
+@@ -21,6 +21,7 @@
+ 
+ #include "dialect.h"
+ #include "lock.h"
++#include "reexec.h"
+ #include "userfile.h"
+ #include "watch.h"
+ 
+@@ -38,6 +39,8 @@
+ #include <unistd.h>
+ 
+ #include <functional>
++#include <string>
++#include <vector>
+ 
+ using namespace QtCurve;
+ using namespace QtCurve::Gtk;
+@@ -442,8 +445,15 @@ parse(const QStringList &argv, Args &args)
+ int
+ main(int argc, char **argv)
+ {
++    // The raw arguments of this run, for the exec of a new image. The copy
++    // comes first, because the constructor of QCoreApplication takes the
++    // arguments of Qt out of argv.
++    static std::vector<std::string> savedArgs(argv, argv + argc);
++
+     QCoreApplication app(argc, argv);
+     QCoreApplication::setApplicationName(QStringLiteral("qtcurve-gtk-writer"));
++    // The path of the running image, before a package can replace it.
++    const QString exePath = QCoreApplication::applicationFilePath();
+ 
+     Args args;
+     if (!parse(QCoreApplication::arguments(), args)) {
+@@ -494,6 +504,7 @@ main(int argc, char **argv)
+         Watcher watcher([&args] {
+                 return lockedRun([&args] { return runWrite(args); });
+             }, paths);
++        Reexec reexec(exePath, savedArgs, dfd);
+         if (first == lockBusyCode) {
+             watcher.kick();
+         }
+diff --git a/gtk4/writer/reexec.cpp b/gtk4/writer/reexec.cpp
+new file mode 100644
+index 00000000..29a87c92
+--- /dev/null
++++ b/gtk4/writer/reexec.cpp
+@@ -0,0 +1,195 @@
++/*****************************************************************************
++ *   Copyright 2026 QtCurve authors                                          *
++ *                                                                           *
++ *   This program is free software; you can redistribute it and/or modify    *
++ *   it under the terms of the GNU Lesser General Public License as          *
++ *   published by the Free Software Foundation; either version 2.1 of the    *
++ *   License, or (at your option) version 3, or any later version accepted   *
++ *   by the membership of KDE e.V. (or its successor approved by the         *
++ *   membership of KDE e.V.), which shall act as a proxy defined in          *
++ *   Section 6 of version 3 of the license.                                  *
++ *                                                                           *
++ *   This program is distributed in the hope that it will be useful,         *
++ *   but WITHOUT ANY WARRANTY; without even the implied warranty of          *
++ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU       *
++ *   Lesser General Public License for more details.                         *
++ *                                                                           *
++ *   You should have received a copy of the GNU Lesser General Public        *
++ *   License along with this library. If not,                                *
++ *   see <http://www.gnu.org/licenses/>.                                     *
++ *****************************************************************************/
++
++#include "reexec.h"
++
++#include "lock.h"
++
++#include <QFileInfo>
++#include <QFileSystemWatcher>
++#include <QProcess>
++
++#include <stdio.h>
++#include <string.h>
++#include <unistd.h>
++
++namespace QtCurve {
++namespace Gtk {
++
++namespace {
++
++/**
++ * The debounce of the binary watch, in milliseconds. The step covers the
++ * events of one extract of a package, so one replacement gives one read.
++ */
++const int debounceMs = 500;
++
++/**
++ * The wait before another read of a path that is absent or not executable, in
++ * milliseconds. The extract of a package holds such a path for a short time.
++ */
++const int retryMs = 2000;
++
++/** The longest wait for one probe run of a new image, in milliseconds. */
++const int probeMs = 5000;
++
++/** The longest wait for a probe run that took a signal, in milliseconds. */
++const int reapMs = 1000;
++
++/** The count of the attempts that fail before the binary watch stops. */
++const int maxAttempts = 5;
++
++/** Returns true when two results of stat(2) name one image of one content. */
++bool
++sameStat(const struct stat &one, const struct stat &two)
++{
++    return one.st_dev == two.st_dev && one.st_ino == two.st_ino &&
++        one.st_size == two.st_size &&
++        one.st_mtim.tv_sec == two.st_mtim.tv_sec &&
++        one.st_mtim.tv_nsec == two.st_mtim.tv_nsec;
++}
++
++}
++
++Reexec::Reexec(const QString &exePath,
++               const std::vector<std::string> &savedArgs, int lockFd,
++               QObject *parent)
++    : QObject(parent), m_exePath(exePath), m_savedArgs(savedArgs),
++      m_lockFd(lockFd), m_files(new QFileSystemWatcher(this)),
++      m_haveFailedStat(false), m_attempts(0)
++{
++    memset(&m_startupStat, 0, sizeof(m_startupStat));
++    memset(&m_failedStat, 0, sizeof(m_failedStat));
++    stat(m_exePath.toLocal8Bit().constData(), &m_startupStat);
++
++    m_debounce.setSingleShot(true);
++    m_debounce.setInterval(debounceMs);
++    connect(&m_debounce, &QTimer::timeout, this, &Reexec::fire);
++    m_retry.setSingleShot(true);
++    m_retry.setInterval(retryMs);
++    connect(&m_retry, &QTimer::timeout, this, &Reexec::schedule);
++
++    addPaths();
++    connect(m_files, &QFileSystemWatcher::fileChanged,
++            this, &Reexec::schedule);
++    connect(m_files, &QFileSystemWatcher::directoryChanged,
++            this, &Reexec::schedule);
++}
++
++void
++Reexec::addPaths()
++{
++    const QString dir = QFileInfo(m_exePath).absolutePath();
++    if (!m_files->directories().contains(dir) && QFileInfo::exists(dir)) {
++        m_files->addPath(dir);
++    }
++    if (!m_files->files().contains(m_exePath) &&
++        QFileInfo::exists(m_exePath)) {
++        m_files->addPath(m_exePath);
++    }
++}
++
++void
++Reexec::schedule()
++{
++    addPaths();
++    m_debounce.start();
++}
++
++bool
++Reexec::probe()
++{
++    QProcess run;
++    run.setStandardOutputFile(QProcess::nullDevice());
++    run.setStandardErrorFile(QProcess::nullDevice());
++    run.start(m_exePath, { QStringLiteral("--stdout"),
++                           QStringLiteral("--default") });
++    if (!run.waitForFinished(probeMs)) {
++        run.kill();
++        run.waitForFinished(reapMs);
++        return false;
++    }
++    return run.exitStatus() == QProcess::NormalExit && run.exitCode() == 0;
++}
++
++void
++Reexec::keepOldImage(const struct stat &failed)
++{
++    m_failedStat = failed;
++    m_haveFailedStat = true;
++    ++m_attempts;
++    if (m_attempts == maxAttempts) {
++        fprintf(stderr, "qtcurve-gtk-writer: the writer keeps this image and"
++                " stops the binary watch\n");
++    }
++}
++
++void
++Reexec::fire()
++{
++    if (m_attempts >= maxAttempts) {
++        return;
++    }
++    const QByteArray path = m_exePath.toLocal8Bit();
++    struct stat now;
++    if (stat(path.constData(), &now) != 0) {
++        if (!m_retry.isActive()) {
++            m_retry.start();
++        }
++        return;
++    }
++    if (sameStat(now, m_startupStat)) {
++        return;
++    }
++    if (m_haveFailedStat && sameStat(now, m_failedStat)) {
++        return;
++    }
++    if (access(path.constData(), X_OK) != 0) {
++        if (!m_retry.isActive()) {
++            m_retry.start();
++        }
++        return;
++    }
++    if (!probe()) {
++        fprintf(stderr, "qtcurve-gtk-writer: the new image of %s fails the"
++                " probe, and the writer keeps the old image\n",
++                path.constData());
++        keepOldImage(now);
++        return;
++    }
++    printf("qtcurve-gtk-writer: the writer starts the new image of %s\n",
++           path.constData());
++    fflush(stdout);
++    prepareLockFdForExec(m_lockFd);
++    std::vector<char*> args;
++    for (std::string &arg : m_savedArgs) {
++        args.push_back(&arg[0]);
++    }
++    args.push_back(nullptr);
++    ::execv(path.constData(), args.data());
++    restoreLockFdAfterExecFailure(m_lockFd);
++    fprintf(stderr, "qtcurve-gtk-writer: the exec of %s fails, and the writer"
++            " keeps the old image\n", path.constData());
++    keepOldImage(now);
++}
++
++}
++}
+diff --git a/gtk4/writer/reexec.h b/gtk4/writer/reexec.h
+new file mode 100644
+index 00000000..60f3c297
+--- /dev/null
++++ b/gtk4/writer/reexec.h
+@@ -0,0 +1,120 @@
++/*****************************************************************************
++ *   Copyright 2026 QtCurve authors                                          *
++ *                                                                           *
++ *   This program is free software; you can redistribute it and/or modify    *
++ *   it under the terms of the GNU Lesser General Public License as          *
++ *   published by the Free Software Foundation; either version 2.1 of the    *
++ *   License, or (at your option) version 3, or any later version accepted   *
++ *   by the membership of KDE e.V. (or its successor approved by the         *
++ *   membership of KDE e.V.), which shall act as a proxy defined in          *
++ *   Section 6 of version 3 of the license.                                  *
++ *                                                                           *
++ *   This program is distributed in the hope that it will be useful,         *
++ *   but WITHOUT ANY WARRANTY; without even the implied warranty of          *
++ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU       *
++ *   Lesser General Public License for more details.                         *
++ *                                                                           *
++ *   You should have received a copy of the GNU Lesser General Public        *
++ *   License along with this library. If not,                                *
++ *   see <http://www.gnu.org/licenses/>.                                     *
++ *****************************************************************************/
++
++#ifndef QTC_GTK4_REEXEC_H
++#define QTC_GTK4_REEXEC_H
++
++#include <QObject>
++#include <QString>
++#include <QTimer>
++
++#include <sys/stat.h>
++
++#include <string>
++#include <vector>
++
++class QFileSystemWatcher;
++
++namespace QtCurve {
++namespace Gtk {
++
++/**
++ * The half of the daemon that follows a change of the binary of the writer.
++ * It holds one QFileSystemWatcher over the file of the image and over the
++ * directory of that file. A package manager unlinks the old file and extracts
++ * a new inode, and a watch of the file alone dies with the old one. The
++ * object runs in the thread of the event loop of the daemon.
++ */
++class Reexec : public QObject {
++    Q_OBJECT
++public:
++    /**
++     * Builds the watch over one image path, and reads the state of that path
++     * one time.
++     *
++     * \param exePath the path of the running image, from
++     *     QCoreApplication::applicationFilePath() at startup. The daemon runs
++     *     this path again, so the path is the contract of the operator: a
++     *     different program at that path also runs.
++     * \param savedArgs the raw arguments of main(), which the caller copies
++     *     before the constructor of QCoreApplication reads argv.
++     * \param lockFd the descriptor of the daemon lock. It crosses the exec,
++     *     so the lock stays held with no open window.
++     */
++    Reexec(const QString &exePath, const std::vector<std::string> &savedArgs,
++           int lockFd, QObject *parent = nullptr);
++
++private Q_SLOTS:
++    /** Starts the debounce timer and adds every lost watch path again. */
++    void schedule();
++    /**
++     * Reads the image path one time, and runs a new image on success. A path
++     * that did not change, an image that failed before, an absent path and a
++     * path that is not executable start no new image. An image that fails the
++     * probe keeps the old image, and the writer reads the path again only
++     * after another change of the file. The watch stops after 5 attempts that
++     * fail.
++     */
++    void fire();
++
++private:
++    /**
++     * Adds the image path and its directory again when the watcher lost them.
++     * Only a path that exists at that moment joins the watcher.
++     */
++    void addPaths();
++    /**
++     * Runs the image one time with --stdout and --default, and returns true
++     * when that run gives 0 inside 5 s. The sheet mode reads no bus, takes no
++     * lock, needs no display and writes no file without --out. The probe
++     * therefore costs the state of the user nothing.
++     */
++    bool probe();
++    /**
++     * Keeps the old image after a new image that failed, and counts that
++     * attempt. The function prints the one line of the attempt that stops the
++     * watch, and the caller prints the line of the failure itself.
++     *
++     * \param failed the state of the image that failed. A later pass over the
++     *     same state gives no action.
++     */
++    void keepOldImage(const struct stat &failed);
++
++    QString m_exePath;
++    std::vector<std::string> m_savedArgs;
++    int m_lockFd;
++    QFileSystemWatcher *m_files;
++    QTimer m_debounce;
++    QTimer m_retry;
++    /** The state of the image at startup, which no pass runs again. */
++    struct stat m_startupStat;
++    /** The state of the last image that failed, valid with m_haveFailedStat. */
++    struct stat m_failedStat;
++    /** True after the first image that failed. */
++    bool m_haveFailedStat;
++    /** The count of the attempts that failed, capped at 5. */
++    int m_attempts;
++};
++
++}
++}
++
++#endif

@@ -1,0 +1,215 @@
+Install a systemd user unit beside the autostart file
+
+The generator of xdg-autostart builds a transient unit from the
+autostart file, and that unit carries no Restart key. A watch process
+that dies therefore stays dead until the next login, and the GTK theme
+no longer follows the settings.
+
+The unit beside the autostart file carries Restart=on-failure, so
+systemd starts the writer again after a crash. The key PartOf stops the
+writer with the session, and Slice=background.slice gives the writer the
+resources of a background job.
+
+The key is Restart=on-failure and not Restart=always, because of the
+lock. A second instance stops with the code 0 on purpose, and systemd
+must leave it stopped.
+
+The skip key of the autostart file stops the generator, so one job gets
+one unit. A session of Plasma with no systemd reads no skip key and
+keeps the autostart file. Both kinds of session therefore start the
+writer one time.
+
+A symlink in plasma-workspace.target.wants is the start wiring, and the
+unit needs no [Install] section for it. The install step honours
+DESTDIR, and cmake -E create_symlink builds the link.
+
+The option QTC_GTK_SYSTEMD_UNIT takes the unit, the symlink and the skip
+key away together. A skip key with no unit would lose the autostart of a
+session with systemd.
+
+The change sits on the branch work/gtk4-theme of the local tree, as the
+tenth commit. The fork wyn/qtcurve holds that branch. Merge request !15 on
+system/qtcurve holds that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/gtk4/CMakeLists.txt b/gtk4/CMakeLists.txt
+index cebef9f2..bfb1afc2 100644
+--- a/gtk4/CMakeLists.txt
++++ b/gtk4/CMakeLists.txt
+@@ -660,6 +660,43 @@ if(QTC_KDED_NAMES)
+     VERBATIM)
+ endif()
+ 
++# The generator of xdg-autostart builds a transient unit of the autostart
++# file, and that unit starts the writer one time and never again. The unit
++# below takes its place, and the skip key of the autostart file stops the
++# generator. A session of Plasma with no systemd keeps the autostart file.
++option(QTC_GTK_SYSTEMD_UNIT
++  "Install a systemd user unit and a start symlink for the writer." ON)
++if(QTC_GTK_SYSTEMD_UNIT)
++  set(QTC_SYSTEMD_SKIP_LINE "X-systemd-skip=true")
++  find_package(PkgConfig)
++  if(PKG_CONFIG_FOUND)
++    pkg_get_variable(qtc_systemd_user_dir systemd systemduserunitdir)
++  endif()
++  if(NOT qtc_systemd_user_dir)
++    set(qtc_systemd_user_dir "${CMAKE_INSTALL_PREFIX}/lib/systemd/user")
++  endif()
++  set(QTC_SYSTEMD_USER_UNIT_DIR "${qtc_systemd_user_dir}" CACHE PATH
++    "Directory of the systemd user units.")
++  configure_file(autostart/qtcurve-gtk-writer.service.in
++    "${CMAKE_CURRENT_BINARY_DIR}/qtcurve-gtk-writer.service" @ONLY)
++  install(FILES "${CMAKE_CURRENT_BINARY_DIR}/qtcurve-gtk-writer.service"
++    DESTINATION "${QTC_SYSTEMD_USER_UNIT_DIR}")
++  # The unit carries no [Install] section, because the symlink below is the
++  # start wiring. systemctl --user start takes the unit by name.
++  install(CODE "
++    file(MAKE_DIRECTORY \"\$ENV{DESTDIR}${QTC_SYSTEMD_USER_UNIT_DIR}/plasma-workspace.target.wants\")
++    execute_process(COMMAND \"${CMAKE_COMMAND}\" -E create_symlink ../qtcurve-gtk-writer.service \"\$ENV{DESTDIR}${QTC_SYSTEMD_USER_UNIT_DIR}/plasma-workspace.target.wants/qtcurve-gtk-writer.service\")
++  ")
++  add_custom_command(TARGET qtcurve-gtk-theme POST_BUILD
++    COMMAND sh "${qtc_check}/assert-unit.sh"
++            "${CMAKE_CURRENT_BINARY_DIR}/qtcurve-gtk-writer.desktop"
++            "${CMAKE_CURRENT_BINARY_DIR}/qtcurve-gtk-writer.service"
++            "${QTC_GTK_WRITER_PATH}"
++    VERBATIM)
++else()
++  set(QTC_SYSTEMD_SKIP_LINE "")
++endif()
++
+ configure_file(autostart/qtcurve-gtk-writer.desktop.in
+   "${CMAKE_CURRENT_BINARY_DIR}/qtcurve-gtk-writer.desktop" @ONLY)
+ 
+diff --git a/gtk4/autostart/qtcurve-gtk-writer.desktop.in b/gtk4/autostart/qtcurve-gtk-writer.desktop.in
+index 11b644f0..b8be22c5 100644
+--- a/gtk4/autostart/qtcurve-gtk-writer.desktop.in
++++ b/gtk4/autostart/qtcurve-gtk-writer.desktop.in
+@@ -7,3 +7,4 @@ Terminal=false
+ NoDisplay=true
+ X-KDE-autostart-phase=1
+ OnlyShowIn=KDE;
++@QTC_SYSTEMD_SKIP_LINE@
+diff --git a/gtk4/autostart/qtcurve-gtk-writer.service.in b/gtk4/autostart/qtcurve-gtk-writer.service.in
+new file mode 100644
+index 00000000..ad175c3c
+--- /dev/null
++++ b/gtk4/autostart/qtcurve-gtk-writer.service.in
+@@ -0,0 +1,12 @@
++[Unit]
++Description=Keeps the GTK theme in step with the QtCurve settings
++PartOf=graphical-session.target
++After=plasma-core.target
++
++[Service]
++Type=simple
++ExecStart=@QTC_GTK_WRITER_PATH@ --watch
++Restart=on-failure
++RestartSec=2
++Slice=background.slice
++TimeoutStopSec=5
+diff --git a/gtk4/check/assert-unit.sh b/gtk4/check/assert-unit.sh
+new file mode 100644
+index 00000000..5d19a1ea
+--- /dev/null
++++ b/gtk4/check/assert-unit.sh
+@@ -0,0 +1,99 @@
++#!/bin/sh
++# assert-unit.sh DESKTOP SERVICE WRITERPATH: the autostart file and the
++# systemd user unit must start one binary with one flag. DESKTOP and SERVICE
++# are the two configured files of the build, and WRITERPATH is the installed
++# path of the writer. The run then breaks one contract in a copy of each file,
++# and it fails if the check passes a copy.
++set -eu
++usage='usage: assert-unit.sh DESKTOP SERVICE WRITERPATH'
++desktop=${1:?$usage}
++service=${2:?$usage}
++writer=${3:?$usage}
++
++tmp=$(mktemp -d)
++trap 'rm -rf "$tmp"' EXIT
++
++want="$writer --watch"
++
++# value_of FILE KEY: prints the value of the row of KEY, and prints nothing
++# when the file holds no such row.
++value_of() {
++    sed -n "s/^$2=//p" "$1"
++}
++
++# check DESKTOP SERVICE: gives 0 when the five contracts hold. It names the
++# first contract that fails on the standard error.
++check() {
++    c_desktop=$1
++    c_service=$2
++
++    # 1. The unit starts the watch mode of the writer.
++    if ! grep -qxF "ExecStart=$want" "$c_service"; then
++        echo "assert-unit: $c_service starts no '$want'" >&2
++        return 1
++    fi
++
++    # 2. The unit holds one process, and systemd starts that process again
++    # after a failure and stops it with the session.
++    for row in Type=simple Restart=on-failure PartOf=graphical-session.target
++    do
++        if ! grep -qxF "$row" "$c_service"; then
++            echo "assert-unit: $c_service holds no '$row'" >&2
++            return 1
++        fi
++    done
++
++    # 3. The autostart file carries the skip key, so the generator of systemd
++    # builds no second unit of the same job.
++    if ! grep -qxF 'X-systemd-skip=true' "$c_desktop"; then
++        echo "assert-unit: $c_desktop holds no 'X-systemd-skip=true'" >&2
++        return 1
++    fi
++
++    # 4. The autostart file starts the same command.
++    if ! grep -qxF "Exec=$want" "$c_desktop"; then
++        echo "assert-unit: $c_desktop starts no '$want'" >&2
++        return 1
++    fi
++
++    # 5. The two starters hold one command, byte for byte.
++    if [ "$(value_of "$c_desktop" Exec)" != \
++         "$(value_of "$c_service" ExecStart)" ]; then
++        echo "assert-unit: $c_desktop and $c_service start two commands" >&2
++        return 1
++    fi
++    return 0
++}
++
++if ! check "$desktop" "$service"; then
++    echo "assert-unit: the two files fail the check" >&2
++    exit 1
++fi
++
++# The controls below. Each one breaks one contract in a copy of a file, and
++# the check must fail over that copy.
++broken=0
++
++# control NAME DESKTOP SERVICE: the check must fail over the files that the
++# caller gives.
++control() {
++    name=$1
++    shift
++    if check "$@" 2> "$tmp/control.log"; then
++        echo "assert-unit: the check passed the control copy of $name" >&2
++        exit 1
++    fi
++    broken=$((broken + 1))
++}
++
++# The write mode in the unit, which runs one pass and holds no watch.
++sed 's/--watch/--write/' "$service" > "$tmp/write.service"
++control write "$desktop" "$tmp/write.service"
++
++# The autostart file with no skip key, which leaves the generator of systemd
++# with a second unit of the same job.
++grep -v '^X-systemd-skip=true$' "$desktop" > "$tmp/skip.desktop"
++control skip "$tmp/skip.desktop" "$service"
++
++echo "assert-unit: the unit and the autostart file start '$want', and the" \
++     "check rejects each of the $broken control copies"
