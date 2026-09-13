@@ -1,0 +1,66 @@
+# Based on the upstream/AUR recipe by:
+# luytan <luytan@khora.me> and thatayush <me@ayushm.com>
+
+pkgname=cardwire
+pkgver=0.12.2
+pkgrel=2
+pkgdesc='GPU manager for Wayland systems using eBPF LSM hooks'
+arch=('x86_64')
+url='https://github.com/OpenGamingCollective/cardwire'
+license=('GPL-3.0-only')
+depends=('dbus' 'fontconfig' 'glib2' 'glibc' 'hicolor-icon-theme' 'hwdata' 'libgcc'
+         'libglvnd' 'libxcb' 'libxkbcommon' 'sqlite' 'systemd'
+         'systemd-libs' 'upower' 'vulkan-icd-loader' 'wayland' 'xdg-utils')
+makedepends=('clang' 'pkgconf' 'rust' 'rust-src')
+# Upstream's eBPF build needs LLVM 23; the repository linker uses LLVM 22.
+# Pin and checksum the upstream build tool instead of fetching it with binstall.
+# This tool is used only during compilation and is not included in the package.
+_bpf_linker_ver=0.11.0
+source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz"
+        "bpf-linker-$_bpf_linker_ver-x86_64.tar.zst::https://github.com/aya-rs/bpf-linker/releases/download/v$_bpf_linker_ver/bpf-linker-x86_64-unknown-linux-musl.tar.zst")
+sha256sums=('3b96e8bba14c9bcd4e104954244a7403f7dda6e3b336bbf6f0a079d589d11ddb'
+            '10f62ba9ab7e544d538370552660efcb4f1a19153d5752bbf0f6b51f3bada450')
+# Upstream release CI disables LTO. Keep the first package aligned with it.
+options=('!lto')
+
+prepare() {
+  cd "$pkgname-$pkgver"
+  cargo fetch --locked
+}
+
+build() {
+  cd "$pkgname-$pkgver"
+  export PATH="$srcdir:$PATH"
+  # Arch's rust + rust-src can build the tier-3 BPF target using build-std.
+  # Use a clean chroot without rustup, which would select a separate nightly.
+  export RUSTC_BOOTSTRAP=1
+  export LIBSQLITE3_SYS_USE_PKG_CONFIG=1
+  export CARGO_TARGET_DIR=target
+  export CARGO_PROFILE_RELEASE_LTO=false
+  export CARGO_PROFILE_RELEASE_STRIP=false
+  export CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER=cc
+  cargo build --frozen --release --bins
+
+  target/release/cardwire completion bash > cardwire.bash
+  target/release/cardwire completion fish > cardwire.fish
+  target/release/cardwire completion zsh > _cardwire
+}
+
+package() {
+  cd "$pkgname-$pkgver"
+  local binary icon
+  for binary in cardwire cardwired cardwire-gui; do
+    install -Dm755 "target/release/$binary" "$pkgdir/usr/bin/$binary"
+  done
+  install -Dm644 assets/cardwired.service "$pkgdir/usr/lib/systemd/system/cardwired.service"
+  install -Dm644 assets/org.opengamingcollective.cardwire.conf "$pkgdir/usr/share/dbus-1/system.d/org.opengamingcollective.cardwire.conf"
+  install -Dm644 assets/cardwire-gui.desktop "$pkgdir/usr/share/applications/cardwire-gui.desktop"
+  install -Dm644 assets/org.opengamingcollective.cardwire.metainfo.xml "$pkgdir/usr/share/metainfo/org.opengamingcollective.cardwire.metainfo.xml"
+  for icon in assets/icons/*.svg; do
+    install -Dm644 "$icon" "$pkgdir/usr/share/icons/hicolor/scalable/apps/${icon##*/}"
+  done
+  install -Dm644 cardwire.bash "$pkgdir/usr/share/bash-completion/completions/cardwire"
+  install -Dm644 cardwire.fish "$pkgdir/usr/share/fish/vendor_completions.d/cardwire.fish"
+  install -Dm644 _cardwire "$pkgdir/usr/share/zsh/site-functions/_cardwire"
+  # Do not install the enable preset or run upstream's host-modifying install target.
+}
