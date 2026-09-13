@@ -1,7 +1,7 @@
 pkgbase = qtcurve
 	pkgdesc = A configurable set of widget styles for Qt5, Qt6, KDE Frameworks 6, GTK 2, GTK 3 and GTK 4; the GTK theme data is in qtcurve-gtk-theme
 	pkgver = 20260909
-	pkgrel = 2
+	pkgrel = 3
 	url = https://invent.kde.org/system/qtcurve
 	install = qtcurve.install
 	arch = x86_64
@@ -146,6 +146,7 @@ pkgbase = qtcurve
 	source = gtk4-writer-reexec.patch
 	source = gtk4-writer-unit.patch
 	source = gtk4-writer-dialog-spawn.patch
+	source = gtk4-writer-bus-bound.patch
 	sha256sums = e01dbf05c24c11a3660e6185a9a7607d0838d4560ab717d44b449e9520476f6e
 	sha256sums = 60d6c52289f3b6e7c0645bb9acaa96a769801f66e77f50cd5551b7e613611152
 	sha256sums = e4219281d09f042bac722d7ab6a6784b9b56ea34129e8b877942c91770d9a912
@@ -238,5 +239,6 @@ pkgbase = qtcurve
 	sha256sums = 2f40590efc73c2df811b93a341b9a6737092647e5248c721f72f090b3eda6029
 	sha256sums = 390f92b47341e8f2207ef17724b0ff60f56cae1a812095fc180dc52d38787b35
 	sha256sums = 7bcef7ed080217326a386c845d9b9005396858c346edbc1d07cc8b5a4c0e87df
+	sha256sums = 6832c1a41632f1a21c81a236c28887a4ea46b82b7252c41ce52be98f132de036
 
 pkgname = qtcurve

@@ -5,7 +5,7 @@ _commit=68a3b41753b66a2f00cf98667a68458961f5cb25
 _srcname=qtcurve
 pkgname=qtcurve-gtk-theme
 pkgver=20260909
-pkgrel=2
+pkgrel=3
 pkgdesc="The QtCurve theme data for GTK 2, GTK 3 and GTK 4; the engines and the writer are in qtcurve"
 arch=(any)
 url="https://invent.kde.org/system/qtcurve"
@@ -135,6 +135,7 @@ source=(
 	gtk4-writer-reexec.patch
 	gtk4-writer-unit.patch
 	gtk4-writer-dialog-spawn.patch
+	gtk4-writer-bus-bound.patch
 )
 sha256sums=('e01dbf05c24c11a3660e6185a9a7607d0838d4560ab717d44b449e9520476f6e'
             '60d6c52289f3b6e7c0645bb9acaa96a769801f66e77f50cd5551b7e613611152'
@@ -227,7 +228,8 @@ sha256sums=('e01dbf05c24c11a3660e6185a9a7607d0838d4560ab717d44b449e9520476f6e'
             'd7b9751140ec76fbe9132ee5cba6c5ffbdcd292c0374026dc581848667dc405c'
             '2f40590efc73c2df811b93a341b9a6737092647e5248c721f72f090b3eda6029'
             '390f92b47341e8f2207ef17724b0ff60f56cae1a812095fc180dc52d38787b35'
-            '7bcef7ed080217326a386c845d9b9005396858c346edbc1d07cc8b5a4c0e87df')
+            '7bcef7ed080217326a386c845d9b9005396858c346edbc1d07cc8b5a4c0e87df'
+            '6832c1a41632f1a21c81a236c28887a4ea46b82b7252c41ce52be98f132de036')
 
 pkgver() {
 	git -C "$_srcname" log -1 --format=%cd --date=format:%Y%m%d
@@ -325,6 +327,10 @@ prepare() {
 	# check file, so it takes the three way merge of git.
 	git -C "$_srcname" add -A
 	git -C "$_srcname" apply --3way "$srcdir/gtk4-writer-dialog-spawn.patch"
+	# The patch bounds the session bus read of the writer. The patch adds
+	# files, so it takes the three way merge of git.
+	git -C "$_srcname" add -A
+	git -C "$_srcname" apply --3way "$srcdir/gtk4-writer-bus-bound.patch"
 }
 
 build() {
