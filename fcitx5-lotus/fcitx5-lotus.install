@@ -1,0 +1,5 @@
+post_install() {
+    modprobe uinput || true
+    udevadm control --reload-rules
+    udevadm trigger
+}
