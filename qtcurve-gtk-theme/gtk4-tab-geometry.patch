@@ -1,0 +1,73 @@
+Hold the notebook tab geometry across the tab states
+
+The plain notebook tab takes a border of no width, and the checked tab
+takes a border of one pixel. Both tabs take the same padding. The border
+adds to the size of the tab in the GTK box model, so the checked tab
+grows by two pixels each way. Every switch of the page therefore reflows
+the tab strip, and the tabs move under the pointer. The Qt style holds
+one geometry and moves no tab.
+
+The emitter now writes a border of one pixel and the colour transparent
+where a tab state paints no line. Both tab states then hold the same
+box, and the paint alone moves. The setting that borders the plain tab
+alone gave the same move in the other direction, and it now holds one
+geometry as well. The flat button rule of the sheet already holds this
+form.
+
+The box check of the build carried a waiver for the checked tab. That
+waiver now goes, so the check holds the tab geometry in every sheet. The
+four shipped sheets keep every other byte.
+
+The change sits on the branch work/gtk4-theme of the local tree, as the
+sixth commit. The fork wyn/qtcurve holds that branch. Merge request !15 on
+system/qtcurve holds that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/gtk4/check/boxes-keep.txt b/gtk4/check/boxes-keep.txt
+index 0b2ce7d1..1ea08ef4 100644
+--- a/gtk4/check/boxes-keep.txt
++++ b/gtk4/check/boxes-keep.txt
+@@ -2,12 +2,6 @@
+ # the selector of the state and the property that the state moves. Every other
+ # state of every sheet must hold the box of the plain rule under it.
+ 
+-# The current tab of a notebook takes the frame that both references paint,
+-# and a header holds one such tab at all times. A tab of another page then
+-# keeps the smaller box, and no move of the pointer changes the header.
+-notebook tab:checked | border
+-notebook > header > tabs > tab:checked | border
+-
+ # GTK 3 draws a selected cell of a tree view with the state of the view node.
+ # The cell takes the band alone, and the frame of the view stays on the plain
+ # rule.
+diff --git a/gtk4/writer/widgets.cpp b/gtk4/writer/widgets.cpp
+index 8c9bbe1b..a97200db 100644
+--- a/gtk4/writer/widgets.cpp
++++ b/gtk4/writer/widgets.cpp
+@@ -1899,10 +1899,14 @@ Writer::notebook()
+                       lad(Role::Window,
+                           m_opts.tabBgnd == 0 ? ORIGINAL_SHADE : 2));
+     tab.bg = roleCol(QStringLiteral("tab-bg"), Role::Window, tab.image);
++    // Each tab state paints a border of one pixel, and a border of no width
++    // would move the tab that the user selects. The colour of that border
++    // moves alone.
+     tab.border = m_opts.borderInactiveTab ?
+         tline(QStringLiteral("tab-border"),
+               lad(Role::Window, QTC_STD_BORDER)) :
+-        v(QStringLiteral("tab-noborder"), QStringLiteral("none"));
++        v(QStringLiteral("tab-border-clear"),
++          QStringLiteral("1px solid transparent"));
+     tab.radius = rad(QStringLiteral("tab-radius"), WIDGET_TAB_TOP, 80, 26);
+     ink(tab, QStringLiteral("fg"), Role::WindowText, Role::Window,
+         cover(tab.image, tab.bg));
+@@ -1921,7 +1925,8 @@ Writer::notebook()
+     active.border = m_opts.borderTab ?
+         tline(QStringLiteral("tab-border"),
+               lad(Role::Window, QTC_STD_BORDER)) :
+-        v(QStringLiteral("tab-noborder"), QStringLiteral("none"));
++        v(QStringLiteral("tab-border-clear"),
++          QStringLiteral("1px solid transparent"));
+     active.shadow = v(QStringLiteral("tab-shadow"), m_opts.highlightTab ?
+                       QStringLiteral("inset 0 2px 0 0 %1")
+                       .arg(tone(Role::Highlight).css) :

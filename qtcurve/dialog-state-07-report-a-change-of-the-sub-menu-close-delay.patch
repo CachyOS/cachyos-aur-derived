@@ -1,0 +1,28 @@
+Report a change of the sub-menu close delay
+
+settingsChanged() compares every input of the dialog against the stored
+configuration, and updateChanged() gates the live preview and the
+changed signal on that answer. The sub-menu close delay box had no
+comparison, so a user who moved only that box saw no preview and left
+the Apply button asleep.
+
+The close delay now joins its sibling, the sub-menu delay, in the
+comparison.
+
+The change sits on the branch work/dialog-state of the local tree, as commit 7 of 12.
+A new merge request on system/qtcurve takes that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/qt6/config/qtcurveconfig.cpp b/qt6/config/qtcurveconfig.cpp
+index 1dbbd8db..d84c073a 100644
+--- a/qt6/config/qtcurveconfig.cpp
++++ b/qt6/config/qtcurveconfig.cpp
+@@ -3927,6 +3927,7 @@ bool QtCurveConfig::settingsChanged(const Options &opts)
+          lighterPopupMenuBgnd->value()!=opts.lighterPopupMenuBgnd ||
+          tabBgnd->value()!=opts.tabBgnd ||
+          menuDelay->value()!=opts.menuDelay ||
++         menuCloseDelay->value()!=opts.menuCloseDelay ||
+          sliderWidth->value()!=opts.sliderWidth ||
+          menuStripe->currentIndex()!=opts.menuStripe ||
+          menuStripeAppearance->currentIndex()!=opts.menuStripeAppearance ||

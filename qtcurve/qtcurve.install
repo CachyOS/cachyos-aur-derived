@@ -1,0 +1,31 @@
+_start_notice() {
+	cat <<'EOF'
+The GTK theme follows the QtCurve settings through a watch process. The
+process starts at each login. To start it now, run:
+systemctl --user start qtcurve-gtk-writer.service
+EOF
+}
+
+_notice() {
+	cat <<'EOF'
+The QtCurve style dialogue writes GTK theme files into your home directory.
+Before you remove the package, run qtcurve-gtk-writer --remove-gtk to delete
+them. Run qtcurve-gtk-writer --remove-qt to delete your saved settings and
+presets; the GTK theme then follows the defaults. Run qtcurve-gtk-writer
+--purge-settings to delete both.
+EOF
+}
+
+post_install() {
+	_start_notice
+	_notice
+}
+
+post_upgrade() {
+	_start_notice
+	_notice
+}
+
+pre_remove() {
+	_notice
+}

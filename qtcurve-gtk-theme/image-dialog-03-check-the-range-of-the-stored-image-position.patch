@@ -1,0 +1,43 @@
+Check the range of the stored image position
+
+The reader cast the stored position straight to the position type. A
+value outside the nine positions therefore reached the configuration
+dialog. The position box then showed no entry and answered minus one,
+and the next save wrote minus one into the file.
+
+Check the value against the range of the type on read, as the other
+enumeration readers of the file do. Keep the default position for a
+value outside the range.
+
+The change sits on the branch work/image-dialog of the local tree, as commit 3 of 5.
+A new merge request on system/qtcurve takes that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/qt6/common/config_file.cpp b/qt6/common/config_file.cpp
+index 813b3b4b..50f1a118 100644
+--- a/qt6/common/config_file.cpp
++++ b/qt6/common/config_file.cpp
+@@ -524,6 +524,11 @@ static EImageType toImageType(const char *str, EImageType def)
+     return def;
+ }
+ 
++static EPixPos toPixPos(int val, EPixPos def)
++{
++    return val>=PP_TL && val<=PP_CENTRED ? (EPixPos)val : def;
++}
++
+ static EGlow toGlow(const char *str, EGlow def)
+ {
+     if(str && 0!=str[0])
+@@ -817,8 +822,8 @@ static void readDoubleList(QtCConfig &cfg, const char *key, double *list, int co
+                 opts->ENTRY.height = readNumEntry(cfg, #ENTRY ".height", 0); \
+                 opts->ENTRY.onBorder = readBoolEntry(cfg, #ENTRY ".onBorder", \
+                                                      false);            \
+-                opts->ENTRY.pos = (EPixPos)readNumEntry(cfg, #ENTRY ".pos", \
+-                                                        (int)PP_TR);    \
++                opts->ENTRY.pos = toPixPos(readNumEntry(cfg, #ENTRY ".pos", \
++                                                        (int)PP_TR), PP_TR); \
+             } else {                                                    \
+                 opts->ENTRY.type = IMG_NONE;                            \
+             }                                                           \

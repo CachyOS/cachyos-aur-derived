@@ -1,0 +1,72 @@
+Free the tab tint and the popup shade factor
+
+Two gates of the style dialog lock out an input that the style reads.
+QtCurveConfig::activeTabAppearanceChanged() sets the tab tint to zero
+for the flat and the raised active tab appearance, and
+updateEnableStates() then disables the box. The style draws the tint
+for both: the four call sites of Style::colorTab() read
+opts.colorSelTab alone, and colorTab() never reads the appearance. A
+flat active tab with a tint of 100 changes 888 pixels of the notebook
+against the same tab with no tint. The raised appearance gives the
+same 888.
+
+updateEnableStates() also disables the shade factor of the popup menu
+while the shaded popup menu box is ticked and the menubar carries a
+shade. Style::setMenuColors() takes the menubar colour as the base in
+that state, and then applies the factor on top of it. A factor of 20
+changes 10982 pixels of the popup menu, and a factor of 0 changes
+10958.
+
+Drop both gates. The tab tint keeps the amount that the user stored.
+The gate was the only work of shadePopupMenuChanged(), so the slot now
+calls updateChanged(), and the box reports its change like each
+neighbouring box.
+
+The change sits on the branch work/dialog-state of the local tree, as commit 10 of 12.
+A new merge request on system/qtcurve takes that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/qt6/config/qtcurveconfig.cpp b/qt6/config/qtcurveconfig.cpp
+index 5ab86a9c..ad2193b9 100644
+--- a/qt6/config/qtcurveconfig.cpp
++++ b/qt6/config/qtcurveconfig.cpp
+@@ -1439,7 +1439,7 @@ void QtCurveConfig::menuStripeChanged()
+ 
+ void QtCurveConfig::shadePopupMenuChanged()
+ {
+-    updateEnableStates();
++    updateChanged();
+ }
+ 
+ void QtCurveConfig::progressColorChanged()
+@@ -1474,11 +1474,6 @@ void QtCurveConfig::stripedProgressChanged()
+ 
+ void QtCurveConfig::activeTabAppearanceChanged()
+ {
+-    int  current(activeTabAppearance->currentIndex());
+-    bool disableCol(APPEARANCE_FLAT==current || APPEARANCE_RAISED==current);
+-
+-    if(colorSelTab->value() && disableCol)
+-        colorSelTab->setValue(MIN_COLOR_SEL_TAB_FACTOR);
+     updateChanged();
+ }
+ 
+@@ -2612,16 +2607,10 @@ void QtCurveConfig::updateEnableStates()
+                                   SHADE_CUSTOM==crColor->currentIndex());
+ 
+     // qtcCheckConfig() clears the shaded popup menu when the menubar carries
+-    // no shade, so the lighter factor stays live in that state.
+-    bool shadePopup(shadePopupMenu->isChecked() &&
+-                    SHADE_NONE!=shadeMenubars->currentIndex());
+-
++    // no shade.
+     shadePopupMenu->setEnabled(SHADE_NONE!=shadeMenubars->currentIndex());
+-    lighterPopupMenuBgnd->setEnabled(!shadePopup);
+     animatedProgress->setEnabled(STRIPE_NONE!=stripedProgress->currentIndex() &&
+                                  STRIPE_FADE!=stripedProgress->currentIndex());
+-    colorSelTab->setEnabled(APPEARANCE_FLAT!=activeTabAppearance->currentIndex() &&
+-                            APPEARANCE_RAISED!=activeTabAppearance->currentIndex());
+     roundAllTabs->setEnabled(TAB_MO_GLOW!=tabMouseOver->currentIndex());
+     roundAllTabs_false->setEnabled(TAB_MO_GLOW!=tabMouseOver->currentIndex());
+ 

@@ -1,0 +1,54 @@
+Hold the custom shade boxes above the off sentinel
+
+The first custom shade and the first custom alpha carry the off state of
+their group. A first element at or below 0.00001 means that the group is
+off. The spin boxes accepted 0.00, so a user who typed that value in the
+first box switched the group off. The rest of the row went with it.
+
+The boxes also kept the two decimals of the Qt default. The style holds
+three-decimal constants, so a box showed 0.055 as 0.06 and 0.782 as
+0.78. A stored value below 0.005 showed as 0.00, and the next save then
+wrote the sentinel over a group that was on.
+
+The setup functions now give each box three decimals. They also give the
+first box of each group a minimum of 0.001. The group check box stays
+the one way to switch a group off, and the file format does not change.
+
+The change sits on the branch work/dialog-state of the local tree, as commit 5 of 12.
+A new merge request on system/qtcurve takes that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/qt6/config/qtcurveconfig.cpp b/qt6/config/qtcurveconfig.cpp
+index 67e8cdb4..92e33b71 100644
+--- a/qt6/config/qtcurveconfig.cpp
++++ b/qt6/config/qtcurveconfig.cpp
+@@ -2411,9 +2411,17 @@ void QtCurveConfig::setupShadesTab()
+     connect(qtcSlot(customAlphas, toggled), qtcSlot(this, updateChanged));
+ }
+ 
++// The number of decimals of a custom shade box and of a custom alpha box.
++static const int    constShadeDecimals = 3;
++// The smallest value of the first box of each group. The first custom shade
++// and the first custom alpha hold the off sentinel of their group. The
++// sentinel is a value at or below 0.00001.
++static const double constMinFirstShade = 0.001;
++
+ void QtCurveConfig::setupShade(QDoubleSpinBox *w, int shade)
+ {
+-    w->setRange(0.0, 2.0);
++    w->setDecimals(constShadeDecimals);
++    w->setRange(0==shade ? constMinFirstShade : 0.0, 2.0);
+     w->setSingleStep(0.05);
+     connect(qtcSlot(w, valueChanged, (double)), qtcSlot(this, updateChanged));
+     shadeVals[shade] = w;
+@@ -2421,7 +2429,8 @@ void QtCurveConfig::setupShade(QDoubleSpinBox *w, int shade)
+ 
+ void QtCurveConfig::setupAlpha(QDoubleSpinBox *w, int alpha)
+ {
+-    w->setRange(0.0, 1.0);
++    w->setDecimals(constShadeDecimals);
++    w->setRange(0==alpha ? constMinFirstShade : 0.0, 1.0);
+     w->setSingleStep(0.05);
+     connect(qtcSlot(w, valueChanged, (double)), qtcSlot(this, updateChanged));
+     alphaVals[alpha] = w;

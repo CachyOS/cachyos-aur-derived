@@ -1,0 +1,112 @@
+Disable each dialog input that no style read reaches
+
+Twenty-nine inputs of the style dialog stay enabled in states where no
+compiled read reaches their value. Custom shades hide the darker
+borders box. The plain button effect hides the etched entry box, the
+tool bar button effect and the custom alpha group. The rounding none
+hides the eleven square boxes. A menubar with no shade hides the
+shaded popup menu box. A user therefore sets a value that the style
+throws away, while the label gives no hint.
+
+The style draws the whole scrollbar groove for flat buttons, or for a
+rounded scrollbar with no button. The other states hide the two groove
+boxes. PM_DefaultFrameWidth still reads both boxes for a square scroll
+view. That read gives a frame width, not a groove, so the gate leaves
+it alone. The GTK scroll views hide the scrollbar background, unless
+the scrollbar buttons are flat.
+
+Give each input a gate in updateEnableStates(). Each gate carries the
+condition of a style read site, or of the repair that qtcCheckConfig()
+applies to a stored value. A gate clears no value. setOptions() still
+writes what the input holds, so a configuration file survives a load
+and an Apply unchanged.
+
+The change sits on the branch work/dialog-state of the local tree, as commit 3 of 12.
+A new merge request on system/qtcurve takes that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/qt6/config/qtcurveconfig.cpp b/qt6/config/qtcurveconfig.cpp
+index f07ae914..e340bd8d 100644
+--- a/qt6/config/qtcurveconfig.cpp
++++ b/qt6/config/qtcurveconfig.cpp
+@@ -2513,7 +2513,13 @@ void QtCurveConfig::updateEnableStates()
+     customCrBgndColor->setEnabled(crButton->isChecked() &&
+                                   SHADE_CUSTOM==crColor->currentIndex());
+ 
+-    lighterPopupMenuBgnd->setEnabled(!shadePopupMenu->isChecked());
++    // qtcCheckConfig() clears the shaded popup menu when the menubar carries
++    // no shade, so the lighter factor stays live in that state.
++    bool shadePopup(shadePopupMenu->isChecked() &&
++                    SHADE_NONE!=shadeMenubars->currentIndex());
++
++    shadePopupMenu->setEnabled(SHADE_NONE!=shadeMenubars->currentIndex());
++    lighterPopupMenuBgnd->setEnabled(!shadePopup);
+     animatedProgress->setEnabled(STRIPE_NONE!=stripedProgress->currentIndex() &&
+                                  STRIPE_FADE!=stripedProgress->currentIndex());
+     colorSelTab->setEnabled(APPEARANCE_FLAT!=activeTabAppearance->currentIndex() &&
+@@ -2526,18 +2532,61 @@ void QtCurveConfig::updateEnableStates()
+     unifySpin->setDisabled(unifySpinBtns->isChecked() && !unifySpin->isChecked());
+     unifySpinBtns->setDisabled(unifySpin->isChecked());
+ 
+-    bgndGrad->setEnabled(APPEARANCE_STRIPED!=bgndAppearance->currentIndex() &&
++    // Style::drawBackground() reads the gradient of a background that is not
++    // flat, so the flat and the raised background hide the combo box.
++    bgndGrad->setEnabled(!qtcIsFlatBgnd((EAppearance)bgndAppearance->currentIndex()) &&
++                         APPEARANCE_STRIPED!=bgndAppearance->currentIndex() &&
+                          APPEARANCE_FILE!=bgndAppearance->currentIndex());
+     bgndAppearance_btn->setVisible(APPEARANCE_FILE==bgndAppearance->currentIndex());
+     bgndImage_btn->setVisible(IMG_FILE==bgndImage->currentIndex());
+-    menuBgndGrad->setEnabled(APPEARANCE_STRIPED!=menuBgndAppearance->currentIndex() &&
++    menuBgndGrad->setEnabled(!qtcIsFlatBgnd((EAppearance)menuBgndAppearance->currentIndex()) &&
++                             APPEARANCE_STRIPED!=menuBgndAppearance->currentIndex() &&
+                              APPEARANCE_FILE!=menuBgndAppearance->currentIndex());
+     menuBgndAppearance_btn->setVisible(APPEARANCE_FILE==menuBgndAppearance->currentIndex());
+     menuBgndImage_btn->setVisible(IMG_FILE==menuBgndImage->currentIndex());
+ 
+     gbFactor->setEnabled(FRAME_SHADED==groupBox->currentIndex() ||
+                          FRAME_FADED==groupBox->currentIndex());
+-    thinSbarGroove->setEnabled(flatSbarButtons->isChecked());
++
++    bool effect(EFFECT_NONE!=buttonEffect->currentIndex());
++    bool flatSbar(flatSbarButtons->isChecked());
++    bool rounded(ROUND_NONE!=round->currentIndex());
++    bool sbarGroove(flatSbar ||
++                    (rounded && SCROLLBAR_NONE==scrollbarType->currentIndex()));
++
++    etchEntry->setEnabled(effect);
++    tbarBtnEffect->setEnabled(effect);
++    customAlphas->setEnabled(effect);
++    darkerBorders->setEnabled(!customShading->isChecked());
++    doubleGtkComboArrow->setEnabled(gtkComboMenus->isChecked());
++    sliderFill->setEnabled(fillSlider->isChecked());
++    thinSbarGroove->setEnabled(sbarGroove);
++    borderSbarGroove->setEnabled(sbarGroove);
++    sbarBgndAppearance->setEnabled(flatSbar || !gtkScrollViews->isChecked());
++    colorSliderMouseOver->setEnabled(SHADE_NONE!=shadeSliders->currentIndex() &&
++                                     SHADE_DARKEN!=shadeSliders->currentIndex());
++    splitterHighlight->setEnabled(0!=highlightFactor->value() ||
++                                  MO_NONE!=coloredMouseOver->currentIndex());
++    colorMenubarMouseOver->setEnabled(useHighlightForMenu->isChecked() ||
++                                      customMenuTextColor->isChecked() ||
++                                      borderMenuitems->isChecked() ||
++                                      !qtcIsFlat((EAppearance)menuitemAppearance->currentIndex()));
++    dwtIconColAsPerTitleBar->setEnabled(titlebarButtons_customIcon->isChecked());
++    dwtRoundTopOnly->setEnabled(!qtcIsFlat((EAppearance)dwtAppearance->currentIndex()) &&
++                                round->currentIndex()>=ROUND_FULL);
++    titlebarButtons_colorInactive->setEnabled(titlebarButtons_custom->isChecked());
++    titlebarButtons_colorSymbolsOnly->setEnabled(titlebarButtons_custom->isChecked());
++
++    // qtcCheckConfig() makes every widget square for the rounding none, and
++    // the scrollbar slider stays square while the buttons carry a frame.
++    for (auto *w: {squareLvSelection, squareScrollViews, squareEntry,
++                squareProgress, squareFrame, squareTabFrame, squareSlider,
++                squareWindows, squareTooltips, squarePopupMenus}) {
++        w->setEnabled(rounded);
++    }
++    squareScrollbarSlider->setEnabled(rounded &&
++                                      (SCROLLBAR_NONE==scrollbarType->currentIndex() ||
++                                       flatSbar));
+ 
+     for (auto *w: {titlebarButtons_colorClose, titlebarButtons_colorMin,
+                 titlebarButtons_colorMax, titlebarButtons_colorKeepAbove,

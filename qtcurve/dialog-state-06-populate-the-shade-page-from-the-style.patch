@@ -1,0 +1,148 @@
+Populate the shade page from the style constants
+
+The custom shades page shows the values that the style uses while a
+group is off. Three of the shown values were wrong.
+
+The two etch alpha boxes crossed their constants. The style reads the
+light alpha where ETCH_BOTTOM_ALPHA stands. It reads the dark alpha
+where ETCH_TOP_ALPHA stands. The page filled the two boxes the other way
+round, so a tick of the group box moved both etch alphas.
+
+A change of the shading routine left the six shade boxes on the row of
+the previous routine, because only the load filled them. A later tick of
+the group box then wrote that stale row.
+
+The shade values also ignored the darker borders adjustment, which takes
+0.1 off the border shade. With darker borders on, a tick of the group
+box lightened the border of every widget.
+
+populateInternShades() now fills the boxes through qtcShadeGetIntern(),
+which is the function that the style itself calls. The routine combo and
+the darker borders box refill the boxes while the group is off.
+
+The change sits on the branch work/dialog-state of the local tree, as commit 6 of 12.
+A new merge request on system/qtcurve takes that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/qt6/config/qtcurveconfig.cpp b/qt6/config/qtcurveconfig.cpp
+index 92e33b71..1dbbd8db 100644
+--- a/qt6/config/qtcurveconfig.cpp
++++ b/qt6/config/qtcurveconfig.cpp
+@@ -1041,7 +1041,7 @@ QtCurveConfig::QtCurveConfig(QWidget *parent)
+     for (auto *w: std::initializer_list<QAbstractButton*>{
+             animatedProgress, highlightTab, fillSlider, stripedSbar,
+                 roundMbTopOnly, statusbarHiding_keyboard, statusbarHiding_kwin,
+-                darkerBorders, comboSplitter, unifyCombo, vArrows, xCheck,
++                comboSplitter, unifyCombo, vArrows, xCheck,
+                 crButton, roundAllTabs, borderTab, borderInactiveTab,
+                 invertBotTab, doubleGtkComboArrow, stdSidebarButtons,
+                 toolbarTabs, centerTabText, borderMenuitems, popupBorder,
+@@ -1162,6 +1162,8 @@ QtCurveConfig::QtCurveConfig(QWidget *parent)
+             qtcSlot(this, shadeMenubarsChanged));
+     connect(qtcSlot(shading, currentIndexChanged, (int)),
+             qtcSlot(this, shadingChanged));
++    connect(qtcSlot(darkerBorders, toggled),
++            qtcSlot(this, darkerBordersChanged));
+     connect(qtcSlot(borderSbarGroove, toggled),
+             qtcSlot(this, borderSbarGrooveChanged));
+     connect(qtcSlot(thinSbarGroove, toggled),
+@@ -1476,11 +1478,20 @@ void QtCurveConfig::tabMoChanged()
+ 
+ void QtCurveConfig::shadingChanged()
+ {
++    if(!customShading->isChecked())
++        populateInternShades();
+     updateChanged();
+     if(gradPreview)
+         gradPreview->repaint();
+ }
+ 
++void QtCurveConfig::darkerBordersChanged()
++{
++    if(!customShading->isChecked())
++        populateInternShades();
++    updateChanged();
++}
++
+ void QtCurveConfig::passwordCharClicked()
+ {
+     int              cur(toInt(passwordChar->text()));
+@@ -2437,6 +2448,33 @@ void QtCurveConfig::setupAlpha(QDoubleSpinBox *w, int alpha)
+ }
+ 
+ void QtCurveConfig::populateShades(const Options &opts)
++{
++    customShading->setChecked(USE_CUSTOM_SHADES(opts));
++
++    if(USE_CUSTOM_SHADES(opts))
++        for(int i=0; i<QTC_NUM_STD_SHADES; ++i)
++            shadeVals[i]->setValue(opts.customShades[i]);
++    else
++        populateInternShades();
++
++    customAlphas->setChecked(USE_CUSTOM_ALPHAS(opts));
++    // The style reads the light alpha where ETCH_BOTTOM_ALPHA stands, and it
++    // reads the dark alpha where ETCH_TOP_ALPHA stands.
++    alphaVals[ALPHA_ETCH_LIGHT]->setValue(USE_CUSTOM_ALPHAS(opts)
++                                          ? opts.customAlphas[ALPHA_ETCH_LIGHT]
++                                          : ETCH_BOTTOM_ALPHA);
++    alphaVals[ALPHA_ETCH_DARK]->setValue(USE_CUSTOM_ALPHAS(opts)
++                                         ? opts.customAlphas[ALPHA_ETCH_DARK]
++                                         : ETCH_TOP_ALPHA);
++}
++
++/**
++ * Shows the shade values of the current shading routine in the boxes of the
++ * custom shades group. The values carry the darker borders adjustment that
++ * the style applies. The boxes emit no signal, so a write here never
++ * re-enters updateChanged(). Each interactive caller reports the change.
++ */
++void QtCurveConfig::populateInternShades()
+ {
+     int contrast = (QSettings(QLatin1String("Trolltech"))
+                     .value("/Qt/KDE/contrast", 7).toInt());
+@@ -2444,17 +2482,14 @@ void QtCurveConfig::populateShades(const Options &opts)
+     if(contrast<0 || contrast>10)
+         contrast=7;
+ 
+-    customShading->setChecked(USE_CUSTOM_SHADES(opts));
+-
+     for(int i=0; i<QTC_NUM_STD_SHADES; ++i)
+-        shadeVals[i]->setValue(USE_CUSTOM_SHADES(opts) ? opts.customShades[i] :
+-                               qtc_intern_shades[shading->currentIndex() ==
+-                                                 int(Shading::Simple) ? 1 : 0]
+-                               [contrast][i]);
++    {
++        const QSignalBlocker blocker(shadeVals[i]);
+ 
+-    customAlphas->setChecked(USE_CUSTOM_ALPHAS(opts));
+-    alphaVals[0]->setValue(USE_CUSTOM_ALPHAS(opts) ? opts.customAlphas[0] : ETCH_TOP_ALPHA);
+-    alphaVals[1]->setValue(USE_CUSTOM_ALPHAS(opts) ? opts.customAlphas[1] : ETCH_BOTTOM_ALPHA);
++        shadeVals[i]->setValue(qtcShadeGetIntern(contrast, i,
++                                                 darkerBorders->isChecked(),
++                                                 currentShading()));
++    }
+ }
+ 
+ bool QtCurveConfig::diffShades(const Options &opts)
+diff --git a/qt6/config/qtcurveconfig.h b/qt6/config/qtcurveconfig.h
+index acdb83c8..ca356625 100644
+--- a/qt6/config/qtcurveconfig.h
++++ b/qt6/config/qtcurveconfig.h
+@@ -127,6 +127,7 @@ public:
+     void setupShade(QDoubleSpinBox *w, int shade);
+     void setupAlpha(QDoubleSpinBox *w, int alpha);
+     void populateShades(const Options &opts);
++    void populateInternShades();
+     bool diffShades(const Options &opts);
+     bool haveImages();
+     bool diffImages(const Options &opts);
+@@ -165,6 +166,7 @@ private:
+     void copyGradient(QAction *act);
+     void crColorChanged();
+     void customMenuTextColorChanged();
++    void darkerBordersChanged();
+     void defBtnIndicatorChanged();
+     void deletePreset();
+     void editItem(QTreeWidgetItem *i, int col);

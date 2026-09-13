@@ -1,0 +1,139 @@
+Check every config value against the range of its input
+
+qtcCheckConfig holds thirteen values inside the range of the dialog
+input that shows them, and it passes five values with no test at all.
+
+colorSelTab takes any integer. A value below zero paints a tint through
+the absolute value of the alpha. A value above one hundred saturates at
+the ceiling of QColor. shadowSize takes any integer as well, and the
+reader hands it straight to the shadow tiles, which grow as the square
+of the value. A file that holds 3000 took the dialog from 89 MB to 229
+MB and did not finish inside 130 seconds. The two gbLabel position bits
+exclude each other, and a file that carries both reaches five style
+sites that read them in two orders. The clamp of expanderHighlight sits
+behind CONFIG_DIALOG, so only the dialog build holds that factor, while
+the three sibling factors hold in both builds. readDoubleList tests no
+range, so customShades and customAlphas carry a number that the dialog
+cannot show. The dialog writes its own clamp over the file on the first
+Apply.
+
+Hold each value inside the range of the input that shows it. The bounds
+are zero to one hundred for colorSelTab and for shadowSize. A shade
+takes zero to two and an alpha takes zero to one. Keep the inside bit of
+the label pair, the position that the dialog and the save path already
+choose. Apply the shadow size after the check, so a value out of range
+never reaches the tiles. Drop the guard around the expanderHighlight
+clamp.
+
+A file inside the range reads exactly as it read before.
+
+The change sits on the branch work/config-io of the local tree, as commit 6 of 18.
+A new merge request on system/qtcurve takes that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/qt6/common/config_file.cpp b/qt6/common/config_file.cpp
+index 4c0f54e7..a87d1bca 100644
+--- a/qt6/common/config_file.cpp
++++ b/qt6/common/config_file.cpp
+@@ -737,7 +737,12 @@ static bool readBoolEntry(QtCConfig &cfg, const QString &key, bool def)
+     return toBool(TO_LATIN1(val), def);
+ }
+ 
+-static void readDoubleList(QtCConfig &cfg, const char *key, double *list, int count)
++// Read one list of numbers. Each entry stays between min and max, the range
++// of the dialog input that shows it. A value that does not hold exactly count
++// numbers writes zero into the first entry, which switches the group off. An
++// absent value and an empty value leave the list alone.
++static void readDoubleList(QtCConfig &cfg, const char *key, double *list, int count,
++                           double min, double max)
+ {
+     QStringList strings(readStringEntry(cfg, key).split(',', Qt::SkipEmptyParts));
+     bool ok(count==strings.size());
+@@ -750,7 +755,9 @@ static void readDoubleList(QtCConfig &cfg, const char *key, double *list, int co
+         for(i=0; i<count && ok; ++i, ++it)
+         {
+             list[i]=(*it).toDouble(&ok);
+-            if(ok && !std::isfinite(list[i]))
++            if(ok && std::isfinite(list[i]))
++                list[i]=qBound(min, list[i], max);
++            else
+                 ok=false;
+         }
+     }
+@@ -1025,10 +1032,8 @@ void qtcCheckConfig(Options *opts)
+     if(opts->splitterHighlight<MIN_HIGHLIGHT_FACTOR || opts->splitterHighlight>MAX_HIGHLIGHT_FACTOR)
+         opts->splitterHighlight=DEFAULT_SPLITTER_HIGHLIGHT_FACTOR;
+ 
+-#if defined CONFIG_DIALOG
+     if(opts->expanderHighlight<MIN_HIGHLIGHT_FACTOR || opts->expanderHighlight>MAX_HIGHLIGHT_FACTOR)
+         opts->expanderHighlight=DEFAULT_EXPANDER_HIGHLIGHT_FACTOR;
+-#endif
+ 
+     if(0==opts->menuDelay) /* Qt seems to have issues if delay is 0 - so set this to 1 :-) */
+         opts->menuDelay=MIN_MENU_DELAY;
+@@ -1059,6 +1064,11 @@ void qtcCheckConfig(Options *opts)
+     if(opts->tabBgnd<MIN_TAB_BGND || opts->tabBgnd>MAX_TAB_BGND)
+         opts->tabBgnd=DEF_TAB_BGND;
+ 
++    if(opts->colorSelTab<MIN_COLOR_SEL_TAB_FACTOR)
++        opts->colorSelTab=MIN_COLOR_SEL_TAB_FACTOR;
++    else if(opts->colorSelTab>MAX_COLOR_SEL_TAB_FACTOR)
++        opts->colorSelTab=MAX_COLOR_SEL_TAB_FACTOR;
++
+     if(opts->animatedProgress && !opts->stripedProgress)
+         opts->animatedProgress=false;
+ 
+@@ -1068,6 +1078,10 @@ void qtcCheckConfig(Options *opts)
+     if(opts->gbFactor<MIN_GB_FACTOR || opts->gbFactor>MAX_GB_FACTOR)
+         opts->gbFactor=DEF_GB_FACTOR;
+ 
++    /* The two label positions exclude each other. The dialog shows inside. */
++    if(opts->gbLabel&GB_LBL_INSIDE && opts->gbLabel&GB_LBL_OUTSIDE)
++        opts->gbLabel-=GB_LBL_OUTSIDE;
++
+     if(!opts->gtkComboMenus)
+         opts->doubleGtkComboArrow=false;
+ 
+@@ -1118,6 +1132,12 @@ void qtcCheckConfig(Options *opts)
+     if(opts->menuBgndOpacity<0 || opts->menuBgndOpacity>100)
+         opts->menuBgndOpacity=100;
+ 
++    /* The shadow tiles grow as the square of this value. */
++    if(opts->shadowSize<0)
++        opts->shadowSize=0;
++    else if(opts->shadowSize>100)
++        opts->shadowSize=100;
++
+ #ifndef CONFIG_DIALOG
+     opts->bgndAppearance=MODIFY_AGUA(opts->bgndAppearance);
+     opts->selectionAppearance=MODIFY_AGUA(opts->selectionAppearance);
+@@ -1403,7 +1423,6 @@ bool qtcReadConfig(const QString &file, Options *opts, Options *defOpts, bool ch
+             CFG_READ_INT(menuBgndOpacity);
+             CFG_READ_INT(dlgOpacity);
+             CFG_READ_INT(shadowSize);
+-            qtcX11SetShadowSize(opts->shadowSize);
+             CFG_READ_SHADE(menuStripe, true, true, &opts->customMenuStripeColor);
+             CFG_READ_APPEARANCE(menuStripeAppearance, APP_ALLOW_BASIC);
+             CFG_READ_SHADE(comboBtn, true, false, &opts->customComboBtnColor);
+@@ -1453,8 +1472,10 @@ bool qtcReadConfig(const QString &file, Options *opts, Options *defOpts, bool ch
+             CFG_READ_STRING_LIST(nonnativeMenubarApps);
+             CFG_READ_STRING_LIST(windowDragWhiteList);
+             CFG_READ_STRING_LIST(windowDragBlackList);
+-            readDoubleList(cfg, "customShades", opts->customShades, QTC_NUM_STD_SHADES);
+-            readDoubleList(cfg, "customAlphas", opts->customAlphas, NUM_STD_ALPHAS);
++            readDoubleList(cfg, "customShades", opts->customShades,
++                           QTC_NUM_STD_SHADES, 0.0, 2.0);
++            readDoubleList(cfg, "customAlphas", opts->customAlphas,
++                           NUM_STD_ALPHAS, 0.0, 1.0);
+ 
+             // as with saving, we should always read the titleButtonColor values
+             // so that they can be saved again without losing the information.
+@@ -1520,6 +1541,7 @@ bool qtcReadConfig(const QString &file, Options *opts, Options *defOpts, bool ch
+                 }
+             }
+             qtcCheckConfig(opts);
++            qtcX11SetShadowSize(opts->shadowSize);
+             return true;
+         } else {
+             if(defOpts)

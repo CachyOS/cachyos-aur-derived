@@ -1,0 +1,50 @@
+Set the version of a saved preset record
+
+The preset save built the settings from the widgets and left the version
+field of that record at whatever the stack held. The dialog keeps the
+record in memory, and it tests the version to decide whether the window
+manager settings load. That test therefore read an indeterminate value.
+
+Set the version of the record to the version of this build. The written
+file carries the same version, so a later read of the file gives the
+value that the record holds.
+
+The change sits on the branch work/presets of the local tree, as commit 3 of 4.
+A new merge request on system/qtcurve takes that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/qt6/config/qtcurveconfig.cpp b/qt6/config/qtcurveconfig.cpp
+index 6b746070..62144828 100644
+--- a/qt6/config/qtcurveconfig.cpp
++++ b/qt6/config/qtcurveconfig.cpp
+@@ -2595,6 +2595,21 @@ void QtCurveConfig::savePreset()
+         KMessageBox::error(this, i18n("Sorry, failed to save preset"));
+ }
+ 
++/**
++ * \brief Give the version of this build in packed form.
++ *
++ * \return The version of this build, packed as the settings reader packs the
++ *         version of a settings file. The value is 0 when the version string
++ *         does not hold three numbers.
++ */
++static int packedVersion()
++{
++    const QStringList ver(QString::fromLatin1(qtcVersion()).split('.'));
++
++    return (ver.count() >= 3 ?
++            qtcMakeVersion(ver[0].toInt(), ver[1].toInt(), ver[2].toInt()) : 0);
++}
++
+ bool QtCurveConfig::savePreset(const QString &name)
+ {
+     if(!kwin->ok())
+@@ -2607,6 +2622,7 @@ bool QtCurveConfig::savePreset(const QString &name)
+     Options opts;
+ 
+     setOptions(opts);
++    opts.version=packedVersion();
+ 
+     if(IMG_FILE==opts.bgndImage.type)
+         opts.bgndImage.pixmap.file=saveThemeFile(bgndImageDlg->fileName(), BGND_FILE IMAGE_FILE, fname);

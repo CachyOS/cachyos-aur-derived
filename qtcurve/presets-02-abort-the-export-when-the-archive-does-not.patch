@@ -1,0 +1,27 @@
+Abort the export when the archive does not open
+
+The export tested the result of the archive open without a negation. A
+successful open therefore ended the export at once, the dialog reported
+a failure, and an empty archive stayed on disk.
+
+Negate the test. The export now goes on after a successful open, and it
+stops only when the open fails.
+
+The change sits on the branch work/presets of the local tree, as commit 2 of 4.
+A new merge request on system/qtcurve takes that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/qt6/config/qtcurveconfig.cpp b/qt6/config/qtcurveconfig.cpp
+index bd6344c2..6b746070 100644
+--- a/qt6/config/qtcurveconfig.cpp
++++ b/qt6/config/qtcurveconfig.cpp
+@@ -2901,7 +2901,7 @@ void QtCurveConfig::exportPreset()
+     if (!file.isEmpty()) {
+         bool rv = [&] {
+             std::unique_ptr<KZip> zip(compressed ? new KZip(file) : nullptr);
+-            if (zip && zip->open(QIODevice::WriteOnly))
++            if (zip && !zip->open(QIODevice::WriteOnly))
+                 return false;
+             std::unique_ptr<QTemporaryFile> temp(
+                 compressed ? new QTemporaryFile() : nullptr);

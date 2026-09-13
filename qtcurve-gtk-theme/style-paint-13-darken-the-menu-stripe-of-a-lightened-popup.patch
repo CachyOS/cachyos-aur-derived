@@ -1,0 +1,47 @@
+Darken the menu stripe of a lightened popup menu
+
+The darken value of the menu stripe takes a shade of the popup menu
+background. The style takes the plain shade while the option for a
+lighter popup menu holds a value other than zero. That value is the
+shipped default. The stripe colour then equals the background of the
+menu, and a flat stripe appearance paints no stripe at all.
+
+The stripe now takes the darker shade for every value of the lighter
+popup menu. A flat stripe stands against the menu again. A popup menu
+with no lightening keeps the colour of before, and the other stripe
+colours do not move.
+
+The change sits on the branch work/style-paint of the local tree, as commit 13 of 21.
+A new merge request on system/qtcurve takes that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/qt6/common/common.h b/qt6/common/common.h
+index b8545972..b1285a30 100644
+--- a/qt6/common/common.h
++++ b/qt6/common/common.h
+@@ -109,7 +109,10 @@ enum {
+ 
+ #define FRAME_DARK_SHADOW 2
+ #define FOCUS_SHADE(SEL)         (FOCUS_GLOW==opts.focus ? GLOW_MO : ((SEL) ? 3 : ORIGINAL_SHADE))
+-#define MENU_STRIPE_SHADE (opts.lighterPopupMenuBgnd ? ORIGINAL_SHADE : 2)
++// The shade of the menu background that the darken stripe takes.
++#define MENU_STRIPE_DARK_SHADE 2
++#define MENU_STRIPE_SHADE (opts.lighterPopupMenuBgnd ? ORIGINAL_SHADE : \
++                           MENU_STRIPE_DARK_SHADE)
+ #define MENU_SEP_SHADE    (opts.lighterPopupMenuBgnd ? 4 : 3)
+ 
+ #define BGND_STRIPE_SHADE 0.95
+diff --git a/qt6/style/qtcurve.cpp b/qt6/style/qtcurve.cpp
+index 60d54c10..63d34cc2 100644
+--- a/qt6/style/qtcurve.cpp
++++ b/qt6/style/qtcurve.cpp
+@@ -4206,7 +4206,7 @@ QColor Style::menuStripeCol() const
+     case SHADE_SELECTED:
+         return m_highlightCols[MENU_STRIPE_SHADE];
+     case SHADE_DARKEN:
+-        return popupMenuCols()[MENU_STRIPE_SHADE];
++        return popupMenuCols()[MENU_STRIPE_DARK_SHADE];
+     }
+ }
+ 

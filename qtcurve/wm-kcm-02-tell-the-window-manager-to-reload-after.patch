@@ -1,0 +1,42 @@
+Tell the window manager to reload after every save
+
+The dialog writes kwinqtcurverc and then asks the window manager to read that
+file again. It sent the request only when the Style group of kwinrc held
+kwin3_qtcurve in the key PluginLib. That key and that name belong to the
+decoration of the KDE 4 era. The window manager of today writes neither of
+them, so the request never left the dialog. The borders of the open windows
+kept the old settings until the session restarted.
+
+Send the reloadConfig signal after every save. The window manager reads its
+configuration again on that signal, and it then tells each decoration to do
+the same. The send is harmless when no window manager listens.
+
+The removed guard read kwinrc alone, so no key of QtCurve changes.
+
+The change sits on the branch work/wm-kcm of the local tree, as commit 2 of 4.
+A new merge request on system/qtcurve takes that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/qt6/config/qtcurveconfig.cpp b/qt6/config/qtcurveconfig.cpp
+index 351cc609..259fa088 100644
+--- a/qt6/config/qtcurveconfig.cpp
++++ b/qt6/config/qtcurveconfig.cpp
+@@ -1331,15 +1331,8 @@ void QtCurveConfig::save()
+         kde.deleteEntry("ButtonLayout");
+ 
+     kwin->save(0L);
+-    // If using QtCurve window decoration, get this to update...
+-    KConfig kwin("kwinrc", KConfig::CascadeConfig);
+-    KConfigGroup style(&kwin, "Style");
+-
+-    if (style.readEntry("PluginLib", QString()) == "kwin3_qtcurve") {
+-        QDBusConnection::sessionBus().send(
+-            QDBusMessage::createSignal("/KWin", "org.kde.KWin",
+-                                       "reloadConfig"));
+-    }
++    QDBusConnection::sessionBus().send(
++        QDBusMessage::createSignal("/KWin", "org.kde.KWin", "reloadConfig"));
+ 
+     // Remove QTCURVE_PREVIEW_CONFIG setting, so that main kcmstyle
+     // preview does not revert to default settings!
