@@ -1,0 +1,175 @@
+Repair the custom gradient stop editor
+
+A stop carries a position, a value and an alpha. The editor of the
+Custom Gradients page loses two of the three on each edit.
+itemChanged() reads one other column into a single number. It gives
+that number to both untouched components, so an edit of the value cell
+also writes the alpha. The same slot erases the old stop with the
+percentage of the cell, while the set holds fractions. The erase
+therefore misses, and each edit adds a row. updateGradStop() writes
+the three cells with the tree signals live, which re-enters
+itemChanged() with a stale previous value and adds a fourth stop. That
+slot also dereferences the result of find() with no test against
+end().
+
+Carry all three components through the edit, and convert the percentage
+once. Block the tree signals around each write, and guard the lookup.
+
+Two neighbours of the editor follow. The border list stays enabled for
+a gradient that holds no stop, where borderChanged() drops the choice,
+so the list now follows the entry. The preview draws the stops of the
+dialog, while the writer saves the result of fix(). The two now use
+one stop set.
+
+The change sits on the branch work/dialog-state of the local tree, as commit 4 of 12.
+A new merge request on system/qtcurve takes that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/qt6/config/qtcurveconfig.cpp b/qt6/config/qtcurveconfig.cpp
+index e340bd8d..67e8cdb4 100644
+--- a/qt6/config/qtcurveconfig.cpp
++++ b/qt6/config/qtcurveconfig.cpp
+@@ -455,9 +455,14 @@ void CGradientPreview::paintEvent(QPaintEvent *)
+     p.end();
+ }
+ 
++/**
++ * Show the gradient that the writer saves. GradientStopCont::fix() adds the
++ * end stops, and both the reader and the writer apply it.
++ */
+ void CGradientPreview::setGrad(const Gradient &g)
+ {
+     grad=g;
++    grad.stops=g.stops.fix();
+     repaint();
+ }
+ 
+@@ -1893,7 +1898,9 @@ void QtCurveConfig::gradChanged(int i)
+         gradBorder->setCurrentIndex(GB_3D);
+     }
+ 
+-    gradBorder->setEnabled(NUM_CUSTOM_GRAD!=i);
++    // borderChanged() keeps the border of a gradient that holds a stop. A
++    // gradient with no stop has no entry to hold it.
++    gradBorder->setEnabled(it!=customGradient.end());
+ }
+ 
+ void QtCurveConfig::borderChanged(int i)
+@@ -1919,31 +1926,56 @@ void QtCurveConfig::editItem(QTreeWidgetItem *i, int col)
+     gradStops->editItem(i, col);
+ }
+ 
++/**
++ * Read the three columns of one stop row as fractions. The columns hold
++ * percentages, and the stop set holds fractions.
++ */
++static void
++readGradStop(const QTreeWidgetItem *i, double (&stop)[3])
++{
++    for(int c=0; c<3; ++c)
++        stop[c]=i->text(c).toDouble()/100.0;
++}
++
+ void QtCurveConfig::itemChanged(QTreeWidgetItem *i, int col)
+ {
+     bool   ok;
+-    double val=i->text(col).toDouble(&ok)/100.0;
++    double cell=prev,
++           val=i->text(col).toDouble(&ok)/100.0,
++           was=cell/100.0;
+ 
+-    if(prev<0 || (ok && qtcEqual(val, prev)))
++    if(cell<0 || (ok && qtcEqual(val, was)))
+         return;
+ 
++    // The write below emits itemChanged() again, and the edited cell no
++    // longer holds the value that prev names.
++    prev=-1.0;
++    gradStops->blockSignals(true);
+     if(!ok || ((0==col || 2==col) && (val<0.0 || val>1.0)) || (1==col && (val<0.0 || val>2.0)))
+-        i->setText(col, QString().setNum(prev));
++        i->setText(col, QString().setNum(cell));
+     else
+     {
+-        double other=i->text(col ? 0 : 1).toDouble(&ok)/100.0;
+-
+         GradientCont::iterator it=customGradient.find((EAppearance)gradCombo->currentIndex());
+ 
+         if(it!=customGradient.end())
+         {
+-            (*it).second.stops.erase(GradientStop(0==col ? prev : other, 1==col ? prev : other, 2==col ? prev : other));
+-            (*it).second.stops.insert(GradientStop(0==col ? val : other, 1==col ? val : other, 2==col ? val : other));
++            double after[3];
++
++            readGradStop(i, after);
++
++            double before[3]={after[0], after[1], after[2]};
++
++            before[col]=was;
++            (*it).second.stops.erase(GradientStop(before[0], before[1], before[2]));
++            (*it).second.stops.insert(GradientStop(after[0], after[1], after[2]));
+             gradPreview->setGrad((*it).second);
+             i->setText(col, QString().setNum(val*100.0));
+             emit changed(true);
+         }
++        else
++            i->setText(col, QString().setNum(cell));
+     }
++    gradStops->blockSignals(false);
+ }
+ 
+ void QtCurveConfig::addGradStop()
+@@ -2037,28 +2069,33 @@ void QtCurveConfig::updateGradStop()
+ 
+     GradientCont::iterator cg=customGradient.find((EAppearance)gradCombo->currentIndex());
+ 
+-    if(i)
++    if(i && cg!=customGradient.end())
+     {
+-        double curPos=i->text(0).toDouble()/100.0,
+-               curVal=i->text(1).toDouble()/100.0,
+-               curAlpha=i->text(2).toDouble()/100.0,
+-               newPos(stopPosition->value()/100.0),
++        double cur[3];
++
++        readGradStop(i, cur);
++
++        double newPos(stopPosition->value()/100.0),
+                newVal(stopValue->value()/100.0),
+                newAlpha(stopAlpha->value()/100.0);
+ 
+-        if(!qtcEqual(newPos, curPos) || !qtcEqual(newVal, curVal) || !qtcEqual(newAlpha, curAlpha))
++        if(!qtcEqual(newPos, cur[0]) || !qtcEqual(newVal, cur[1]) || !qtcEqual(newAlpha, cur[2]))
+         {
+-            (*cg).second.stops.erase(GradientStop(curPos, curVal, curAlpha));
++            (*cg).second.stops.erase(GradientStop(cur[0], cur[1], cur[2]));
+             (*cg).second.stops.insert(GradientStop(newPos, newVal, newAlpha));
+ 
++            // The tree emits itemChanged() for each write, and that slot then
++            // reads a row that no longer matches prev.
++            gradStops->blockSignals(true);
+             i->setText(0, QString().setNum(stopPosition->value()));
+             i->setText(1, QString().setNum(stopValue->value()));
+             i->setText(2, QString().setNum(stopAlpha->value()));
++            gradStops->blockSignals(false);
+             gradPreview->setGrad((*cg).second);
+             emit changed(true);
+         }
+     }
+-    else
++    else if(!i)
+         addGradStop();
+ }
+ 
+@@ -3300,7 +3337,10 @@ void QtCurveConfig::setOptions(Options &opts)
+     opts.passwordChar=toInt(passwordChar->text());
+     opts.groupBox=(EFrame)groupBox->currentIndex();
+     opts.gbFactor=gbFactor->value();
++    // qtcWriteConfig() saves the fixed stops, so the preview must draw them.
+     opts.customGradient=customGradient;
++    for(auto &grad: opts.customGradient)
++        grad.second.stops=grad.second.stops.fix();
+     opts.colorMenubarMouseOver=colorMenubarMouseOver->isChecked();
+     opts.useHighlightForMenu=useHighlightForMenu->isChecked();
+     opts.gbLabel=getGroupBoxLabelFlags();

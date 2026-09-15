@@ -1,0 +1,3372 @@
+Add a Firefox theme generator that follows the QtCurve settings
+
+QtCurve painted the Firefox chrome in the XUL era, and that sheet is
+dead. The chrome now takes a colour layer through its custom properties,
+and a second writer follows the settings into a profile.
+
+The new binary takes the palette, the owned file, the lock, the watch
+and the re-exec code of the GTK writer. It holds a name, a pair of lock
+names and an import line of its own. One table in ffmap.cpp binds each
+palette source to the properties of the sheet, so one row moves both
+arms of the theme. The sheet carries the colour layer alone, because the
+next redesign of Firefox moves the widget selectors. The tool box takes
+one image for each window state, because the decoration fills the title
+bar from the colour of that state.
+
+A new settings key gates every write, and the default is false. A pass
+without the key takes the owned sheet away and keeps every foreign line.
+The watch mode of a false key removes the files and leaves. The settings
+file is inside the watched set, and the save of the dialog starts the
+mode again. An opted out user therefore carries no resident process.
+
+The watch set holds the settings, the colour file of KDE, the profile
+list of each root and the shared sheet of each profile. Firefox holds no
+daemon like kde-gtk-config, which rewrites a file that the GTK watch
+reads, so this watch reads the colour file itself.
+
+The import line stands at the front of the shared sheet, because a
+parser drops an import that follows a rule. The writer makes the chrome
+directory of a profile and never a profile. It reads prefs.js and never
+writes it, so a notice names the preference that Firefox needs.
+
+The change sits on the branch work/firefox-theme of the local tree, as
+commit 4 of 8. The branch holds those eight commits above the head of
+work/gtk4-theme, which merge request !15 on system/qtcurve holds. The fork
+wyn/qtcurve takes work/firefox-theme, and a new merge request on
+system/qtcurve takes that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index a6c3bac3..41f7d63b 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -45,6 +45,7 @@ qtc_option(ENABLE_QT5 "Building Qt5 theme." On)
+ qtc_option(ENABLE_QT6 "Building Qt6 theme." On)
+ qtc_option(ENABLE_GTK2 "Building Gtk2 theme." On)
+ qtc_option(ENABLE_GTK4 "Building Gtk4 and Gtk3 theme." On)
++qtc_option(ENABLE_FIREFOX "Building the Firefox theme." On)
+ qtc_option(QTC_QT6_ENABLE_KDE "Building Qt6 style with KDE Frameworks 6 support." Off)
+ # The Plasma 6 window decoration links KF6, so it needs QTC_QT6_ENABLE_KDE.
+ if(QTC_QT6_ENABLE_KDE)
+@@ -213,6 +214,17 @@ if(ENABLE_GTK2 AND NOT ENABLE_GTK2_DEFINED)
+   endif()
+ endif()
+ 
++if(ENABLE_FIREFOX AND NOT ENABLE_FIREFOX_DEFINED)
++  find_package(ECM 1.2.0 QUIET NO_MODULE)
++  set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${ECM_MODULE_PATH})
++  find_package(Qt6 QUIET COMPONENTS Core Gui Widgets)
++  find_package(KF6 QUIET COMPONENTS ColorScheme Config CoreAddons)
++  if(NOT Qt6_FOUND OR NOT KF6_FOUND)
++    message(WARNING "Qt6 or KF6 not found, disable Firefox build.")
++    set(ENABLE_FIREFOX Off)
++  endif()
++endif()
++
+ if(ENABLE_GTK4 AND NOT ENABLE_GTK4_DEFINED)
+   find_package(ECM 1.2.0 QUIET NO_MODULE)
+   set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${ECM_MODULE_PATH})
+@@ -260,7 +272,8 @@ if(ENABLE_QT6 AND QTC_QT6_ENABLE_KDE)
+ endif()
+ include(GNUInstallDirs)
+ 
+-if(ENABLE_QT4 OR ENABLE_QT5 OR ENABLE_QT6 OR ENABLE_GTK2 OR ENABLE_GTK4)
++if(ENABLE_QT4 OR ENABLE_QT5 OR ENABLE_QT6 OR ENABLE_GTK2 OR ENABLE_GTK4 OR
++   ENABLE_FIREFOX)
+   add_subdirectory(lib)
+   add_subdirectory(tools)
+ endif()
+@@ -280,6 +293,9 @@ endif()
+ if(ENABLE_GTK4)
+   add_subdirectory(gtk4)
+ endif()
++if(ENABLE_FIREFOX)
++  add_subdirectory(firefox)
++endif()
+ if(BUILD_TESTING)
+   enable_testing()
+   add_subdirectory(test)
+diff --git a/firefox/CMakeLists.txt b/firefox/CMakeLists.txt
+new file mode 100644
+index 00000000..7599770a
+--- /dev/null
++++ b/firefox/CMakeLists.txt
+@@ -0,0 +1,178 @@
++# The Firefox theme generator and the checks of the files that it writes. The
++# binary compiles the palette, the owned file, the lock, the watch and the
++# re-exec code of the GTK writer. It holds names and a watch set of its own.
++
++set(CMAKE_AUTOMOC True)
++
++set(QTC_FIREFOX_WRITER_PATH
++  "${CMAKE_INSTALL_FULL_BINDIR}/qtcurve-firefox-writer")
++
++find_package(ECM 1.2.0 REQUIRED NO_MODULE)
++set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${ECM_MODULE_PATH})
++find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Svg)
++find_package(KF6 REQUIRED COMPONENTS ColorScheme Config CoreAddons)
++
++set(qtc_gtk_writer_dir "${CMAKE_CURRENT_SOURCE_DIR}/../gtk4/writer")
++set(qtc_gtk_check "${CMAKE_CURRENT_SOURCE_DIR}/../gtk4/check")
++set(qtc_schemes "${CMAKE_CURRENT_SOURCE_DIR}/../gtk4/schemes")
++
++set(qtcurve_firefox_writer_SRCS
++  writer/main.cpp
++  writer/ffmap.cpp
++  writer/profiles.cpp
++  writer/sheet.cpp
++  "${qtc_gtk_writer_dir}/palette.cpp"
++  "${qtc_gtk_writer_dir}/emit.cpp"
++  "${qtc_gtk_writer_dir}/userfile.cpp"
++  "${qtc_gtk_writer_dir}/watch.cpp"
++  "${qtc_gtk_writer_dir}/lock.cpp"
++  "${qtc_gtk_writer_dir}/reexec.cpp"
++  "${CMAKE_CURRENT_SOURCE_DIR}/../qt6/common/common.cpp"
++  "${CMAKE_CURRENT_SOURCE_DIR}/../qt6/common/config_file.cpp")
++
++add_executable(qtcurve-firefox-writer ${qtcurve_firefox_writer_SRCS})
++# The gate of this writer is a settings key, and its colour watch is a watched
++# path. The shared watch file therefore drops its session bus arm. The target
++# names no DBus module of Qt, and KF6::ConfigCore still brings that library
++# in.
++target_compile_definitions(qtcurve-firefox-writer PRIVATE
++  QTC_UTILS_QT6 QTC_UTILS_QT)
++# qt6/common/common.h includes QApplication, so the writer needs the QtWidgets
++# headers. It calls no function of the library and it links none.
++target_include_directories(qtcurve-firefox-writer PRIVATE
++  "${CMAKE_CURRENT_SOURCE_DIR}/writer"
++  "${qtc_gtk_writer_dir}"
++  "${CMAKE_CURRENT_SOURCE_DIR}/../qt6/common"
++  "${CMAKE_BINARY_DIR}"
++  ${Qt6Widgets_INCLUDE_DIRS})
++# qt6/common/config_file.cpp reads a pixmap of the settings through
++# QSvgRenderer, so the writer links the SVG module of Qt.
++target_link_libraries(qtcurve-firefox-writer
++  Qt6::Core Qt6::Gui Qt6::Svg
++  KF6::ColorScheme KF6::ConfigCore KF6::CoreAddons
++  qtcurve-utils)
++
++# A cross build cannot run a host tool. The checks below read a sheet of the
++# build, so the configure step fails in place of a silent skip.
++if(CMAKE_CROSSCOMPILING AND NOT QTC_FIREFOX_WRITER)
++  message(FATAL_ERROR
++    "A cross build needs -DQTC_FIREFOX_WRITER=<path of a host"
++    " qtcurve-firefox-writer>")
++endif()
++if(QTC_FIREFOX_WRITER)
++  set(qtc_ff_command "${QTC_FIREFOX_WRITER}")
++  set(qtc_ff_depends "${QTC_FIREFOX_WRITER}")
++else()
++  set(qtc_ff_command "$<TARGET_FILE:qtcurve-firefox-writer>")
++  set(qtc_ff_depends qtcurve-firefox-writer)
++endif()
++
++add_custom_target(qtcurve-firefox-theme ALL DEPENDS ${qtc_ff_depends})
++
++set(qtc_ff_check "${CMAKE_CURRENT_SOURCE_DIR}/check")
++set(qtc_ff_work "${CMAKE_CURRENT_BINARY_DIR}/check")
++set(qtc_ff_light "${qtc_schemes}/QtCurveLight.colors")
++set(qtc_ff_dark "${qtc_schemes}/QtCurveDark.colors")
++
++# The floor of assert-ff-varnames.sh. A check that reads an empty sheet finds
++# no fault, so the run states the count that it must read. check/mkfloors.sh
++# prints this line from one build, and no floor comes from a hand count.
++set(qtc_ff_names 26)
++
++# The two sheets of the shipped schemes, which the checks below read. A run of
++# a user writes the same text into a profile.
++add_custom_command(TARGET qtcurve-firefox-theme POST_BUILD
++  COMMAND "${CMAKE_COMMAND}" -E make_directory "${qtc_ff_work}"
++  COMMAND "${qtc_ff_command}" --stdout --default --force
++          --scheme "${qtc_ff_light}" --out "${qtc_ff_work}/light.css"
++  COMMAND "${qtc_ff_command}" --stdout --default --force
++          --scheme "${qtc_ff_dark}" --out "${qtc_ff_work}/dark.css"
++  COMMAND sh "${qtc_ff_check}/assert-ff-varnames.sh" -n ${qtc_ff_names}
++          "${qtc_ff_work}/light.css" "${qtc_ff_check}/ff-varnames.txt"
++  COMMAND sh "${qtc_ff_check}/assert-ff-varnames.sh" -n ${qtc_ff_names}
++          "${qtc_ff_work}/dark.css" "${qtc_ff_check}/ff-varnames.txt"
++  VERBATIM)
++
++# The two writers must hold no lock name in common, because each one runs a
++# watch instance of its own.
++add_custom_command(TARGET qtcurve-firefox-theme POST_BUILD
++  COMMAND sh "${qtc_ff_check}/assert-locks-distinct.sh"
++          "${qtc_gtk_writer_dir}/main.cpp"
++          "${CMAKE_CURRENT_SOURCE_DIR}/writer/main.cpp"
++  COMMAND sh "${qtc_ff_check}/assert-ff-dialog-spawn.sh"
++          "${CMAKE_CURRENT_SOURCE_DIR}/../qt6/config/qtcurveconfig.cpp"
++  VERBATIM)
++
++# The rows below run the writer over the files of a user, and not over a sheet
++# of the build. Each row holds a private HOME and XDG_CONFIG_HOME, so the run
++# leaves the files of the caller alone.
++set(qtc_ff_run "${CMAKE_CURRENT_BINARY_DIR}/check/writer")
++add_custom_command(TARGET qtcurve-firefox-theme POST_BUILD
++  COMMAND sh "${qtc_ff_check}/assert-ff-profiles.sh" "${qtc_ff_command}"
++          "${qtc_ff_run}/profiles"
++  COMMAND sh "${qtc_ff_check}/assert-ff-import.sh" "${qtc_ff_command}"
++          "${qtc_ff_run}/import"
++  COMMAND sh "${qtc_ff_check}/assert-ff-gate.sh" "${qtc_ff_command}"
++          "${qtc_ff_run}/gate"
++  COMMAND sh "${qtc_ff_check}/assert-ff-notice.sh" "${qtc_ff_command}"
++          "${qtc_ff_run}/notice"
++  COMMAND sh "${qtc_ff_check}/assert-ff-keep.sh" "${qtc_ff_command}"
++          "${qtc_ff_run}/keep"
++  COMMAND sh "${qtc_ff_check}/assert-ff-toolbox.sh" "${qtc_ff_command}"
++          "${qtc_ff_run}/toolbox"
++  # The two runs below are the lock and the re-exec checks of the GTK writer,
++  # over the binary and the lock names of this one.
++  COMMAND sh "${qtc_gtk_check}/assert-lock.sh" "${qtc_ff_command}"
++          "${qtc_ff_run}/lock" qtcurve-firefox-writer.lock
++  COMMAND sh "${qtc_gtk_check}/assert-reexec.sh" "${qtc_ff_command}"
++          "${qtc_ff_run}/reexec" qtcurve-firefox-writer.lock
++  VERBATIM)
++
++# The generator of xdg-autostart builds a transient unit of the autostart
++# file, and that unit starts the writer one time and never again. The unit
++# below takes its place, and the skip key of the autostart file stops the
++# generator. A session of Plasma with no systemd keeps the autostart file.
++option(QTC_FIREFOX_SYSTEMD_UNIT
++  "Install a systemd user unit and a start symlink for the Firefox writer."
++  ON)
++if(QTC_FIREFOX_SYSTEMD_UNIT)
++  set(QTC_SYSTEMD_SKIP_LINE "X-systemd-skip=true")
++  find_package(PkgConfig)
++  if(PKG_CONFIG_FOUND)
++    pkg_get_variable(qtc_systemd_user_dir systemd systemduserunitdir)
++  endif()
++  if(NOT qtc_systemd_user_dir)
++    set(qtc_systemd_user_dir "${CMAKE_INSTALL_PREFIX}/lib/systemd/user")
++  endif()
++  set(QTC_SYSTEMD_USER_UNIT_DIR "${qtc_systemd_user_dir}" CACHE PATH
++    "Directory of the systemd user units.")
++  configure_file(autostart/qtcurve-firefox-writer.service.in
++    "${CMAKE_CURRENT_BINARY_DIR}/qtcurve-firefox-writer.service" @ONLY)
++  install(FILES
++    "${CMAKE_CURRENT_BINARY_DIR}/qtcurve-firefox-writer.service"
++    DESTINATION "${QTC_SYSTEMD_USER_UNIT_DIR}")
++  # The unit carries no [Install] section, because the symlink below is the
++  # start wiring. systemctl --user start takes the unit by name.
++  install(CODE "
++    file(MAKE_DIRECTORY \"\$ENV{DESTDIR}${QTC_SYSTEMD_USER_UNIT_DIR}/plasma-workspace.target.wants\")
++    execute_process(COMMAND \"${CMAKE_COMMAND}\" -E create_symlink ../qtcurve-firefox-writer.service \"\$ENV{DESTDIR}${QTC_SYSTEMD_USER_UNIT_DIR}/plasma-workspace.target.wants/qtcurve-firefox-writer.service\")
++  ")
++  # The check of the unit pair is the check of the GTK writer, over the two
++  # files of this one.
++  add_custom_command(TARGET qtcurve-firefox-theme POST_BUILD
++    COMMAND sh "${qtc_gtk_check}/assert-unit.sh"
++            "${CMAKE_CURRENT_BINARY_DIR}/qtcurve-firefox-writer.desktop"
++            "${CMAKE_CURRENT_BINARY_DIR}/qtcurve-firefox-writer.service"
++            "${QTC_FIREFOX_WRITER_PATH}"
++    VERBATIM)
++else()
++  set(QTC_SYSTEMD_SKIP_LINE "")
++endif()
++
++configure_file(autostart/qtcurve-firefox-writer.desktop.in
++  "${CMAKE_CURRENT_BINARY_DIR}/qtcurve-firefox-writer.desktop" @ONLY)
++
++install(TARGETS qtcurve-firefox-writer
++  DESTINATION "${CMAKE_INSTALL_FULL_BINDIR}")
++install(FILES "${CMAKE_CURRENT_BINARY_DIR}/qtcurve-firefox-writer.desktop"
++  DESTINATION "${CMAKE_INSTALL_FULL_SYSCONFDIR}/xdg/autostart")
+diff --git a/firefox/autostart/qtcurve-firefox-writer.desktop.in b/firefox/autostart/qtcurve-firefox-writer.desktop.in
+new file mode 100644
+index 00000000..0979d4db
+--- /dev/null
++++ b/firefox/autostart/qtcurve-firefox-writer.desktop.in
+@@ -0,0 +1,10 @@
++[Desktop Entry]
++Type=Application
++Name=QtCurve Firefox theme
++Comment=Keeps the Firefox chrome in step with the QtCurve settings
++Exec=@QTC_FIREFOX_WRITER_PATH@ --watch
++Terminal=false
++NoDisplay=true
++X-KDE-autostart-phase=1
++OnlyShowIn=KDE;
++@QTC_SYSTEMD_SKIP_LINE@
+diff --git a/firefox/autostart/qtcurve-firefox-writer.service.in b/firefox/autostart/qtcurve-firefox-writer.service.in
+new file mode 100644
+index 00000000..80df65d9
+--- /dev/null
++++ b/firefox/autostart/qtcurve-firefox-writer.service.in
+@@ -0,0 +1,12 @@
++[Unit]
++Description=Keeps the Firefox chrome in step with the QtCurve settings
++PartOf=graphical-session.target
++After=plasma-core.target
++
++[Service]
++Type=simple
++ExecStart=@QTC_FIREFOX_WRITER_PATH@ --watch
++Restart=on-failure
++RestartSec=2
++Slice=background.slice
++TimeoutStopSec=5
+diff --git a/firefox/check/assert-ff-dialog-spawn.sh b/firefox/check/assert-ff-dialog-spawn.sh
+new file mode 100644
+index 00000000..3a0d3607
+--- /dev/null
++++ b/firefox/check/assert-ff-dialog-spawn.sh
+@@ -0,0 +1,84 @@
++#!/bin/sh
++# assert-ff-dialog-spawn.sh SOURCE: the save of the dialog must start the watch
++# mode of the Firefox writer beside the GTK one. SOURCE is the source file of
++# the dialog. The run then puts the write mode back in a copy of that file, and
++# it fails if the check passes the copy.
++set -eu
++usage='usage: assert-ff-dialog-spawn.sh SOURCE'
++src=${1:?$usage}
++
++tmp=$(mktemp -d)
++trap 'rm -rf "$tmp"' EXIT
++
++# vector FILE: prints the rows of the argument vector of the Firefox spawn.
++vector() {
++    awk '/firefoxWriter\[\] = \{/,/\};/' "$1"
++}
++
++# check FILE: gives 0 when the three contracts hold. It names the first
++# contract that fails on the standard error.
++check() {
++    c_file=$1
++
++    # 1. The file holds the argument vector of the spawn.
++    block=$(vector "$c_file")
++    if [ -z "$block" ]; then
++        echo "assert-ff-dialog-spawn: $c_file holds no argument vector" >&2
++        return 1
++    fi
++
++    # 2. The vector names the binary and the watch mode.
++    case $block in
++        *'"qtcurve-firefox-writer"'*) ;;
++        *) echo "assert-ff-dialog-spawn: the vector of $c_file names no" \
++                "binary" >&2
++           return 1;;
++    esac
++    case $block in
++        *'"--watch"'*) ;;
++        *) echo "assert-ff-dialog-spawn: the vector of $c_file names no" \
++                "'--watch'" >&2
++           return 1;;
++    esac
++
++    # 3. The file spawns the vector, so no edit can leave it unread.
++    if ! grep -qF 'qtcSpawn(firefoxWriter[0], firefoxWriter' "$c_file"; then
++        echo "assert-ff-dialog-spawn: $c_file spawns no Firefox writer" >&2
++        return 1
++    fi
++    return 0
++}
++
++if ! check "$src"; then
++    echo "assert-ff-dialog-spawn: the source fails the check" >&2
++    exit 1
++fi
++
++# The controls below break one contract in a copy of the source, and the check
++# must fail over each copy.
++broken=0
++
++# control NAME FILE: the check must fail over the file that the caller gives.
++control() {
++    c_name=$1
++    shift
++    if check "$@" 2> "$tmp/control.log"; then
++        echo "assert-ff-dialog-spawn: the check passed the control copy of" \
++             "$c_name" >&2
++        exit 1
++    fi
++    broken=$((broken + 1))
++}
++
++# The write mode in the vector, which writes one pass and starts no watch.
++awk '/firefoxWriter\[\] = \{/,/\};/ { gsub(/"--watch"/, "\"--write\"") } 1' \
++    "$src" > "$tmp/write.cpp"
++control write "$tmp/write.cpp"
++
++# The vector with no spawn, which leaves the Firefox files behind the dialog.
++grep -v 'qtcSpawn(firefoxWriter\[0\], firefoxWriter' "$src" > "$tmp/quiet.cpp"
++control quiet "$tmp/quiet.cpp"
++
++echo "assert-ff-dialog-spawn: the save of the dialog starts the watch mode" \
++     "of the Firefox writer, and the check rejects each of the $broken" \
++     "control copies"
+diff --git a/firefox/check/assert-ff-gate.sh b/firefox/check/assert-ff-gate.sh
+new file mode 100644
+index 00000000..60b76001
+--- /dev/null
++++ b/firefox/check/assert-ff-gate.sh
+@@ -0,0 +1,176 @@
++#!/bin/sh
++# assert-ff-gate.sh WRITER WORKDIR: the writer must write a profile only while
++# the settings hold the key of the gate. The run holds two settings files that
++# differ in that key alone. A false gate must take the owned sheet away and
++# keep every foreign line. The watch mode of a false gate must leave with no
++# resident process. That run is a counted poll of steps of one second. A watch
++# that stays resident therefore fails the check and never stops the build.
++# HOME, XDG_CONFIG_HOME and QTCURVE_CONFIG_DIR point into WORKDIR, because the
++# writer rewrites the files of the caller.
++set -eu
++ulimit -c 0
++usage='usage: assert-ff-gate.sh WRITER WORKDIR'
++writer=${1:?$usage}
++work=${2:?$usage}
++
++# A relative path leaves XDG_CONFIG_HOME outside the root of the file system.
++# The library of the writer then reads the configuration home of the caller.
++# The run therefore takes an absolute path of its own.
++case $work in
++    /*) ;;
++    *) work=$PWD/$work;;
++esac
++
++owned=chrome/qtcurve-userChrome.css
++shared=chrome/userChrome.css
++home=$work/home
++root=$home/.config/mozilla/firefox
++dir=$root/gate.default
++qtc=$home/qtcurve
++status=0
++pids=
++
++# The deadline of the watch arm, in seconds. The other arms of this run end in
++# under one second, so 20 steps hold a loaded build host with room to spare.
++watch_limit=20
++
++clean() {
++    for p in $pids; do
++        kill "$p" 2>/dev/null || true
++    done
++}
++
++# A signal that stops the run leaves a writer of the run alive. The trap takes
++# it away, and SIGKILL runs no trap.
++trap clean EXIT
++trap 'clean; exit 1' HUP INT QUIT TERM
++
++rm -rf "$work"
++mkdir -p "$dir/chrome" "$qtc"
++printf '#nav-bar { min-height: 40px; }\n' > "$dir/$shared"
++printf '[Profile0]\nName=gate\nIsRelative=1\nPath=gate.default\n' \
++    > "$root/profiles.ini"
++
++fail() {
++    echo "assert-ff-gate: $1" >&2
++    status=1
++}
++
++# gate VALUE: writes the settings file of the user with the key of the gate at
++# VALUE. The two files differ in that one row.
++gate() {
++    printf '[Settings]\nappearance=gradient\nfirefoxTheme=%s\n' "$1" \
++        > "$qtc/stylerc"
++}
++
++# run NAME ARGS...: runs the writer over the private home, and holds the exit
++# code in the variable code.
++run() {
++    r_name=$1
++    shift
++    code=0
++    HOME=$home XDG_CONFIG_HOME=$home/.config QTCURVE_CONFIG_DIR=$qtc \
++        "$writer" "$@" > "$work/$r_name.log" 2>&1 || code=$?
++}
++
++# running PID: gives 0 while the process PID runs. A process that ended and
++# waits for its parent holds the state Z, and it does not run.
++running() {
++    state=$(sed -n 's/^State:[[:space:]]*//p' "/proc/$1/status" 2>/dev/null) ||
++        return 1
++    case $state in
++        Z*|'') return 1;;
++        *) return 0;;
++    esac
++}
++
++# run_capped NAME LIMIT ARGS...: starts the writer over the private home and
++# waits at most LIMIT steps of one second for it to end. The exit code lands
++# in the variable code. A run that stays at the limit takes a signal, and the
++# variable code takes the value 124 of a deadline.
++run_capped() {
++    r_name=$1
++    limit=$2
++    shift 2
++    code=0
++    HOME=$home XDG_CONFIG_HOME=$home/.config QTCURVE_CONFIG_DIR=$qtc \
++        "$writer" "$@" > "$work/$r_name.log" 2>&1 &
++    capped=$!
++    pids="$pids $capped"
++    i=0
++    while [ "$i" -lt "$limit" ]; do
++        if ! running "$capped"; then
++            wait "$capped" || code=$?
++            return 0
++        fi
++        sleep 1
++        i=$((i + 1))
++    done
++    kill "$capped" 2>/dev/null || true
++    i=0
++    while [ "$i" -lt 3 ] && running "$capped"; do
++        sleep 1
++        i=$((i + 1))
++    done
++    kill -9 "$capped" 2>/dev/null || true
++    wait "$capped" 2>/dev/null || true
++    code=124
++}
++
++# 1. A true gate writes the owned sheet and the import line.
++gate true
++run true --write
++[ "$code" -eq 0 ] || fail "the true gate gave the code $code"
++[ -s "$dir/$owned" ] || fail "the true gate wrote no owned sheet"
++grep -qF 'qtcurve-userChrome.css' "$dir/$shared" ||
++    fail "the true gate merged no import line"
++
++# 2. A false gate takes both away, and it keeps the foreign line.
++gate false
++run false --write
++[ "$code" -eq 0 ] || fail "the false gate gave the code $code"
++if [ -e "$dir/$owned" ]; then
++    fail "the false gate kept the owned sheet"
++fi
++if grep -qF 'qtcurve-userChrome.css' "$dir/$shared"; then
++    fail "the false gate kept the import line"
++fi
++grep -qF '#nav-bar' "$dir/$shared" ||
++    fail "the false gate dropped the foreign line"
++
++# 3. The watch mode of a false gate leaves with the code 0 and holds no
++# process. The settings file is inside the watched set, so the save of the
++# dialog starts this mode again. A watch that stays resident meets the
++# deadline of this run, and the run reaps it and names the fault.
++run_capped watch "$watch_limit" --watch
++if [ "$code" -eq 124 ]; then
++    fail "the watch mode of the false gate ran past $watch_limit seconds"
++elif [ "$code" -ne 0 ]; then
++    fail "the watch mode of the false gate gave $code"
++fi
++if [ -e "$home/.config/qtcurve-firefox-writer.lock" ]; then
++    if [ -s "$home/.config/qtcurve-firefox-writer.lock" ]; then
++        fail "the watch mode of the false gate took the daemon lock"
++    fi
++fi
++
++# 4. The true gate writes again, so the two arms differ in the key alone.
++gate true
++run again --write
++[ -s "$dir/$owned" ] || fail "the true gate wrote no owned sheet again"
++
++# The control below runs the false arm with --force, which takes the gate out
++# of the pass. The owned sheet must stay, so the check reads the gate and not
++# the settings file.
++gate false
++run forced --write --force
++if [ ! -s "$dir/$owned" ]; then
++    fail "the forced run of the false gate took the owned sheet away"
++fi
++
++if [ $status -eq 0 ]; then
++    echo "assert-ff-gate: the false gate removed the owned sheet and kept" \
++         "the foreign line, the watch mode left with 0, and --force wrote" \
++         "over the false gate"
++fi
++exit $status
+diff --git a/firefox/check/assert-ff-import.sh b/firefox/check/assert-ff-import.sh
+new file mode 100644
+index 00000000..7d008264
+--- /dev/null
++++ b/firefox/check/assert-ff-import.sh
+@@ -0,0 +1,185 @@
++#!/bin/sh
++# assert-ff-import.sh WRITER WORKDIR: the import line of the writer must stand
++# before every rule of the shared sheet of a profile. A parser of the chrome
++# drops an import that stands after a rule. The run builds four fixture
++# sheets, merges the line into each one and reads the bytes around it. One
++# sheet holds a charset rule and a style rule on one line, where the import
++# must stand between the two. It then doctors a copy of one sheet with the
++# line at the end, and it fails if the check passes that copy.
++set -eu
++usage='usage: assert-ff-import.sh WRITER WORKDIR'
++writer=${1:?$usage}
++work=${2:?$usage}
++
++# A relative path leaves XDG_CONFIG_HOME outside the root of the file system.
++# The library of the writer then reads the configuration home of the caller.
++# The run therefore takes an absolute path of its own.
++case $work in
++    /*) ;;
++    *) work=$PWD/$work;;
++esac
++
++line='@import "qtcurve-userChrome.css";'
++shared=chrome/userChrome.css
++home=$work/home
++root=$home/.config/mozilla/firefox
++status=0
++
++rm -rf "$work"
++mkdir -p "$work"
++
++fail() {
++    echo "assert-ff-import: $1" >&2
++    status=1
++}
++
++mkdir -p "$root"
++{
++    printf '[Profile0]\nName=plain\nIsRelative=1\nPath=plain\n\n'
++    printf '[Profile1]\nName=charset\nIsRelative=1\nPath=charset\n\n'
++    printf '[Profile2]\nName=crlf\nIsRelative=1\nPath=crlf\n\n'
++    printf '[Profile3]\nName=oneline\nIsRelative=1\nPath=oneline\n'
++} > "$root/profiles.ini"
++
++for name in plain charset crlf oneline; do
++    mkdir -p "$root/$name/chrome"
++done
++
++# The first fixture holds two rules and no other statement.
++printf '#nav-bar { min-height: 40px; }\n.tab { color: #101010; }\n' \
++    > "$root/plain/$shared"
++# The second fixture opens with a charset rule, which must keep the first line.
++printf '@charset "utf-8";\n#nav-bar { min-height: 40px; }\n' \
++    > "$root/charset/$shared"
++# The third fixture holds the line ending of another operating system.
++printf '#nav-bar { min-height: 40px; }\r\n.tab { color: #101010; }\r\n' \
++    > "$root/crlf/$shared"
++# The fourth fixture holds the charset rule and a style rule on one line, and
++# it ends with no line break. The import must stand between the two rules.
++printf '@charset "utf-8";#x{color:red}' > "$root/oneline/$shared"
++
++for name in plain charset crlf oneline; do
++    cp "$root/$name/$shared" "$work/$name.want"
++done
++
++# run: runs one write pass over the three fixtures.
++run() {
++    code=0
++    (
++        ulimit -c 0
++        HOME=$home XDG_CONFIG_HOME=$home/.config \
++            QTCURVE_CONFIG_DIR=$home/qtcurve \
++            "$writer" --write --force --default
++    ) >> "$work/write.log" 2>&1 || code=$?
++    if [ "$code" -ne 0 ]; then
++        fail "the write pass gave the code $code"
++    fi
++}
++
++# at_front FILE: gives 0 when the import line stands before every rule of
++# FILE. A charset rule keeps the first line, and the import line follows it.
++# The line follows it on the first line when the rule shares that line.
++at_front() {
++    a_first=$(head -n 1 "$1")
++    case $a_first in
++        '@charset'*)
++            a_rest=${a_first#*;}
++            if [ "$a_rest" = "$line" ]; then
++                return 0
++            fi
++            if [ -n "$a_rest" ]; then
++                echo "assert-ff-import: $1 holds '$a_rest' after the" \
++                     "charset rule" >&2
++                return 1
++            fi
++            a_second=$(sed -n 2p "$1")
++            if [ "$a_second" != "$line" ]; then
++                echo "assert-ff-import: $1 holds '$a_second' after the" \
++                     "charset rule" >&2
++                return 1
++            fi;;
++        *)
++            if [ "$a_first" != "$line" ]; then
++                echo "assert-ff-import: $1 holds '$a_first' on the first" \
++                     "line" >&2
++                return 1
++            fi;;
++    esac
++    return 0
++}
++
++# foreign FILE WANT: gives 0 when FILE without the import line holds the bytes
++# of WANT, in order.
++foreign() {
++    sed "\\|^$line\$|d" "$1" > "$work/strip"
++    if ! cmp -s "$work/strip" "$2"; then
++        echo "assert-ff-import: $1 without the import line is not $2" >&2
++        return 1
++    fi
++    return 0
++}
++
++run
++for name in plain charset crlf oneline; do
++    at_front "$root/$name/$shared" || status=1
++    cp "$root/$name/$shared" "$work/$name.first"
++done
++for name in plain charset crlf; do
++    foreign "$root/$name/$shared" "$work/$name.want" || status=1
++done
++
++# The fourth sheet takes the import between the two rules of its first line,
++# and the merge adds one line break and no other byte.
++printf '@charset "utf-8";%s\n#x{color:red}' "$line" > "$work/oneline.merged"
++cmp -s "$root/oneline/$shared" "$work/oneline.merged" ||
++    fail "the one line sheet did not take the import after the charset rule"
++
++# The carriage returns of the third fixture must survive the merge.
++want_cr=$(tr -dc '\r' < "$work/crlf.want" | wc -c)
++got_cr=$(tr -dc '\r' < "$root/crlf/$shared" | wc -c)
++if [ "$want_cr" -ne "$got_cr" ]; then
++    fail "the merge left $got_cr carriage returns of $want_cr"
++fi
++
++# A second pass must write no byte of a sheet that holds the line.
++run
++for name in plain charset crlf oneline; do
++    cmp -s "$root/$name/$shared" "$work/$name.first" ||
++        fail "the second pass moved a byte of the $name sheet"
++done
++
++# The remove mode must keep every foreign line, in order.
++code=0
++(
++    ulimit -c 0
++    HOME=$home XDG_CONFIG_HOME=$home/.config \
++        QTCURVE_CONFIG_DIR=$home/qtcurve "$writer" --remove
++) > "$work/remove.log" 2>&1 || code=$?
++[ "$code" -eq 0 ] || fail "the remove mode gave the code $code"
++for name in plain charset crlf oneline; do
++    sed 's/\r$//' "$work/$name.want" > "$work/$name.lines"
++    sed 's/\r$//' "$root/$name/$shared" > "$work/$name.left"
++    cmp -s "$work/$name.left" "$work/$name.lines" ||
++        fail "the remove mode moved a line of the $name sheet"
++done
++
++# The remove mode takes back the bytes of the front merge alone, so the fourth
++# sheet holds its first bytes again.
++cmp -s "$root/oneline/$shared" "$work/oneline.want" ||
++    fail "the remove mode did not give the one line sheet its bytes back"
++
++# The control below puts the import line at the end of a copy, which is the
++# append that a parser of the chrome drops. The check must fail over it.
++sed "\\|^$line\$|d" "$work/plain.first" > "$work/append.css"
++printf '%s\n' "$line" >> "$work/append.css"
++if at_front "$work/append.css" 2> "$work/control.log"; then
++    fail "the check passed the control copy of the append"
++fi
++
++if [ $status -eq 0 ]; then
++    echo "assert-ff-import: the line stands first in 4 fixture sheets, the" \
++         "foreign bytes and the $got_cr carriage returns survive, the one" \
++         "line sheet gives its exact bytes back, a second pass writes" \
++         "nothing, and the check rejects the append copy"
++fi
++exit $status
+diff --git a/firefox/check/assert-ff-keep.sh b/firefox/check/assert-ff-keep.sh
+new file mode 100644
+index 00000000..75058aae
+--- /dev/null
++++ b/firefox/check/assert-ff-keep.sh
+@@ -0,0 +1,87 @@
++#!/bin/sh
++# assert-ff-keep.sh WRITER WORKDIR: a remove pass that stops must keep the
++# shared sheet of the profile whole. The run builds a large userChrome.css
++# that holds the import line. It then runs the remove mode under a file size
++# limit that the rewrite passes, so the writer takes SIGXFSZ. HOME and
++# XDG_CONFIG_HOME point into WORKDIR, because the remove mode rewrites the
++# files of the caller.
++set -eu
++usage='usage: assert-ff-keep.sh WRITER WORKDIR'
++writer=${1:?$usage}
++work=${2:?$usage}
++
++# A relative path leaves XDG_CONFIG_HOME outside the root of the file system.
++# The library of the writer then reads the configuration home of the caller.
++# The run therefore takes an absolute path of its own.
++case $work in
++    /*) ;;
++    *) work=$PWD/$work;;
++esac
++
++shared=chrome/userChrome.css
++owned=chrome/qtcurve-userChrome.css
++home=$work/home
++root=$home/.config/mozilla/firefox
++dir=$root/keep.default
++status=0
++
++rm -rf "$work"
++mkdir -p "$dir/chrome"
++printf '[Profile0]\nName=keep\nIsRelative=1\nPath=keep.default\n' \
++    > "$root/profiles.ini"
++
++# The fixture holds one import line of 34 bytes and 4000 rule lines of 32
++# bytes, so it is 128034 bytes. One unit of ulimit -f is 1024 bytes at most,
++# and the rewrite of 128000 bytes passes that limit in every shell.
++fixture=$work/fixture.css
++printf '@import "qtcurve-userChrome.css";\n' > "$fixture"
++awk 'BEGIN { for (i = 0; i < 4000; i++)
++                 printf "label.r%04d { color: #101010; }\n", i }' >> "$fixture"
++tail -n +2 "$fixture" > "$work/want.css"
++cp "$fixture" "$dir/$shared"
++printf 'x\n' > "$dir/$owned"
++
++same() {
++    if cmp -s "$1" "$2"; then
++        return 0
++    fi
++    echo "assert-ff-keep: $1 is not the file $2" >&2
++    status=1
++}
++
++# The writer dies on the signal and gives 153, so the run keeps the exit code
++# and reads the two files. ulimit -c 0 stops the core file of that signal, and
++# the shell of the run prints the signal into the log of the run.
++(
++    ulimit -c 0
++    ulimit -f 1
++    code=0
++    HOME=$home XDG_CONFIG_HOME=$home/.config "$writer" --remove || code=$?
++    echo "$code" > "$work/limit.status"
++) > "$work/limit.log" 2>&1
++limited=$(cat "$work/limit.status")
++same "$dir/$shared" "$fixture"
++if [ ! -f "$dir/$owned" ]; then
++    echo "assert-ff-keep: the stopped pass deleted the owned sheet" >&2
++    status=1
++fi
++if [ $status -eq 0 ]; then
++    echo "assert-ff-keep: the shared sheet keeps 128034 bytes under the" \
++         "limit, the owned sheet stays, and the writer gave $limited"
++fi
++
++# The same run with no limit must remove the import line, keep every other
++# line and delete the owned sheet. The limited run above therefore fails on
++# the write of the shared sheet alone.
++HOME=$home XDG_CONFIG_HOME=$home/.config "$writer" --remove \
++    > "$work/free.log" 2>&1
++same "$dir/$shared" "$work/want.css"
++if [ -e "$dir/$owned" ]; then
++    echo "assert-ff-keep: the free pass kept the owned sheet" >&2
++    status=1
++fi
++if [ $status -eq 0 ]; then
++    echo "assert-ff-keep: a free pass removes the import line, keeps 4000" \
++         "lines and deletes the owned sheet"
++fi
++exit $status
+diff --git a/firefox/check/assert-ff-notice.sh b/firefox/check/assert-ff-notice.sh
+new file mode 100644
+index 00000000..bb786c62
+--- /dev/null
++++ b/firefox/check/assert-ff-notice.sh
+@@ -0,0 +1,93 @@
++#!/bin/sh
++# assert-ff-notice.sh WRITER WORKDIR: the writer must name the one preference
++# that Firefox reads before it takes the shared sheet. The run holds two
++# profiles that differ in the prefs.js file alone. The profile without the row
++# must take one notice, and the profile with the row must take none. The file
++# keeps its bytes, because the writer never writes it.
++set -eu
++usage='usage: assert-ff-notice.sh WRITER WORKDIR'
++writer=${1:?$usage}
++work=${2:?$usage}
++
++# A relative path leaves XDG_CONFIG_HOME outside the root of the file system.
++# The library of the writer then reads the configuration home of the caller.
++# The run therefore takes an absolute path of its own.
++case $work in
++    /*) ;;
++    *) work=$PWD/$work;;
++esac
++
++pref=toolkit.legacyUserProfileCustomizations.stylesheets
++home=$work/home
++root=$home/.config/mozilla/firefox
++status=0
++
++rm -rf "$work"
++mkdir -p "$root/with/chrome" "$root/without/chrome"
++{
++    printf '[Profile0]\nName=with\nIsRelative=1\nPath=with\n\n'
++    printf '[Profile1]\nName=without\nIsRelative=1\nPath=without\n'
++} > "$root/profiles.ini"
++
++# The first profile holds the row, and the second one holds another row alone.
++printf '// Mozilla User Preferences\nuser_pref("%s", true);\n' "$pref" \
++    > "$root/with/prefs.js"
++printf '// Mozilla User Preferences\nuser_pref("browser.startup.page", 3);\n' \
++    > "$root/without/prefs.js"
++cp "$root/with/prefs.js" "$work/with.want"
++cp "$root/without/prefs.js" "$work/without.want"
++
++fail() {
++    echo "assert-ff-notice: $1" >&2
++    status=1
++}
++
++code=0
++(
++    ulimit -c 0
++    HOME=$home XDG_CONFIG_HOME=$home/.config QTCURVE_CONFIG_DIR=$home/qtcurve \
++        "$writer" --write --force --default
++) > "$work/write.log" 2>&1 || code=$?
++[ "$code" -eq 0 ] || fail "the write pass gave the code $code"
++
++# count DIR: prints the count of the notice lines of the profile DIR.
++count() {
++    n=$(grep -c "the profile $root/$1 needs $pref" "$work/write.log") || n=0
++    printf '%s\n' "$n"
++}
++
++if [ "$(count without)" -ne 1 ]; then
++    fail "the profile without the row took $(count without) notices, not 1"
++fi
++if [ "$(count with)" -ne 0 ]; then
++    fail "the profile with the row took $(count with) notices, not 0"
++fi
++
++# The writer reads prefs.js and never writes it.
++cmp -s "$root/with/prefs.js" "$work/with.want" ||
++    fail "the writer moved a byte of the prefs.js of the first profile"
++cmp -s "$root/without/prefs.js" "$work/without.want" ||
++    fail "the writer moved a byte of the prefs.js of the second profile"
++
++# The control below takes the row into the second profile, and the notice of
++# that profile must stop. A check that prints the notice for every profile
++# fails here.
++printf '// Mozilla User Preferences\nuser_pref("%s", true);\n' "$pref" \
++    > "$root/without/prefs.js"
++code=0
++(
++    ulimit -c 0
++    HOME=$home XDG_CONFIG_HOME=$home/.config QTCURVE_CONFIG_DIR=$home/qtcurve \
++        "$writer" --write --force --default
++) > "$work/write.log" 2>&1 || code=$?
++[ "$code" -eq 0 ] || fail "the control pass gave the code $code"
++if [ "$(count without)" -ne 0 ]; then
++    fail "the control profile took $(count without) notices, and not 0"
++fi
++
++if [ $status -eq 0 ]; then
++    echo "assert-ff-notice: the profile without the preference took one" \
++         "notice, the profile with it took none, and the row of the control" \
++         "stopped the notice"
++fi
++exit $status
+diff --git a/firefox/check/assert-ff-profiles.sh b/firefox/check/assert-ff-profiles.sh
+new file mode 100644
+index 00000000..8b9f29dc
+--- /dev/null
++++ b/firefox/check/assert-ff-profiles.sh
+@@ -0,0 +1,190 @@
++#!/bin/sh
++# assert-ff-profiles.sh WRITER WORKDIR: the writer must find every profile of
++# the two roots and write its owned sheet into each one. The run builds seven
++# fixture layouts under WORKDIR, and each layout holds a private HOME and
++# XDG_CONFIG_HOME. A directory outside every root must keep its bytes. A
++# profile of two roots must take one pass. The remove mode must take every
++# path of the write mode away.
++set -eu
++usage='usage: assert-ff-profiles.sh WRITER WORKDIR'
++writer=${1:?$usage}
++work=${2:?$usage}
++
++# A relative path leaves XDG_CONFIG_HOME outside the root of the file system.
++# The library of the writer then reads the configuration home of the caller.
++# The run therefore takes an absolute path of its own.
++case $work in
++    /*) ;;
++    *) work=$PWD/$work;;
++esac
++
++owned=chrome/qtcurve-userChrome.css
++shared=chrome/userChrome.css
++status=0
++
++rm -rf "$work"
++mkdir -p "$work"
++
++fail() {
++    echo "assert-ff-profiles: $1" >&2
++    status=1
++}
++
++# run NAME ARGS...: runs the writer over the tree WORKDIR/NAME, and holds the
++# exit code of that run in the variable code.
++run() {
++    r_name=$1
++    shift
++    r_home=$work/$r_name
++    code=0
++    (
++        ulimit -c 0
++        HOME=$r_home XDG_CONFIG_HOME=$r_home/.config \
++            QTCURVE_CONFIG_DIR=$r_home/qtcurve "$writer" "$@"
++    ) >> "$work/$r_name.log" 2>&1 || code=$?
++}
++
++# profile DIR: makes the profile directory DIR and one foreign sheet in it.
++profile() {
++    mkdir -p "$1/chrome"
++    printf '#nav-bar { min-height: 40px; }\n' > "$1/$shared"
++}
++
++# ini FILE PATH RELATIVE: writes one profiles.ini of one profile section.
++ini() {
++    mkdir -p "$(dirname "$1")"
++    {
++        printf '[Install0]\nDefault=%s\n\n' "$2"
++        printf '[Profile0]\nName=default\nIsRelative=%s\nPath=%s\n' "$3" "$2"
++    } > "$1"
++}
++
++# written DIR: gives 0 when DIR holds the owned sheet and the import line on
++# the first line of the shared sheet.
++written() {
++    if [ ! -s "$1/$owned" ]; then
++        echo "assert-ff-profiles: $1 holds no owned sheet" >&2
++        return 1
++    fi
++    w_first=$(head -n 1 "$1/$shared")
++    if [ "$w_first" != '@import "qtcurve-userChrome.css";' ]; then
++        echo "assert-ff-profiles: $1 holds '$w_first' on the first line" >&2
++        return 1
++    fi
++    return 0
++}
++
++# untouched DIR: gives 0 when DIR holds no owned sheet and no import line.
++untouched() {
++    if [ -e "$1/$owned" ]; then
++        echo "assert-ff-profiles: $1 holds an owned sheet" >&2
++        return 1
++    fi
++    if [ -e "$1/$shared" ] && grep -qF 'qtcurve-userChrome.css' "$1/$shared"
++    then
++        echo "assert-ff-profiles: $1 holds the import line" >&2
++        return 1
++    fi
++    return 0
++}
++
++# 1. One profile under the configuration home of the user.
++xdg=$work/xdg/.config/mozilla/firefox
++profile "$xdg/abc.default"
++ini "$xdg/profiles.ini" abc.default 1
++run xdg --write --force --default
++[ "$code" -eq 0 ] || fail "the run over the first root gave the code $code"
++written "$xdg/abc.default" || status=1
++
++# 2. One profile under the home directory of the user.
++legacy=$work/legacy/.mozilla/firefox
++profile "$legacy/xyz.default"
++ini "$legacy/profiles.ini" xyz.default 1
++run legacy --write --force --default
++[ "$code" -eq 0 ] || fail "the run over the second root gave the code $code"
++written "$legacy/xyz.default" || status=1
++
++# 3. One directory that the ini file of each root names, with an absolute
++# path. The writer must take it one time, so the log holds one notice of it.
++both=$work/both
++profile "$both/shared.default"
++ini "$both/.config/mozilla/firefox/profiles.ini" "$both/shared.default" 0
++ini "$both/.mozilla/firefox/profiles.ini" "$both/shared.default" 0
++run both --write --force --default
++[ "$code" -eq 0 ] || fail "the run over the two roots gave the code $code"
++written "$both/shared.default" || status=1
++notices=$(grep -c 'holds the new sheet' "$work/both.log" || true)
++if [ "$notices" -ne 1 ]; then
++    fail "the shared profile took $notices passes, and not 1"
++fi
++
++# 4. An absolute path outside every root.
++away=$work/away
++profile "$away/outside"
++ini "$away/.config/mozilla/firefox/profiles.ini" "$away/outside" 0
++run away --write --force --default
++[ "$code" -eq 0 ] || fail "the run of the absolute path gave the code $code"
++written "$away/outside" || status=1
++
++# 5. A root with no profile section, a root with no ini file, and no root at
++# all. Each one is zero profiles and the code 0.
++none=$work/none
++mkdir -p "$none/.config/mozilla/firefox" "$none/.mozilla/firefox"
++printf '[General]\nStartWithLastProfile=1\n' \
++    > "$none/.config/mozilla/firefox/profiles.ini"
++run none --write --force --default
++[ "$code" -eq 0 ] || fail "the run of the empty ini file gave the code $code"
++bare=$work/bare
++mkdir -p "$bare/qtcurve"
++run bare --write --force --default
++[ "$code" -eq 0 ] || fail "the run of the absent root gave the code $code"
++
++# 6. An ini file that names a directory which is gone. The writer must skip it
++# with one notice, and it must make no profile.
++lost=$work/lost/.config/mozilla/firefox
++ini "$lost/profiles.ini" gone.default 1
++run lost --write --force --default
++[ "$code" -eq 0 ] || fail "the run of the gone profile gave the code $code"
++grep -qF 'is gone, and this pass skips it' "$work/lost.log" ||
++    fail "the run of the gone profile printed no skip notice"
++if [ -e "$lost/gone.default" ]; then
++    fail "the writer made the profile directory $lost/gone.default"
++fi
++
++# 7. A profile shaped directory that no ini file names must keep its bytes.
++decoy=$work/xdg/decoy
++profile "$decoy"
++cp "$decoy/$shared" "$work/decoy.want"
++run xdg --write --force --default
++untouched "$decoy" || status=1
++cmp -s "$decoy/$shared" "$work/decoy.want" ||
++    fail "the writer moved a byte of the decoy sheet"
++
++# 8. The remove mode must take every path of the write mode away, and it must
++# keep every foreign line of the shared sheet.
++run xdg --remove
++[ "$code" -eq 0 ] || fail "the remove mode gave the code $code"
++untouched "$xdg/abc.default" || status=1
++grep -qF '#nav-bar' "$xdg/abc.default/$shared" ||
++    fail "the remove mode dropped the foreign line of the shared sheet"
++
++# The controls below run the two readers over a tree of the other state, and
++# each one must fail.
++broken=0
++if written "$decoy" 2> "$work/control.log"; then
++    fail "the check read an owned sheet in the untouched decoy"
++else
++    broken=$((broken + 1))
++fi
++if untouched "$both/shared.default" 2>> "$work/control.log"; then
++    fail "the check read no owned sheet in the profile that holds one"
++else
++    broken=$((broken + 1))
++fi
++
++if [ $status -eq 0 ]; then
++    echo "assert-ff-profiles: the writer wrote 4 profiles of 7 layouts," \
++         "skipped the gone one, kept the decoy, and the remove mode took" \
++         "every path away. The check rejects each of the $broken controls"
++fi
++exit $status
+diff --git a/firefox/check/assert-ff-toolbox.sh b/firefox/check/assert-ff-toolbox.sh
+new file mode 100644
+index 00000000..e68671ea
+--- /dev/null
++++ b/firefox/check/assert-ff-toolbox.sh
+@@ -0,0 +1,166 @@
++#!/bin/sh
++# assert-ff-toolbox.sh WRITER WORKDIR: the tool box of the sheet must follow
++# the title bar appearance of each state of the window. Decoration::paint() of
++# the QtCurve decoration fills the title bar from the appearance and the
++# colour of the state. A gradient of the active state must never reach a
++# window that holds no focus. The run flips the two appearance keys over four
++# write passes. HOME, XDG_CONFIG_HOME and QTCURVE_CONFIG_DIR point into
++# WORKDIR, because the writer rewrites the files of the caller.
++set -eu
++ulimit -c 0
++usage='usage: assert-ff-toolbox.sh WRITER WORKDIR'
++writer=${1:?$usage}
++work=${2:?$usage}
++
++# A relative path leaves XDG_CONFIG_HOME outside the root of the file system.
++# The library of the writer then reads the configuration home of the caller.
++case $work in
++    /*) ;;
++    *) work=$PWD/$work;;
++esac
++
++owned=chrome/qtcurve-userChrome.css
++home=$work/home
++root=$home/.config/mozilla/firefox
++dir=$root/toolbox.default
++qtc=$home/qtcurve
++sheet=$dir/$owned
++status=0
++
++# The selector of each state. browser.css of omni.ja gives the tool box the
++# first identifier, and the pseudo class of the second one reads a window that
++# holds no focus.
++live='#navigator-toolbox'
++idle='#navigator-toolbox:-moz-window-inactive'
++
++fail() {
++    echo "assert-ff-toolbox: $1" >&2
++    status=1
++}
++
++rm -rf "$work"
++mkdir -p "$dir/chrome" "$qtc" "$home/.config"
++printf '[Profile0]\nName=toolbox\nIsRelative=1\nPath=toolbox.default\n' \
++    > "$root/profiles.ini"
++
++# The colour file of the private home. The two title bar colours must differ,
++# because the two rules of the tool box carry one gradient of each colour. A
++# home with no colour file gives both title bars the window colour, and the
++# run then reads two rules of one colour.
++printf '[WM]\nactiveBackground=40,60,80\ninactiveBackground=200,210,220\n' \
++    > "$home/.config/kdeglobals"
++
++# settings ACTIVE INACTIVE: writes the settings file of the user with the gate
++# on, the active title bar appearance at ACTIVE and the inactive one at
++# INACTIVE.
++settings() {
++    printf '[Settings]\nfirefoxTheme=true\ntitlebarAppearance=%s\n'\
++'inactiveTitlebarAppearance=%s\n' "$1" "$2" > "$qtc/stylerc"
++}
++
++# run NAME: runs one write pass over the private home, and holds the exit code
++# in the variable code.
++run() {
++    r_name=$1
++    code=0
++    HOME=$home XDG_CONFIG_HOME=$home/.config QTCURVE_CONFIG_DIR=$qtc \
++        "$writer" --write > "$work/$r_name.log" 2>&1 || code=$?
++}
++
++# image FILE SELECTOR: prints the background image of the block of SELECTOR,
++# and prints nothing when the sheet holds no such block.
++image() {
++    i_esc=$(printf '%s' "$2" | sed 's/[.[\*^$]/\\&/g')
++    sed -n "/^$i_esc {\$/,/^}\$/p" "$1" |
++        sed -n 's/^  background-image: \(.*\) !important;$/\1/p'
++}
++
++# gradient VALUE: gives 0 while VALUE is one linear gradient of the writer.
++gradient() {
++    case $1 in
++        'linear-gradient(to bottom, '*')') return 0;;
++        *) return 1;;
++    esac
++}
++
++# 1. Two gradient appearances give two rules, and the two rules must differ.
++# The stops of the inactive rule come from the inactive title bar colour.
++settings custom1 custom1
++run both
++[ "$code" -eq 0 ] || fail "the gradient pair gave the code $code"
++[ -s "$sheet" ] || fail "the gradient pair wrote no sheet"
++live_img=$(image "$sheet" "$live")
++idle_img=$(image "$sheet" "$idle")
++gradient "$live_img" || fail "the active state carries no gradient"
++gradient "$idle_img" || fail "the inactive state carries no gradient"
++if [ "$live_img" = "$idle_img" ]; then
++    fail "the two states carry one image of one colour"
++fi
++cp "$sheet" "$work/both.css"
++
++# 2. A flat inactive appearance holds the image at none. The active gradient
++# reaches every state without that rule, because no rule takes it back.
++settings custom1 flat
++run flat-idle
++[ "$code" -eq 0 ] || fail "the flat inactive key gave the code $code"
++gradient "$(image "$sheet" "$live")" ||
++    fail "the flat inactive key moved the active state"
++[ "$(image "$sheet" "$idle")" = none ] ||
++    fail "the flat inactive key left no suppression rule"
++
++# 3. A flat active appearance and a gradient inactive one give the inactive
++# rule alone, because the map holds the flat colour of the active state.
++settings flat custom1
++run flat-live
++[ "$code" -eq 0 ] || fail "the flat active key gave the code $code"
++[ -z "$(image "$sheet" "$live")" ] ||
++    fail "the flat active key left an image of the active state"
++gradient "$(image "$sheet" "$idle")" ||
++    fail "the flat active key moved the inactive state"
++
++# 4. Two flat appearances give no rule at all, so the map paints the tool box.
++settings flat flat
++run flat-both
++[ "$code" -eq 0 ] || fail "the flat pair gave the code $code"
++if grep -q '^#navigator-toolbox' "$sheet"; then
++    fail "the flat pair left a rule of the tool box"
++fi
++
++# The controls below. Each one doctors a copy of the sheet of the gradient
++# pair, and the arm of that copy must fail.
++broken=0
++
++# control NAME COPY: the state of the copy must leave its own image.
++control() {
++    c_name=$1
++    c_live=$(image "$2" "$live")
++    c_idle=$(image "$2" "$idle")
++    if [ -n "$c_live" ] && [ -n "$c_idle" ] && [ "$c_live" != "$c_idle" ]; then
++        echo "assert-ff-toolbox: the check passed the control copy of" \
++             "$c_name" >&2
++        exit 1
++    fi
++    broken=$((broken + 1))
++}
++
++# A sheet that lost the rule of the inactive state. The writer wrote such a
++# sheet before the state of the window reached the tool box.
++sed "/^$idle {\$/,/^}\$/d" "$work/both.css" > "$work/gone.css"
++control gone "$work/gone.css"
++
++# A sheet that gives the inactive state the image of the active state. Such a
++# sheet paints a window with no focus in the colour of a window with focus.
++grep -A1 "^$live {\$" "$work/both.css" | grep '^  background-image:' \
++    > "$work/live.line"
++sed "/^$idle {\$/,/^}\$/{
++/^  background-image:/d
++}" "$work/both.css" > "$work/cut.css"
++sed "/^$idle {\$/r $work/live.line" "$work/cut.css" > "$work/same.css"
++control same "$work/same.css"
++
++if [ $status -eq 0 ]; then
++    echo "assert-ff-toolbox: the two states of the tool box follow the two" \
++         "title bar appearances over four settings pairs, and the check" \
++         "rejects each of the $broken control copies"
++fi
++exit $status
+diff --git a/firefox/check/assert-ff-varnames.sh b/firefox/check/assert-ff-varnames.sh
+new file mode 100644
+index 00000000..92c02d41
+--- /dev/null
++++ b/firefox/check/assert-ff-varnames.sh
+@@ -0,0 +1,79 @@
++#!/bin/sh
++# assert-ff-varnames.sh [-n MIN] SHEET PIN: every custom property of SHEET must
++# stand in PIN, and SHEET must set MIN properties at least. The chrome paints
++# nothing for a property outside the pin, and an empty sheet paints nothing at
++# all. The run then doctors two copies of SHEET, and it fails if the check
++# passes a copy.
++set -eu
++usage='usage: assert-ff-varnames.sh [-n MIN] SHEET PIN'
++min=1
++if [ "${1:-}" = "-n" ]; then
++    min=${2:?$usage}
++    shift 2
++fi
++sheet=${1:?$usage}
++pin=${2:?$usage}
++
++tmp=$(mktemp -d)
++trap 'rm -rf "$tmp"' EXIT
++
++grep -o -- '^--[A-Za-z0-9-]*' "$pin" | sort -u > "$tmp/pin"
++if [ ! -s "$tmp/pin" ]; then
++    echo "assert-ff-varnames: $pin holds no name" >&2
++    exit 1
++fi
++
++# check SHEET: gives 0 when the two contracts hold. It names the first
++# contract that fails on the standard error.
++check() {
++    c_sheet=$1
++    grep -o -- '--[A-Za-z0-9-]*:' "$c_sheet" | sed 's/:$//' | sort -u \
++        > "$tmp/used" || true
++    comm -23 "$tmp/used" "$tmp/pin" > "$tmp/loose"
++    if [ -s "$tmp/loose" ]; then
++        echo "assert-ff-varnames: $c_sheet sets names outside the pin:" >&2
++        cat "$tmp/loose" >&2
++        return 1
++    fi
++    c_count=$(wc -l < "$tmp/used")
++    if [ "$c_count" -lt "$min" ]; then
++        echo "assert-ff-varnames: $c_sheet sets $c_count properties," \
++             "under $min" >&2
++        return 1
++    fi
++    return 0
++}
++
++if ! check "$sheet"; then
++    echo "assert-ff-varnames: the sheet fails the check" >&2
++    exit 1
++fi
++count=$(wc -l < "$tmp/used")
++
++# The controls below. Each one doctors a copy of the sheet, and the check must
++# fail over that copy.
++broken=0
++
++# control NAME SHEET: the check must fail over the sheet that the caller gives.
++control() {
++    c_name=$1
++    shift
++    if check "$@" 2> "$tmp/control.log"; then
++        echo "assert-ff-varnames: the check passed the control copy of" \
++             "$c_name" >&2
++        exit 1
++    fi
++    broken=$((broken + 1))
++}
++
++# A property that the pin does not hold, which the chrome never reads.
++sed '/^:root {$/a\
++  --qtc-outside-the-pin-color: #000000 !important;' "$sheet" > "$tmp/loose.css"
++control loose "$tmp/loose.css"
++
++# An empty sheet, which sets no property at all.
++: > "$tmp/empty.css"
++control empty "$tmp/empty.css"
++
++echo "assert-ff-varnames: $sheet ok, $count properties of the pin, and the" \
++     "check rejects each of the $broken control copies"
+diff --git a/firefox/check/assert-locks-distinct.sh b/firefox/check/assert-locks-distinct.sh
+new file mode 100644
+index 00000000..f3162ea0
+--- /dev/null
++++ b/firefox/check/assert-locks-distinct.sh
+@@ -0,0 +1,64 @@
++#!/bin/sh
++# assert-locks-distinct.sh MAIN MAIN...: the writers must hold no lock name in
++# common. Each MAIN is the main file of one binary, and each one defines a
++# daemon lock name and a write lock name. Two binaries of one name would stop
++# each other, and one write lock over two file sets buys nothing. The run then
++# doctors a copy of the second file, and it fails if the check passes the copy.
++set -eu
++usage='usage: assert-locks-distinct.sh MAIN MAIN...'
++first=${1:?$usage}
++second=${2:?$usage}
++
++tmp=$(mktemp -d)
++trap 'rm -rf "$tmp"' EXIT
++
++# names FILE: prints the two lock names of FILE, one per line.
++names() {
++    sed -n 's/^const char \*const [a-z]*LockName = "\(.*\)";$/\1/p' "$1"
++}
++
++# check MAIN...: gives 0 when each file holds two names and no name repeats.
++check() {
++    : > "$tmp/all"
++    for c_file in "$@"; do
++        names "$c_file" > "$tmp/one"
++        c_count=$(wc -l < "$tmp/one")
++        if [ "$c_count" -ne 2 ]; then
++            echo "assert-locks-distinct: $c_file defines $c_count lock" \
++                 "names, and not 2" >&2
++            return 1
++        fi
++        cat "$tmp/one" >> "$tmp/all"
++    done
++    c_total=$(wc -l < "$tmp/all")
++    c_unique=$(sort -u "$tmp/all" | wc -l)
++    if [ "$c_total" -ne "$c_unique" ]; then
++        echo "assert-locks-distinct: the $c_total names hold $c_unique" \
++             "values, so two binaries share a lock" >&2
++        return 1
++    fi
++    return 0
++}
++
++if ! check "$@"; then
++    echo "assert-locks-distinct: the main files fail the check" >&2
++    exit 1
++fi
++total=$(wc -l < "$tmp/all")
++
++# The control below takes the names of the first binary into a copy of the
++# second one, and the check must fail over that copy.
++names "$first" > "$tmp/first"
++daemon=$(sed -n 1p "$tmp/first")
++write=$(sed -n 2p "$tmp/first")
++sed -e "s|^\(const char \*const daemonLockName = \).*|\1\"$daemon\";|" \
++    -e "s|^\(const char \*const writeLockName = \).*|\1\"$write\";|" \
++    "$second" > "$tmp/same.cpp"
++if check "$first" "$tmp/same.cpp" 2> "$tmp/control.log"; then
++    echo "assert-locks-distinct: the check passed the control copy of the" \
++         "shared names" >&2
++    exit 1
++fi
++
++echo "assert-locks-distinct: the $# main files hold $total lock names of" \
++     "their own, and the check rejects the control copy"
+diff --git a/firefox/check/ff-varnames.txt b/firefox/check/ff-varnames.txt
+new file mode 100644
+index 00000000..61a0a5d4
+--- /dev/null
++++ b/firefox/check/ff-varnames.txt
+@@ -0,0 +1,35 @@
++# The custom properties of the Firefox chrome that the generated sheet sets,
++# pinned against Firefox 155. The chrome reads a declaration of a name that it
++# knows, and a name outside this list paints nothing at all.
++# Derivation: every name below stands in a token file of the chrome of Firefox
++# 155.0, which omni.ja and browser/omni.ja hold. The files are
++# tokens-shared.css, tokens-platform.css, browser-colors.css, toolbar.css,
++# tab.tokens.css, toolbarbuttons.css, common-shared.css and
++# urlbar/urlbarview.tokens.css. A refresh of the pin reads the same files of
++# the next major.
++--toolbox-background-color
++--toolbox-text-color
++--toolbox-background-color-inactive
++--toolbox-text-color-inactive
++--toolbar-background-color
++--tab-background-color-selected
++--toolbar-text-color
++--tab-selected-textcolor
++--toolbarbutton-icon-fill
++--toolbar-field-background-color
++--toolbar-field-background-color-focus
++--sidebar-background-color
++--toolbar-field-text-color
++--toolbar-field-text-color-focus
++--sidebar-text-color
++--toolbar-field-border-color
++--chrome-content-separator-color
++--focus-outline-color
++--urlbarview-background-color-selected
++--urlbarview-text-color-selected
++--panel-background-color
++--panel-text-color
++--panel-border-color
++--toolbarbutton-background-color-hover
++--tab-background-color-hover
++--toolbarbutton-background-color-active
+diff --git a/firefox/check/mkfloors.sh b/firefox/check/mkfloors.sh
+new file mode 100644
+index 00000000..165abdf6
+--- /dev/null
++++ b/firefox/check/mkfloors.sh
+@@ -0,0 +1,9 @@
++#!/bin/sh
++# mkfloors.sh SHEET: prints the floor of assert-ff-varnames.sh from one build.
++# SHEET is a sheet of the build tree. The CMake file holds the number that this
++# script prints, so no floor of the build comes from a hand count.
++set -eu
++sheet=${1:?usage: mkfloors.sh SHEET}
++count=$(grep -o -- '--[A-Za-z0-9-]*:' "$sheet" | sed 's/:$//' | sort -u |
++            wc -l)
++printf 'set(qtc_ff_names %s)\n' "$count"
+diff --git a/firefox/writer/ffmap.cpp b/firefox/writer/ffmap.cpp
+new file mode 100644
+index 00000000..d97059f8
+--- /dev/null
++++ b/firefox/writer/ffmap.cpp
+@@ -0,0 +1,248 @@
++/*****************************************************************************
++ *   Copyright 2026 QtCurve authors                                          *
++ *                                                                           *
++ *   This program is free software; you can redistribute it and/or modify    *
++ *   it under the terms of the GNU Lesser General Public License as          *
++ *   published by the Free Software Foundation; either version 2.1 of the    *
++ *   License, or (at your option) version 3, or any later version accepted   *
++ *   by the membership of KDE e.V. (or its successor approved by the         *
++ *   membership of KDE e.V.), which shall act as a proxy defined in          *
++ *   Section 6 of version 3 of the license.                                  *
++ *                                                                           *
++ *   This program is distributed in the hope that it will be useful,         *
++ *   but WITHOUT ANY WARRANTY; without even the implied warranty of          *
++ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU       *
++ *   Lesser General Public License for more details.                         *
++ *                                                                           *
++ *   You should have received a copy of the GNU Lesser General Public        *
++ *   License along with this library. If not,                                *
++ *   see <http://www.gnu.org/licenses/>.                                     *
++ *****************************************************************************/
++
++#include "ffmap.h"
++
++#include <emit.h>
++
++#include <qtcurve-utils/shade.h>
++
++namespace QtCurve {
++namespace Firefox {
++
++using Gtk::Palette;
++using Gtk::Role;
++
++namespace {
++
++/**
++ * The step of a shade ladder that carries a mouse over ground. widgets.cpp
++ * paints the mouse over ground of a button from this step.
++ */
++const int hoverShade = SHADE_ORIG_HIGHLIGHT;
++
++/**
++ * The step of a shade ladder that carries a pressed ground. widgets.cpp
++ * paints the pressed ground of a button from this step.
++ */
++const int activeShade = 2;
++
++const char *const varsFrame[] = { "--toolbox-background-color" };
++const char *const keysFrame[] = { "frame" };
++
++const char *const varsFrameText[] = { "--toolbox-text-color" };
++const char *const keysFrameText[] = { "tab_background_text" };
++
++const char *const varsFrameOff[] = { "--toolbox-background-color-inactive" };
++const char *const keysFrameOff[] = { "frame_inactive" };
++
++const char *const varsFrameOffText[] = { "--toolbox-text-color-inactive" };
++
++const char *const varsToolbar[] = {
++    "--toolbar-background-color",
++    "--tab-background-color-selected"
++};
++const char *const keysToolbar[] = { "toolbar", "tab_selected",
++                                    "ntp_background" };
++
++const char *const varsToolbarText[] = {
++    "--toolbar-text-color",
++    "--tab-selected-textcolor",
++    "--toolbarbutton-icon-fill"
++};
++const char *const keysToolbarText[] = { "toolbar_text", "tab_text",
++                                        "bookmark_text", "icons",
++                                        "ntp_text" };
++
++const char *const varsField[] = {
++    "--toolbar-field-background-color",
++    "--toolbar-field-background-color-focus",
++    "--sidebar-background-color"
++};
++const char *const keysField[] = { "toolbar_field", "toolbar_field_focus",
++                                  "sidebar", "ntp_card_background" };
++
++const char *const varsFieldText[] = {
++    "--toolbar-field-text-color",
++    "--toolbar-field-text-color-focus",
++    "--sidebar-text-color"
++};
++const char *const keysFieldText[] = { "toolbar_field_text",
++                                      "toolbar_field_text_focus",
++                                      "sidebar_text" };
++
++const char *const varsBorder[] = {
++    "--toolbar-field-border-color",
++    "--chrome-content-separator-color"
++};
++const char *const keysBorder[] = { "toolbar_field_border",
++                                   "toolbar_bottom_separator",
++                                   "toolbar_vertical_separator",
++                                   "popup_border", "sidebar_border" };
++
++const char *const keysTopSeparator[] = { "toolbar_top_separator" };
++
++const char *const varsFocus[] = { "--focus-outline-color" };
++const char *const keysFocus[] = { "toolbar_field_border_focus" };
++
++const char *const varsSelected[] = {
++    "--urlbarview-background-color-selected"
++};
++const char *const keysSelected[] = { "popup_highlight", "sidebar_highlight",
++                                     "toolbar_field_highlight", "tab_line",
++                                     "tab_loading", "icons_attention" };
++
++const char *const varsSelectedText[] = {
++    "--urlbarview-text-color-selected"
++};
++const char *const keysSelectedText[] = { "popup_highlight_text",
++                                         "sidebar_highlight_text",
++                                         "toolbar_field_highlight_text" };
++
++const char *const varsPanel[] = { "--panel-background-color" };
++const char *const keysPanel[] = { "popup" };
++
++const char *const varsPanelText[] = { "--panel-text-color" };
++const char *const keysPanelText[] = { "popup_text" };
++
++const char *const varsPanelBorder[] = { "--panel-border-color" };
++
++const char *const varsHover[] = {
++    "--toolbarbutton-background-color-hover",
++    "--tab-background-color-hover"
++};
++const char *const keysHover[] = { "button_background_hover" };
++
++const char *const varsActive[] = {
++    "--toolbarbutton-background-color-active"
++};
++const char *const keysActive[] = { "button_background_active" };
++
++/** Takes a table of names and the count of that table. */
++#define QTC_FF_LIST(a) (a), (int)(sizeof(a) / sizeof(*(a)))
++
++/** Takes the empty table of a row that reaches one arm alone. */
++#define QTC_FF_NONE nullptr, 0
++
++const FfRow rows[] = {
++    { FfRole::Titlebar, QTC_FF_LIST(varsFrame), QTC_FF_LIST(keysFrame) },
++    { FfRole::TitlebarText, QTC_FF_LIST(varsFrameText),
++      QTC_FF_LIST(keysFrameText) },
++    { FfRole::TitlebarInactive, QTC_FF_LIST(varsFrameOff),
++      QTC_FF_LIST(keysFrameOff) },
++    { FfRole::TitlebarInactiveText, QTC_FF_LIST(varsFrameOffText),
++      QTC_FF_NONE },
++    { FfRole::Window, QTC_FF_LIST(varsToolbar), QTC_FF_LIST(keysToolbar) },
++    { FfRole::WindowText, QTC_FF_LIST(varsToolbarText),
++      QTC_FF_LIST(keysToolbarText) },
++    { FfRole::Base, QTC_FF_LIST(varsField), QTC_FF_LIST(keysField) },
++    { FfRole::Text, QTC_FF_LIST(varsFieldText), QTC_FF_LIST(keysFieldText) },
++    { FfRole::WindowBorder, QTC_FF_LIST(varsBorder),
++      QTC_FF_LIST(keysBorder) },
++    { FfRole::Clear, QTC_FF_NONE, QTC_FF_LIST(keysTopSeparator) },
++    { FfRole::ButtonFocus, QTC_FF_LIST(varsFocus), QTC_FF_LIST(keysFocus) },
++    { FfRole::Highlight, QTC_FF_LIST(varsSelected),
++      QTC_FF_LIST(keysSelected) },
++    { FfRole::HighlightText, QTC_FF_LIST(varsSelectedText),
++      QTC_FF_LIST(keysSelectedText) },
++    { FfRole::Menu, QTC_FF_LIST(varsPanel), QTC_FF_LIST(keysPanel) },
++    { FfRole::MenuText, QTC_FF_LIST(varsPanelText),
++      QTC_FF_LIST(keysPanelText) },
++    { FfRole::MenuBorder, QTC_FF_LIST(varsPanelBorder), QTC_FF_NONE },
++    { FfRole::ButtonHover, QTC_FF_LIST(varsHover), QTC_FF_LIST(keysHover) },
++    { FfRole::ButtonActive, QTC_FF_LIST(varsActive), QTC_FF_LIST(keysActive) }
++};
++
++/** The name of each row, in the order of FfRole. */
++const char *const roleNames[] = {
++    "titlebar", "titlebarText", "titlebarInactive", "titlebarInactiveText",
++    "window", "windowText", "base", "text", "windowBorder", "buttonFocus",
++    "highlight", "highlightText", "menu", "menuText", "menuBorder",
++    "buttonHover", "buttonActive", "clear"
++};
++
++}
++
++const FfRow *
++ffRows(int &count)
++{
++    count = (int)(sizeof(rows) / sizeof(*rows));
++    return rows;
++}
++
++const char *
++ffRoleName(FfRole role)
++{
++    const int at = (int)role;
++    if (at < 0 || at >= (int)(sizeof(roleNames) / sizeof(*roleNames))) {
++        Gtk::failUnknown("FfRole", at);
++        return "none";
++    }
++    return roleNames[at];
++}
++
++QColor
++ffColour(const Options &opts, const Palette &pal, FfRole role)
++{
++    switch (role) {
++    case FfRole::Titlebar:
++        return pal.titlebar;
++    case FfRole::TitlebarText:
++        return pal.titlebarText;
++    case FfRole::TitlebarInactive:
++        return pal.titlebarInactive;
++    case FfRole::TitlebarInactiveText:
++        return pal.titlebarInactiveText;
++    case FfRole::Window:
++        return pal.window;
++    case FfRole::WindowText:
++        return pal.windowText;
++    case FfRole::Base:
++        return pal.base;
++    case FfRole::Text:
++        return pal.text;
++    case FfRole::WindowBorder:
++        return pal.win[QTC_STD_BORDER];
++    case FfRole::ButtonFocus:
++        return pal.buttonFocus;
++    case FfRole::Highlight:
++        return pal.highlight;
++    case FfRole::HighlightText:
++        return pal.highlightText;
++    case FfRole::Menu:
++        return pal.menu[ORIGINAL_SHADE];
++    case FfRole::MenuText:
++        return Gtk::menuRole(opts) == Role::Base ? pal.text : pal.windowText;
++    case FfRole::MenuBorder:
++        return pal.menu[QTC_STD_BORDER];
++    case FfRole::ButtonHover:
++        return pal.btn[hoverShade];
++    case FfRole::ButtonActive:
++        return pal.btn[activeShade];
++    case FfRole::Clear:
++        return QColor(0, 0, 0, 0);
++    }
++    Gtk::failUnknown("FfRole", (int)role);
++    return QColor();
++}
++
++}
++}
+diff --git a/firefox/writer/ffmap.h b/firefox/writer/ffmap.h
+new file mode 100644
+index 00000000..58cf8ec8
+--- /dev/null
++++ b/firefox/writer/ffmap.h
+@@ -0,0 +1,94 @@
++/*****************************************************************************
++ *   Copyright 2026 QtCurve authors                                          *
++ *                                                                           *
++ *   This program is free software; you can redistribute it and/or modify    *
++ *   it under the terms of the GNU Lesser General Public License as          *
++ *   published by the Free Software Foundation; either version 2.1 of the    *
++ *   License, or (at your option) version 3, or any later version accepted   *
++ *   by the membership of KDE e.V. (or its successor approved by the         *
++ *   membership of KDE e.V.), which shall act as a proxy defined in          *
++ *   Section 6 of version 3 of the license.                                  *
++ *                                                                           *
++ *   This program is distributed in the hope that it will be useful,         *
++ *   but WITHOUT ANY WARRANTY; without even the implied warranty of          *
++ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU       *
++ *   Lesser General Public License for more details.                         *
++ *                                                                           *
++ *   You should have received a copy of the GNU Lesser General Public        *
++ *   License along with this library. If not,                                *
++ *   see <http://www.gnu.org/licenses/>.                                     *
++ *****************************************************************************/
++
++#ifndef QTC_FIREFOX_FFMAP_H
++#define QTC_FIREFOX_FFMAP_H
++
++#include <palette.h>
++
++namespace QtCurve {
++namespace Firefox {
++
++/**
++ * The palette source of one row of the map. A ladder role takes one step of a
++ * shade ladder, and Clear is the one row that no colour of the palette feeds.
++ */
++enum class FfRole {
++    Titlebar,
++    TitlebarText,
++    TitlebarInactive,
++    TitlebarInactiveText,
++    Window,
++    WindowText,
++    Base,
++    Text,
++    WindowBorder,
++    ButtonFocus,
++    Highlight,
++    HighlightText,
++    Menu,
++    MenuText,
++    MenuBorder,
++    ButtonHover,
++    ButtonActive,
++    Clear
++};
++
++/**
++ * One row of the map. The row binds one palette source to the custom
++ * properties of the generated sheet and to the colour keys of the static
++ * manifest. Either list can be empty, because a colour can reach one arm
++ * alone.
++ */
++struct FfRow {
++    FfRole role;
++    /** The custom properties of the generated sheet. */
++    const char *const *vars;
++    /** The count of the custom properties. */
++    int varCount;
++    /** The colour keys of the theme object of the manifest. */
++    const char *const *keys;
++    /** The count of the colour keys. */
++    int keyCount;
++};
++
++/**
++ * Returns the rows of the map, which the two emitters walk in this order.
++ *
++ * \param count  takes the count of the rows.
++ * \return the first row of the table.
++ */
++const FfRow *ffRows(int &count);
++
++/** Returns the name of role, which the exported map carries. */
++const char *ffRoleName(FfRole role);
++
++/**
++ * Returns the colour of role, under the settings opts and the palette pal.
++ * FfRole::Clear gives a colour of the alpha 0, and no other row gives a
++ * translucent colour.
++ */
++QColor ffColour(const Options &opts, const Gtk::Palette &pal, FfRole role);
++
++}
++}
++
++#endif
+diff --git a/firefox/writer/main.cpp b/firefox/writer/main.cpp
+new file mode 100644
+index 00000000..6304205b
+--- /dev/null
++++ b/firefox/writer/main.cpp
+@@ -0,0 +1,556 @@
++/*****************************************************************************
++ *   Copyright 2026 QtCurve authors                                          *
++ *                                                                           *
++ *   This program is free software; you can redistribute it and/or modify    *
++ *   it under the terms of the GNU Lesser General Public License as          *
++ *   published by the Free Software Foundation; either version 2.1 of the    *
++ *   License, or (at your option) version 3, or any later version accepted   *
++ *   by the membership of KDE e.V. (or its successor approved by the         *
++ *   membership of KDE e.V.), which shall act as a proxy defined in          *
++ *   Section 6 of version 3 of the license.                                  *
++ *                                                                           *
++ *   This program is distributed in the hope that it will be useful,         *
++ *   but WITHOUT ANY WARRANTY; without even the implied warranty of          *
++ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU       *
++ *   Lesser General Public License for more details.                         *
++ *                                                                           *
++ *   You should have received a copy of the GNU Lesser General Public        *
++ *   License along with this library. If not,                                *
++ *   see <http://www.gnu.org/licenses/>.                                     *
++ *****************************************************************************/
++
++#include "ffmap.h"
++#include "profiles.h"
++#include "sheet.h"
++
++#include <emit.h>
++#include <lock.h>
++#include <palette.h>
++#include <reexec.h>
++#include <userfile.h>
++#include <watch.h>
++
++#include <config_file.h>
++#include <qtcurve-utils/dirs.h>
++
++#include <QCoreApplication>
++#include <QDir>
++#include <QFile>
++#include <QTextStream>
++
++#include <unistd.h>
++
++#include <functional>
++#include <string>
++#include <vector>
++
++using namespace QtCurve;
++using namespace QtCurve::Firefox;
++
++using Gtk::Palette;
++using Gtk::Placement;
++using Gtk::lockBusyCode;
++using Gtk::mergeImport;
++using Gtk::readPalette;
++using Gtk::removeImport;
++using Gtk::removeOwned;
++using Gtk::writeOwned;
++using Gtk::writerName;
++
++namespace QtCurve {
++namespace Gtk {
++
++// The name, the lock names and the import line of this binary, which lock.h
++// and userfile.h declare.
++const char *const writerName = "qtcurve-firefox-writer";
++const char *const daemonLockName = "qtcurve-firefox-writer.lock";
++const char *const writeLockName = "qtcurve-firefox-writer-write.lock";
++const char *const importStatement = "@import \"qtcurve-userChrome.css\";";
++
++}
++}
++
++namespace {
++
++/** The directory of a profile that holds the sheets of the user. */
++const char *const chromeDir = "chrome";
++
++/** The file of a profile that holds the sheet of the writer. */
++const char *const ownedName = "qtcurve-userChrome.css";
++
++/** The file of a profile that holds the import line of the writer. */
++const char *const sharedName = "userChrome.css";
++
++/** The file of a profile that holds the preferences of the user. */
++const char *const prefsName = "prefs.js";
++
++/** The preference that Firefox reads before it takes the shared sheet. */
++const char *const styleSheetPref =
++    "toolkit.legacyUserProfileCustomizations.stylesheets";
++
++/** One parsed command line. */
++struct Args {
++    QString mode = QStringLiteral("--write");
++    QString settings;
++    QString scheme;
++    QString out;
++    bool useDefaults = false;
++    bool force = false;
++};
++
++void
++usage()
++{
++    fprintf(stderr,
++            "usage: qtcurve-firefox-writer [--write|--remove|--watch|\n"
++            "                               --stdout]\n"
++            "  --remove          delete the Firefox files of the writer\n"
++            "  --settings FILE   read the QtCurve settings from FILE\n"
++            "  --default         use the shipped preset\n"
++            "  --scheme FILE     read the colours from a KDE .colors file\n"
++            "  --out FILE        write the sheet to FILE and not to stdout\n"
++            "  --force           skip the settings gate\n");
++}
++
++/**
++ * Returns true while the file that QTC_GTK_TEST_FAULT names exists. The build
++ * time checks set the variable, and a run of a user leaves it unset. The two
++ * writers read one variable, because no check runs both binaries at one time.
++ */
++bool
++testFault()
++{
++    const QByteArray env = qgetenv("QTC_GTK_TEST_FAULT");
++    return !env.isEmpty() && QFile::exists(QString::fromLocal8Bit(env));
++}
++
++/**
++ * The longest wait for the write lock, in milliseconds. The deadline bounds
++ * the wait of a mode that meets a holder, and it leaves a pass that runs
++ * enough time to finish.
++ */
++const int writeLockDeadlineMs = 2000;
++
++/** The step of the wait of a test hold, in milliseconds. */
++const int testHoldStepMs = 100;
++
++/**
++ * The count of the steps of a test hold. The cap of 30 s stops a hold that
++ * outlives the check script that started it.
++ */
++const int testHoldSteps = 300;
++
++/**
++ * Holds the write lock while the file that QTC_GTK_TEST_HOLD names exists,
++ * for 30 s at most. The build time checks set the variable, and a run of a
++ * user leaves it unset.
++ */
++void
++testHold()
++{
++    const QByteArray env = qgetenv("QTC_GTK_TEST_HOLD");
++    if (env.isEmpty()) {
++        return;
++    }
++    const QString path = QString::fromLocal8Bit(env);
++    if (!QFile::exists(path)) {
++        return;
++    }
++    printf("%s: the test hold starts\n", writerName);
++    fflush(stdout);
++    for (int step = 0;step < testHoldSteps && QFile::exists(path);++step) {
++        usleep((useconds_t)testHoldStepMs * 1000);
++    }
++}
++
++/**
++ * Runs the body of one mode inside the write lock, and returns the exit code
++ * of that body. The lock holds every mode that rewrites the files of the user
++ * apart from each other.
++ *
++ * \param body the body of the mode, which runs one time on success.
++ * \return the exit code of body, or lockBusyCode when the lock stays with
++ *     another process up to the deadline. The body does not run in that case,
++ *     and one line on standard error names the holder.
++ */
++int
++lockedRun(const std::function<int()> &body)
++{
++    pid_t holder = 0;
++    const int fd = Gtk::acquireWriteLock(writeLockDeadlineMs, &holder);
++    if (fd < 0) {
++        fprintf(stderr, "%s: the pid %d holds the write lock after 2 s, and"
++                " this pass stops\n", writerName, (int)holder);
++        return lockBusyCode;
++    }
++    testHold();
++    const int code = body();
++    Gtk::releaseLock(fd);
++    return code;
++}
++
++/** Returns the chrome directory of the profile dir. */
++QString
++chromeOf(const QString &dir)
++{
++    return dir + QLatin1Char('/') + QString::fromLatin1(chromeDir);
++}
++
++/** Prints the path of one file that the writer deleted. */
++void
++printGone(const QString &path)
++{
++    printf("%s: removed %s\n", writerName, path.toLocal8Bit().constData());
++}
++
++/** Reads the settings of args into opts, and returns the exit code. */
++int
++readOptions(const Args &args, Options &opts)
++{
++    qtcDefaultSettings(&opts);
++    if (args.useDefaults) {
++        return 0;
++    }
++    if (!args.settings.isEmpty()) {
++        QFile file(args.settings);
++        if (!file.open(QIODevice::ReadOnly)) {
++            fprintf(stderr, "%s: cannot read %s\n", writerName,
++                    args.settings.toLocal8Bit().constData());
++            return 2;
++        }
++    }
++    Options def;
++    qtcDefaultSettings(&def);
++    if (!qtcReadConfig(args.settings, &opts, &def, false)) {
++        if (!args.settings.isEmpty()) {
++            fprintf(stderr, "%s: cannot read %s\n", writerName,
++                    args.settings.toLocal8Bit().constData());
++            return 2;
++        }
++    }
++    return 0;
++}
++
++/**
++ * Returns true when the file path holds the line line. A file that is not
++ * there and a file that does not open both give false.
++ */
++bool
++holdsLine(const QString &path, const QByteArray &line)
++{
++    QFile file(path);
++    if (!file.open(QIODevice::ReadOnly)) {
++        return false;
++    }
++    return file.readAll().contains(line);
++}
++
++/**
++ * Prints one notice line when the prefs.js file of the profile dir holds no
++ * user_pref row of the style sheet preference. The writer reads that file and
++ * never writes it, so a torn read can print one notice that the user does not
++ * need.
++ */
++void
++noticePref(const QString &dir)
++{
++    const QString prefs = dir + QLatin1Char('/') +
++        QString::fromLatin1(prefsName);
++    QByteArray row("user_pref(\"");
++    row.append(styleSheetPref);
++    row.append("\", true);");
++    if (holdsLine(prefs, row)) {
++        return;
++    }
++    printf("%s: the profile %s needs %s true, which about:config sets\n",
++           writerName, dir.toLocal8Bit().constData(), styleSheetPref);
++}
++
++/**
++ * Writes the owned sheet of the profile dir and merges the import line into
++ * the shared sheet of that profile. The call writes no byte of a sheet that
++ * holds the content already.
++ *
++ * \param content the whole owned sheet, in UTF-8.
++ * \param dir the profile directory, which the call never makes.
++ * \return 0 on success, 1 when the owned sheet does not open, and 6 when the
++ *     shared sheet does not open.
++ */
++int
++writeProfile(const QByteArray &content, const QString &dir)
++{
++    const QString chrome = chromeOf(dir);
++    const QString owned = chrome + QLatin1Char('/') +
++        QString::fromLatin1(ownedName);
++    const QString shared = chrome + QLatin1Char('/') +
++        QString::fromLatin1(sharedName);
++    bool changed = true;
++    QFile old(owned);
++    if (old.open(QIODevice::ReadOnly) && old.readAll() == content) {
++        old.close();
++        changed = false;
++    } else {
++        const int written = writeOwned(owned, content);
++        if (written != 0) {
++            return written;
++        }
++    }
++    const bool hadImport = holdsLine(shared, QByteArray(Gtk::importStatement));
++    const int merged = mergeImport(shared, Placement::Front);
++    if (merged != 0) {
++        return merged;
++    }
++    if (changed || !hadImport) {
++        printf("%s: the profile %s holds the new sheet, and Firefox takes it"
++               " after a restart\n", writerName,
++               dir.toLocal8Bit().constData());
++    }
++    noticePref(dir);
++    return 0;
++}
++
++/**
++ * Takes the import line out of the shared sheet of the profile dir. It then
++ * deletes the owned sheet of that profile, and it prints each path that it
++ * deletes. A file that is absent is no error.
++ *
++ * \param dir the profile directory, which the call never removes.
++ * \return 0 on success, and 6 when the shared sheet does not open.
++ */
++int
++removeProfile(const QString &dir)
++{
++    const QString chrome = chromeOf(dir);
++    const QString shared = chrome + QLatin1Char('/') +
++        QString::fromLatin1(sharedName);
++    bool changed = false;
++    const int code = removeImport(shared, &changed);
++    if (changed) {
++        printf("%s: removed the import line of %s\n", writerName,
++               shared.toLocal8Bit().constData());
++    }
++    if (code != 0) {
++        return code;
++    }
++    const QString owned = chrome + QLatin1Char('/') +
++        QString::fromLatin1(ownedName);
++    if (removeOwned(owned)) {
++        printGone(owned);
++    }
++    return 0;
++}
++
++/**
++ * Deletes the owned files of every profile, and returns the first exit code
++ * that is not 0. A profile that fails does not stop the profiles after it.
++ */
++int
++removeAll()
++{
++    int status = 0;
++    for (const QString &dir : profiles(true)) {
++        const int code = removeProfile(dir);
++        if (code != 0 && status == 0) {
++            status = code;
++        }
++    }
++    return status;
++}
++
++/**
++ * Runs one write pass over every profile, and returns the first exit code
++ * that is not 0. A false gate and no --force run the remove pass. The files
++ * of the writer then leave a profile of a user who does not want them.
++ */
++int
++runWrite(const Args &args)
++{
++    Gtk::clearEmitError();
++    Options opts;
++    const int read = readOptions(args, opts);
++    if (read != 0) {
++        return read;
++    }
++    if (!args.force && !opts.firefoxTheme) {
++        return removeAll();
++    }
++    if (testFault()) {
++        Gtk::failTest();
++    }
++    Palette pal;
++    QString err;
++    const int bad = readPalette(args.scheme, opts, pal, err);
++    if (bad != 0) {
++        fprintf(stderr, "%s: %s\n", writerName,
++                err.toLocal8Bit().constData());
++        return bad;
++    }
++    const QByteArray content = buildSheet(opts, pal).toUtf8();
++    if (Gtk::emitError() != 0) {
++        return Gtk::emitError();
++    }
++    int status = 0;
++    for (const QString &dir : profiles(true)) {
++        const int code = writeProfile(content, dir);
++        if (code != 0 && status == 0) {
++            status = code;
++        }
++    }
++    return status;
++}
++
++/** Prints one sheet to standard output, and returns the exit code. */
++int
++runStdout(const Args &args)
++{
++    Gtk::clearEmitError();
++    Options opts;
++    const int read = readOptions(args, opts);
++    if (read != 0) {
++        return read;
++    }
++    Palette pal;
++    QString err;
++    const int bad = readPalette(args.scheme, opts, pal, err);
++    if (bad != 0) {
++        fprintf(stderr, "%s: %s\n", writerName,
++                err.toLocal8Bit().constData());
++        return bad;
++    }
++    const QString text = buildSheet(opts, pal);
++    if (Gtk::emitError() != 0) {
++        return Gtk::emitError();
++    }
++    if (!args.out.isEmpty()) {
++        return writeOwned(args.out, text.toUtf8());
++    }
++    QTextStream stream(stdout);
++    stream << text;
++    return 0;
++}
++
++/**
++ * Returns the paths that the watch mode reads. The set holds the settings of
++ * QtCurve, the colour file of KDE and the profile list of each root. It also
++ * holds the shared sheet of each profile that the roots hold at this moment.
++ * A profile that arrives later reaches the watcher through the profile list.
++ */
++QStringList
++watchPaths()
++{
++    QStringList paths;
++    paths << QString::fromLocal8Bit(getConfDir()) + QStringLiteral("stylerc");
++    paths << QString::fromLocal8Bit(getXDGConfigHome()) +
++        QStringLiteral("kdeglobals");
++    for (const QString &root : roots()) {
++        paths << root + QStringLiteral("/profiles.ini");
++    }
++    for (const QString &dir : profiles(false)) {
++        paths << chromeOf(dir) + QLatin1Char('/') +
++            QString::fromLatin1(sharedName);
++    }
++    return paths;
++}
++
++/** Parses the command line into args, and returns false on a bad switch. */
++bool
++parse(const QStringList &argv, Args &args)
++{
++    for (int i = 1;i < argv.size();++i) {
++        const QString &arg = argv.at(i);
++        if (arg == QLatin1String("--write") ||
++            arg == QLatin1String("--remove") ||
++            arg == QLatin1String("--watch") ||
++            arg == QLatin1String("--stdout")) {
++            args.mode = arg;
++        } else if (arg == QLatin1String("--default")) {
++            args.useDefaults = true;
++        } else if (arg == QLatin1String("--force")) {
++            args.force = true;
++        } else if (arg == QLatin1String("--settings") && i + 1 < argv.size()) {
++            args.settings = argv.at(++i);
++        } else if (arg == QLatin1String("--scheme") && i + 1 < argv.size()) {
++            args.scheme = argv.at(++i);
++        } else if (arg == QLatin1String("--out") && i + 1 < argv.size()) {
++            args.out = argv.at(++i);
++        } else {
++            return false;
++        }
++    }
++    return true;
++}
++
++/**
++ * Runs the watch mode, and returns the exit code. A false gate removes the
++ * owned files and leaves. The settings file of the gate is inside the watched
++ * set, and the save of the dialog starts this mode again.
++ */
++int
++runWatch(const Args &args, const QString &exePath,
++         const std::vector<std::string> &savedArgs)
++{
++    Options opts;
++    const int read = readOptions(args, opts);
++    if (read != 0) {
++        return read;
++    }
++    if (!args.force && !opts.firefoxTheme) {
++        return lockedRun(removeAll);
++    }
++    int dfd = Gtk::adoptLockFd(Gtk::lockPath(Gtk::daemonLockName));
++    if (dfd < 0) {
++        pid_t holder = 0;
++        dfd = Gtk::acquireDaemonLock(&holder);
++        if (dfd < 0) {
++            printf("%s: a watch instance runs with the pid %d, and this"
++                   " instance stops\n", writerName, (int)holder);
++            return 0;
++        }
++    }
++    const int first = lockedRun([&args] { return runWrite(args); });
++    if (first > 1 && first != lockBusyCode) {
++        return first;
++    }
++    Gtk::Watcher watcher([&args] {
++            return lockedRun([&args] { return runWrite(args); });
++        }, watchPaths());
++    Gtk::Reexec reexec(exePath, savedArgs, dfd);
++    if (first == lockBusyCode) {
++        watcher.kick();
++    }
++    return QCoreApplication::exec();
++}
++
++}
++
++int
++main(int argc, char **argv)
++{
++    // The raw arguments of this run, for the exec of a new image. The copy
++    // comes first, because the constructor of QCoreApplication takes the
++    // arguments of Qt out of argv.
++    static std::vector<std::string> savedArgs(argv, argv + argc);
++
++    QCoreApplication app(argc, argv);
++    QCoreApplication::setApplicationName(
++        QStringLiteral("qtcurve-firefox-writer"));
++    // The path of the running image, before a package can replace it.
++    const QString exePath = QCoreApplication::applicationFilePath();
++
++    Args args;
++    if (!parse(QCoreApplication::arguments(), args)) {
++        usage();
++        return 1;
++    }
++
++    if (args.mode == QLatin1String("--stdout")) {
++        return runStdout(args);
++    }
++    if (args.mode == QLatin1String("--remove")) {
++        return lockedRun(removeAll);
++    }
++    if (args.mode == QLatin1String("--watch")) {
++        return runWatch(args, exePath, savedArgs);
++    }
++    return lockedRun([&args] { return runWrite(args); });
++}
+diff --git a/firefox/writer/profiles.cpp b/firefox/writer/profiles.cpp
+new file mode 100644
+index 00000000..9b13bb1c
+--- /dev/null
++++ b/firefox/writer/profiles.cpp
+@@ -0,0 +1,157 @@
++/*****************************************************************************
++ *   Copyright 2026 QtCurve authors                                          *
++ *                                                                           *
++ *   This program is free software; you can redistribute it and/or modify    *
++ *   it under the terms of the GNU Lesser General Public License as          *
++ *   published by the Free Software Foundation; either version 2.1 of the    *
++ *   License, or (at your option) version 3, or any later version accepted   *
++ *   by the membership of KDE e.V. (or its successor approved by the         *
++ *   membership of KDE e.V.), which shall act as a proxy defined in          *
++ *   Section 6 of version 3 of the license.                                  *
++ *                                                                           *
++ *   This program is distributed in the hope that it will be useful,         *
++ *   but WITHOUT ANY WARRANTY; without even the implied warranty of          *
++ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU       *
++ *   Lesser General Public License for more details.                         *
++ *                                                                           *
++ *   You should have received a copy of the GNU Lesser General Public        *
++ *   License along with this library. If not,                                *
++ *   see <http://www.gnu.org/licenses/>.                                     *
++ *****************************************************************************/
++
++#include "profiles.h"
++
++#include <userfile.h>
++
++#include <qtcurve-utils/dirs.h>
++
++#include <QDir>
++#include <QFile>
++#include <QFileInfo>
++
++#include <stdio.h>
++
++namespace QtCurve {
++namespace Firefox {
++
++using Gtk::writerName;
++
++namespace {
++
++/** The name of the file of a root that lists the profiles of that root. */
++const char *const iniName = "profiles.ini";
++
++/** One section of a profiles.ini file that names a profile directory. */
++struct Section {
++    QString path;
++    bool relative = true;
++};
++
++/**
++ * Returns the directory of the section section, against the directory dir of
++ * the ini file. A relative section takes dir as its base, and an absolute
++ * section takes its own path whole.
++ */
++QString
++sectionDir(const Section &section, const QString &dir)
++{
++    if (section.path.isEmpty()) {
++        return QString();
++    }
++    if (!section.relative) {
++        return section.path;
++    }
++    return dir + QLatin1Char('/') + section.path;
++}
++
++/**
++ * Reads the sections of the ini file ini that name a profile directory, in the
++ * order of the file. A line outside a profile section gives no section, and a
++ * file that does not open gives one line on standard error.
++ */
++QList<Section>
++readSections(const QString &ini)
++{
++    QList<Section> out;
++    QFile file(ini);
++    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
++        fprintf(stderr, "%s: cannot read %s\n", writerName,
++                ini.toLocal8Bit().constData());
++        return out;
++    }
++    bool inProfile = false;
++    while (!file.atEnd()) {
++        const QByteArray line = file.readLine().trimmed();
++        if (line.startsWith('[')) {
++            inProfile = line.startsWith("[Profile");
++            if (inProfile) {
++                out.append(Section());
++            }
++            continue;
++        }
++        if (!inProfile || out.isEmpty()) {
++            continue;
++        }
++        Section &section = out.last();
++        if (line.startsWith("Path=")) {
++            section.path = QString::fromLocal8Bit(line.mid(5));
++        } else if (line.startsWith("IsRelative=")) {
++            section.relative = line.mid(11) != QByteArray("0");
++        }
++    }
++    return out;
++}
++
++}
++
++QStringList
++roots()
++{
++    QStringList out;
++    const QString config = QString::fromLocal8Bit(getXDGConfigHome()) +
++        QStringLiteral("mozilla/firefox");
++    const QString home = QDir::homePath() +
++        QStringLiteral("/.mozilla/firefox");
++    out << config;
++    if (home != config) {
++        out << home;
++    }
++    return out;
++}
++
++QStringList
++profiles(bool notices)
++{
++    QStringList out;
++    for (const QString &root : roots()) {
++        const QString ini = root + QLatin1Char('/') +
++            QString::fromLatin1(iniName);
++        if (!QFile::exists(ini)) {
++            continue;
++        }
++        for (const Section &section : readSections(ini)) {
++            const QString dir = sectionDir(section, root);
++            if (dir.isEmpty()) {
++                continue;
++            }
++            const QFileInfo info(dir);
++            if (!info.isDir()) {
++                if (notices) {
++                    printf("%s: the profile directory %s of %s is gone, and"
++                           " this pass skips it\n", writerName,
++                           dir.toLocal8Bit().constData(),
++                           ini.toLocal8Bit().constData());
++                }
++                continue;
++            }
++            const QString real = info.canonicalFilePath();
++            if (!real.isEmpty() && !out.contains(real)) {
++                out << real;
++            }
++        }
++    }
++    return out;
++}
++
++}
++}
+diff --git a/firefox/writer/profiles.h b/firefox/writer/profiles.h
+new file mode 100644
+index 00000000..ce52a43c
+--- /dev/null
++++ b/firefox/writer/profiles.h
+@@ -0,0 +1,52 @@
++/*****************************************************************************
++ *   Copyright 2026 QtCurve authors                                          *
++ *                                                                           *
++ *   This program is free software; you can redistribute it and/or modify    *
++ *   it under the terms of the GNU Lesser General Public License as          *
++ *   published by the Free Software Foundation; either version 2.1 of the    *
++ *   License, or (at your option) version 3, or any later version accepted   *
++ *   by the membership of KDE e.V. (or its successor approved by the         *
++ *   membership of KDE e.V.), which shall act as a proxy defined in          *
++ *   Section 6 of version 3 of the license.                                  *
++ *                                                                           *
++ *   This program is distributed in the hope that it will be useful,         *
++ *   but WITHOUT ANY WARRANTY; without even the implied warranty of          *
++ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU       *
++ *   Lesser General Public License for more details.                         *
++ *                                                                           *
++ *   You should have received a copy of the GNU Lesser General Public        *
++ *   License along with this library. If not,                                *
++ *   see <http://www.gnu.org/licenses/>.                                     *
++ *****************************************************************************/
++
++#ifndef QTC_FIREFOX_PROFILES_H
++#define QTC_FIREFOX_PROFILES_H
++
++#include <QStringList>
++
++namespace QtCurve {
++namespace Firefox {
++
++/**
++ * Returns the root directories that can hold the profiles of Firefox, with no
++ * repeat. Round one reads the configuration home of the user and the home
++ * directory of the user, and a root that is absent is no error.
++ */
++QStringList roots();
++
++/**
++ * Returns the canonical directory of every profile that the profiles.ini file
++ * of a root names, with no repeat. A root, an ini file or a section that names
++ * no path gives no directory and no error.
++ *
++ * \param notices  true prints one line for each profile directory that an ini
++ *     file names and the disk does not hold. The watch mode passes false,
++ *     because the write pass of that mode prints the same lines.
++ * \return the directories, in the order of the roots and of the sections.
++ */
++QStringList profiles(bool notices);
++
++}
++}
++
++#endif
+diff --git a/firefox/writer/sheet.cpp b/firefox/writer/sheet.cpp
+new file mode 100644
+index 00000000..df4a06c6
+--- /dev/null
++++ b/firefox/writer/sheet.cpp
+@@ -0,0 +1,109 @@
++/*****************************************************************************
++ *   Copyright 2026 QtCurve authors                                          *
++ *                                                                           *
++ *   This program is free software; you can redistribute it and/or modify    *
++ *   it under the terms of the GNU Lesser General Public License as          *
++ *   published by the Free Software Foundation; either version 2.1 of the    *
++ *   License, or (at your option) version 3, or any later version accepted   *
++ *   by the membership of KDE e.V. (or its successor approved by the         *
++ *   membership of KDE e.V.), which shall act as a proxy defined in          *
++ *   Section 6 of version 3 of the license.                                  *
++ *                                                                           *
++ *   This program is distributed in the hope that it will be useful,         *
++ *   but WITHOUT ANY WARRANTY; without even the implied warranty of          *
++ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU       *
++ *   Lesser General Public License for more details.                         *
++ *                                                                           *
++ *   You should have received a copy of the GNU Lesser General Public        *
++ *   License along with this library. If not,                                *
++ *   see <http://www.gnu.org/licenses/>.                                     *
++ *****************************************************************************/
++
++#include "sheet.h"
++
++#include "ffmap.h"
++
++#include <emit.h>
++#include <userfile.h>
++
++namespace QtCurve {
++namespace Firefox {
++
++using Gtk::Palette;
++
++namespace {
++
++/**
++ * Returns the background image of the tool box under the appearance app over
++ * the colour col. An appearance with no gradient gives an empty string. The
++ * stops come from the titlebar colour, so the sheet and the static manifest
++ * paint one ladder.
++ */
++QString
++toolboxImage(const Options &opts, EAppearance app, const QColor &col)
++{
++    const QString image = Gtk::gradientImage(opts, app, Gtk::fixedTone(col));
++    if (image == QLatin1String("none")) {
++        return QString();
++    }
++    return image;
++}
++
++/**
++ * Returns the background image rules of the tool box. Decoration::paint() of
++ * the QtCurve decoration fills the title bar from the appearance and the
++ * colour of the state of the window. An inactive window therefore takes a
++ * rule of its own. That rule holds the image at none while the inactive
++ * appearance carries no gradient, because the active image reaches every
++ * state without it.
++ */
++QString
++toolboxImages(const Options &opts, const Palette &pal)
++{
++    const QString live = toolboxImage(opts, opts.titlebarAppearance,
++                                      pal.titlebar);
++    const QString idle = toolboxImage(opts, opts.inactiveTitlebarAppearance,
++                                      pal.titlebarInactive);
++    QString out;
++    if (!live.isEmpty()) {
++        out += QStringLiteral("\n#navigator-toolbox {\n"
++                              "  background-image: %1 !important;\n"
++                              "}\n").arg(live);
++    }
++    if (!idle.isEmpty()) {
++        out += QStringLiteral("\n#navigator-toolbox:-moz-window-inactive {\n"
++                              "  background-image: %1 !important;\n"
++                              "}\n").arg(idle);
++    } else if (!live.isEmpty()) {
++        out += QStringLiteral("\n#navigator-toolbox:-moz-window-inactive {\n"
++                              "  background-image: none !important;\n"
++                              "}\n");
++    }
++    return out;
++}
++
++}
++
++QString
++buildSheet(const Options &opts, const Palette &pal)
++{
++    QString out = QStringLiteral("/* %1 writes this file, and it takes every"
++                                 " byte of it. */\n")
++        .arg(QLatin1String(Gtk::writerName));
++    out += QStringLiteral(":root {\n");
++    int count = 0;
++    const FfRow *const rows = ffRows(count);
++    for (int row = 0;row < count;++row) {
++        const QColor col = ffColour(opts, pal, rows[row].role);
++        for (int i = 0;i < rows[row].varCount;++i) {
++            out += QStringLiteral("  %1: %2 !important;\n")
++                .arg(QLatin1String(rows[row].vars[i]), Gtk::hex(col));
++        }
++    }
++    out += QStringLiteral("}\n");
++    out += toolboxImages(opts, pal);
++    return out;
++}
++
++}
++}
+diff --git a/firefox/writer/sheet.h b/firefox/writer/sheet.h
+new file mode 100644
+index 00000000..3f387000
+--- /dev/null
++++ b/firefox/writer/sheet.h
+@@ -0,0 +1,48 @@
++/*****************************************************************************
++ *   Copyright 2026 QtCurve authors                                          *
++ *                                                                           *
++ *   This program is free software; you can redistribute it and/or modify    *
++ *   it under the terms of the GNU Lesser General Public License as          *
++ *   published by the Free Software Foundation; either version 2.1 of the    *
++ *   License, or (at your option) version 3, or any later version accepted   *
++ *   by the membership of KDE e.V. (or its successor approved by the         *
++ *   membership of KDE e.V.), which shall act as a proxy defined in          *
++ *   Section 6 of version 3 of the license.                                  *
++ *                                                                           *
++ *   This program is distributed in the hope that it will be useful,         *
++ *   but WITHOUT ANY WARRANTY; without even the implied warranty of          *
++ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU       *
++ *   Lesser General Public License for more details.                         *
++ *                                                                           *
++ *   You should have received a copy of the GNU Lesser General Public        *
++ *   License along with this library. If not,                                *
++ *   see <http://www.gnu.org/licenses/>.                                     *
++ *****************************************************************************/
++
++#ifndef QTC_FIREFOX_SHEET_H
++#define QTC_FIREFOX_SHEET_H
++
++#include <palette.h>
++
++#include <QString>
++
++namespace QtCurve {
++namespace Firefox {
++
++/**
++ * Returns the text of the sheet that the writer owns in a profile. The sheet
++ * holds one header line, then one :root block. That block declares every
++ * custom property of the map. One rule of the tool box follows it for each
++ * state of the window, while the titlebar appearance of that state carries a
++ * gradient.
++ *
++ * \param opts  the QtCurve settings, which give the appearance and the ladders.
++ * \param pal   the colours of the live scheme or of a colour file.
++ * \return the whole sheet, which ends with one newline.
++ */
++QString buildSheet(const Options &opts, const Gtk::Palette &pal);
++
++}
++}
++
++#endif
+diff --git a/gtk4/CMakeLists.txt b/gtk4/CMakeLists.txt
+index af714f35..6d5b1982 100644
+--- a/gtk4/CMakeLists.txt
++++ b/gtk4/CMakeLists.txt
+@@ -28,8 +28,10 @@ set(qtcurve_gtk_writer_SRCS
+   "${CMAKE_CURRENT_SOURCE_DIR}/../qt6/common/config_file.cpp")
+ 
+ add_executable(qtcurve-gtk-writer ${qtcurve_gtk_writer_SRCS})
++# The theme name gate and the colour watch of this writer read the session
++# bus, so the shared watch file takes its bus arm.
+ target_compile_definitions(qtcurve-gtk-writer PRIVATE
+-  QTC_UTILS_QT6 QTC_UTILS_QT
++  QTC_UTILS_QT6 QTC_UTILS_QT QTC_WRITER_SESSION_BUS
+   "QTC_GTK_THEME_DIR=\"${QTC_GTK_THEME_DIR}\"")
+ # qt6/common/common.h includes QApplication, so the writer needs the QtWidgets
+ # headers. It calls no function of the library and it links none.
+diff --git a/gtk4/check/assert-lock.sh b/gtk4/check/assert-lock.sh
+index 5f4fc43b..2477e701 100644
+--- a/gtk4/check/assert-lock.sh
++++ b/gtk4/check/assert-lock.sh
+@@ -6,16 +6,17 @@
+ # copyAssets() stops a pass of a build host before the sheet lands. HOME,
+ # XDG_CONFIG_HOME and QTCURVE_CONFIG_DIR point into WORKDIR, because the writer
+ # rewrites the files of the caller. Every wait is a counted poll of steps of
+-# one second, so no arm can stop the build.
++# one second, so no arm can stop the build. LOCK is the file name of the
++# daemon lock, and the name of the GTK writer is the default.
+ set -eu
+-usage='usage: assert-lock.sh WRITER WORKDIR'
++usage='usage: assert-lock.sh WRITER WORKDIR [LOCK]'
+ writer=${1:?$usage}
+ work=${2:?$usage}
+ 
+ conf=$work/config
+ qtc=$work/qtcurve
+ hold=$work/hold
+-lock=$conf/qtcurve-gtk-writer.lock
++lock=$conf/${3:-qtcurve-gtk-writer.lock}
+ holdvar=
+ pids=
+ last=
+diff --git a/gtk4/check/assert-reexec.sh b/gtk4/check/assert-reexec.sh
+index 2f9ad07d..f7ee6544 100644
+--- a/gtk4/check/assert-reexec.sh
++++ b/gtk4/check/assert-reexec.sh
+@@ -7,16 +7,17 @@
+ # with a new link of /proc/PID/exe is the proof of the exec. HOME,
+ # XDG_CONFIG_HOME and QTCURVE_CONFIG_DIR point into WORKDIR, because the writer
+ # rewrites the files of the caller. Every wait is a counted poll of steps of
+-# one second, so no arm can stop the build.
++# one second, so no arm can stop the build. LOCK is the file name of the
++# daemon lock, and the name of the GTK writer is the default.
+ set -eu
+-usage='usage: assert-reexec.sh WRITER WORKDIR'
++usage='usage: assert-reexec.sh WRITER WORKDIR [LOCK]'
+ writer=${1:?$usage}
+ work=${2:?$usage}
+ 
+ conf=$work/config
+ qtc=$work/qtcurve
+ bin=$work/bin/writer
+-lock=$conf/qtcurve-gtk-writer.lock
++lock=$conf/${3:-qtcurve-gtk-writer.lock}
+ log=$work/watch.log
+ pids=
+ last=
+diff --git a/gtk4/writer/emit.cpp b/gtk4/writer/emit.cpp
+index 255fe2b9..2184abae 100644
+--- a/gtk4/writer/emit.cpp
++++ b/gtk4/writer/emit.cpp
+@@ -21,6 +21,8 @@
+ 
+ #include "emit.h"
+ 
++#include "userfile.h"
++
+ #include <qtcurve-utils/color.h>
+ 
+ #include <QTextStream>
+@@ -103,7 +105,7 @@ static int emit_error = 0;
+ void
+ failUnknown(const char *enumName, int value)
+ {
+-    fprintf(stderr, "qtcurve-gtk-writer: %s value %d has no case\n",
++    fprintf(stderr, "%s: %s value %d has no case\n", writerName,
+             enumName, value);
+     emit_error = 5;
+ }
+@@ -111,7 +113,7 @@ failUnknown(const char *enumName, int value)
+ void
+ failDuplicate(const QString &name, const QString &held, const QString &value)
+ {
+-    fprintf(stderr, "qtcurve-gtk-writer: name %s holds '%s' and gets '%s'\n",
++    fprintf(stderr, "%s: name %s holds '%s' and gets '%s'\n", writerName,
+             name.toLocal8Bit().constData(), held.toLocal8Bit().constData(),
+             value.toLocal8Bit().constData());
+     emit_error = 5;
+@@ -120,8 +122,9 @@ failDuplicate(const QString &name, const QString &held, const QString &value)
+ void
+ failPinned(const QString &selector, const QString &held, const QString &value)
+ {
+-    fprintf(stderr, "qtcurve-gtk-writer: a pin gives '%s' the colour %s, and"
+-            " the rule wants %s\n", selector.toLocal8Bit().constData(),
++    fprintf(stderr, "%s: a pin gives '%s' the colour %s, and"
++            " the rule wants %s\n", writerName,
++            selector.toLocal8Bit().constData(),
+             held.toLocal8Bit().constData(), value.toLocal8Bit().constData());
+     emit_error = 5;
+ }
+@@ -129,9 +132,9 @@ failPinned(const QString &selector, const QString &held, const QString &value)
+ void
+ failPair(const QString &selector, const QString &ground, const QString &ink)
+ {
+-    fprintf(stderr, "qtcurve-gtk-writer: rule '%s' paints the ink %s over the"
+-            " ground %s\n", selector.toLocal8Bit().constData(),
+-            ink.toLocal8Bit().constData(),
++    fprintf(stderr, "%s: rule '%s' paints the ink %s over the"
++            " ground %s\n", writerName,
++            selector.toLocal8Bit().constData(), ink.toLocal8Bit().constData(),
+             ground.toLocal8Bit().constData());
+     emit_error = 5;
+ }
+@@ -139,7 +142,7 @@ failPair(const QString &selector, const QString &ground, const QString &ink)
+ void
+ failTest()
+ {
+-    fprintf(stderr, "qtcurve-gtk-writer: QTC_GTK_TEST_FAULT sets a fault\n");
++    fprintf(stderr, "%s: QTC_GTK_TEST_FAULT sets a fault\n", writerName);
+     emit_error = 5;
+ }
+ 
+diff --git a/gtk4/writer/main.cpp b/gtk4/writer/main.cpp
+index 4cb9fbfa..da9c4120 100644
+--- a/gtk4/writer/main.cpp
++++ b/gtk4/writer/main.cpp
+@@ -46,8 +46,9 @@ using namespace QtCurve::Gtk;
+ namespace QtCurve {
+ namespace Gtk {
+ 
+-// The lock names and the import line of this binary, which lock.h and
+-// userfile.h declare.
++// The name, the lock names and the import line of this binary, which lock.h
++// and userfile.h declare.
++const char *const writerName = "qtcurve-gtk-writer";
+ const char *const daemonLockName = "qtcurve-gtk-writer.lock";
+ const char *const writeLockName = "qtcurve-gtk-writer-write.lock";
+ const char *const importStatement = "@import 'qtcurve.css';";
+diff --git a/gtk4/writer/reexec.cpp b/gtk4/writer/reexec.cpp
+index 29a87c92..6ba81964 100644
+--- a/gtk4/writer/reexec.cpp
++++ b/gtk4/writer/reexec.cpp
+@@ -22,6 +22,7 @@
+ #include "reexec.h"
+ 
+ #include "lock.h"
++#include "userfile.h"
+ 
+ #include <QFileInfo>
+ #include <QFileSystemWatcher>
+@@ -137,8 +138,8 @@ Reexec::keepOldImage(const struct stat &failed)
+     m_haveFailedStat = true;
+     ++m_attempts;
+     if (m_attempts == maxAttempts) {
+-        fprintf(stderr, "qtcurve-gtk-writer: the writer keeps this image and"
+-                " stops the binary watch\n");
++        fprintf(stderr, "%s: the writer keeps this image and"
++                " stops the binary watch\n", writerName);
+     }
+ }
+ 
+@@ -169,13 +170,13 @@ Reexec::fire()
+         return;
+     }
+     if (!probe()) {
+-        fprintf(stderr, "qtcurve-gtk-writer: the new image of %s fails the"
+-                " probe, and the writer keeps the old image\n",
++        fprintf(stderr, "%s: the new image of %s fails the"
++                " probe, and the writer keeps the old image\n", writerName,
+                 path.constData());
+         keepOldImage(now);
+         return;
+     }
+-    printf("qtcurve-gtk-writer: the writer starts the new image of %s\n",
++    printf("%s: the writer starts the new image of %s\n", writerName,
+            path.constData());
+     fflush(stdout);
+     prepareLockFdForExec(m_lockFd);
+@@ -186,8 +187,8 @@ Reexec::fire()
+     args.push_back(nullptr);
+     ::execv(path.constData(), args.data());
+     restoreLockFdAfterExecFailure(m_lockFd);
+-    fprintf(stderr, "qtcurve-gtk-writer: the exec of %s fails, and the writer"
+-            " keeps the old image\n", path.constData());
++    fprintf(stderr, "%s: the exec of %s fails, and the writer"
++            " keeps the old image\n", writerName, path.constData());
+     keepOldImage(now);
+ }
+ 
+diff --git a/gtk4/writer/userfile.cpp b/gtk4/writer/userfile.cpp
+index 185c10fc..e593852c 100644
+--- a/gtk4/writer/userfile.cpp
++++ b/gtk4/writer/userfile.cpp
+@@ -71,12 +71,12 @@ writeOwned(const QString &path, const QByteArray &content)
+ {
+     const QString dir = QFileInfo(path).absolutePath();
+     if (!QDir().mkpath(dir)) {
+-        fprintf(stderr, "qtcurve-gtk-writer: cannot make %s\n",
++        fprintf(stderr, "%s: cannot make %s\n", writerName,
+                 dir.toLocal8Bit().constData());
+         return 1;
+     }
+     if (!saveWhole(path, content)) {
+-        fprintf(stderr, "qtcurve-gtk-writer: cannot write %s\n",
++        fprintf(stderr, "%s: cannot write %s\n", writerName,
+                 path.toLocal8Bit().constData());
+         return 1;
+     }
+@@ -87,7 +87,7 @@ int
+ copyAssets(const QString &srcDir, const QString &dstDir)
+ {
+     if (!QDir().mkpath(dstDir)) {
+-        fprintf(stderr, "qtcurve-gtk-writer: cannot make %s\n",
++        fprintf(stderr, "%s: cannot make %s\n", writerName,
+                 dstDir.toLocal8Bit().constData());
+         return 1;
+     }
+@@ -95,7 +95,7 @@ copyAssets(const QString &srcDir, const QString &dstDir)
+     const QStringList files =
+         src.entryList(QStringList() << QStringLiteral("*.svg"), QDir::Files);
+     if (files.isEmpty()) {
+-        fprintf(stderr, "qtcurve-gtk-writer: no SVG file in %s\n",
++        fprintf(stderr, "%s: no SVG file in %s\n", writerName,
+                 srcDir.toLocal8Bit().constData());
+         return 1;
+     }
+@@ -103,7 +103,7 @@ copyAssets(const QString &srcDir, const QString &dstDir)
+         const QString target = dstDir + QLatin1Char('/') + name;
+         QFile::remove(target);
+         if (!QFile::copy(src.filePath(name), target)) {
+-            fprintf(stderr, "qtcurve-gtk-writer: cannot copy %s\n",
++            fprintf(stderr, "%s: cannot copy %s\n", writerName,
+                     target.toLocal8Bit().constData());
+             return 1;
+         }
+@@ -163,7 +163,7 @@ mergeImport(const QString &path, Placement placement)
+     }
+     QByteArray contents;
+     if (!readWhole(path, contents)) {
+-        fprintf(stderr, "qtcurve-gtk-writer: cannot merge %s\n",
++        fprintf(stderr, "%s: cannot merge %s\n", writerName,
+                 path.toLocal8Bit().constData());
+         return 6;
+     }
+@@ -182,7 +182,7 @@ mergeImport(const QString &path, Placement placement)
+         contents.append('\n');
+     }
+     if (!saveWhole(path, contents)) {
+-        fprintf(stderr, "qtcurve-gtk-writer: cannot merge %s\n",
++        fprintf(stderr, "%s: cannot merge %s\n", writerName,
+                 path.toLocal8Bit().constData());
+         return 6;
+     }
+@@ -197,7 +197,7 @@ removeImport(const QString &path, bool *changed)
+     }
+     QByteArray raw;
+     if (!readWhole(path, raw)) {
+-        fprintf(stderr, "qtcurve-gtk-writer: cannot remove the import of %s\n",
++        fprintf(stderr, "%s: cannot remove the import of %s\n", writerName,
+                 path.toLocal8Bit().constData());
+         return 6;
+     }
+@@ -228,7 +228,7 @@ removeImport(const QString &path, bool *changed)
+         }
+     }
+     if (!saveWhole(path, out)) {
+-        fprintf(stderr, "qtcurve-gtk-writer: cannot remove the import of %s\n",
++        fprintf(stderr, "%s: cannot remove the import of %s\n", writerName,
+                 path.toLocal8Bit().constData());
+         return 6;
+     }
+diff --git a/gtk4/writer/userfile.h b/gtk4/writer/userfile.h
+index 7e01c03e..506b7683 100644
+--- a/gtk4/writer/userfile.h
++++ b/gtk4/writer/userfile.h
+@@ -28,6 +28,12 @@
+ namespace QtCurve {
+ namespace Gtk {
+ 
++/**
++ * The name of the binary, which every line that the writer prints carries.
++ * Each binary that links this file defines its own name.
++ */
++extern const char *const writerName;
++
+ /**
+  * The one line of the shared sheet of the user that QtCurve owns. Each binary
+  * that links this file defines its own line.
+diff --git a/gtk4/writer/watch.cpp b/gtk4/writer/watch.cpp
+index 36d08a91..ed5a5331 100644
+--- a/gtk4/writer/watch.cpp
++++ b/gtk4/writer/watch.cpp
+@@ -21,15 +21,20 @@
+ 
+ #include "watch.h"
+ 
+-#include "busprobe.h"
+ #include "lock.h"
++#include "userfile.h"
++
++#ifdef QTC_WRITER_SESSION_BUS
++#include "busprobe.h"
++
++#include <QDBusConnection>
++#endif
+ 
+ #include <KConfigGroup>
+ #include <KConfigWatcher>
+ #include <KSharedConfig>
+ 
+ #include <QCoreApplication>
+-#include <QDBusConnection>
+ #include <QFileInfo>
+ #include <QFileSystemWatcher>
+ 
+@@ -102,6 +107,15 @@ Watcher::kick()
+     schedule();
+ }
+ 
++#ifndef QTC_WRITER_SESSION_BUS
++
++void
++Watcher::initColourWatch()
++{
++}
++
++#else
++
+ void
+ Watcher::initColourWatch()
+ {
+@@ -137,6 +151,8 @@ Watcher::initColourWatch()
+     m_colourReady = true;
+ }
+ 
++#endif
++
+ void
+ Watcher::busDown()
+ {
+@@ -147,7 +163,7 @@ Watcher::busDown()
+ static void
+ printFailure(int code)
+ {
+-    fprintf(stderr, "qtcurve-gtk-writer: the write failed with the code %d\n",
++    fprintf(stderr, "%s: the write failed with the code %d\n", writerName,
+             code);
+ }
+ 
+diff --git a/gtk4/writer/watch.h b/gtk4/writer/watch.h
+index f839a40c..23e08df2 100644
+--- a/gtk4/writer/watch.h
++++ b/gtk4/writer/watch.h
+@@ -36,11 +36,12 @@ namespace QtCurve {
+ namespace Gtk {
+ 
+ /**
+- * The resident half of the writer. It holds one QFileSystemWatcher over the
+- * five watched paths and their holding directories from the start. It holds
+- * one KConfigWatcher over kdeglobals and one handler of the lost session bus
+- * only after a bounded probe finds that bus. A stalled bus therefore does not
+- * stop the start of the daemon.
++ * The resident half of the writer. From the start it holds one
++ * QFileSystemWatcher over the watched paths and their holding directories.
++ * A binary that defines QTC_WRITER_SESSION_BUS also holds one KConfigWatcher
++ * over kdeglobals and one handler of the lost session bus. A bounded probe
++ * finds that bus first, so a stalled bus does not stop the start of the
++ * daemon.
+  */
+ class Watcher : public QObject {
+     Q_OBJECT
+@@ -69,10 +70,11 @@ private Q_SLOTS:
+     /**
+      * Builds the colour watch and reads the signal of the lost session bus.
+      * A bounded probe reads that bus first, and a bounded open then gives the
+-     * default connection of the process. A probe or an open that gives no bus
+-     * starts a retry of 30 s, and the daemon runs the file watch alone. The
+-     * colour watch and the signal take that connection, so neither one waits
+-     * for a bus with no deadline.
++     * default connection that both of them take. A probe or an open that
++     * gives no bus starts a retry of 30 s, and the daemon runs the file watch
++     * alone. The function does nothing in a binary that does not define
++     * QTC_WRITER_SESSION_BUS, and such a binary takes kdeglobals as a watched
++     * path.
+      */
+     void initColourWatch();
+     /**
+diff --git a/qt6/common/common.h b/qt6/common/common.h
+index b6c04125..58d03957 100644
+--- a/qt6/common/common.h
++++ b/qt6/common/common.h
+@@ -750,6 +750,7 @@ typedef struct {
+                      gtkComboMenus,
+                      mapKdeIcons,
+                      gtkButtonOrder,
++                     firefoxTheme,
+                      fadeLines,
+                      reorderGtkButtons,
+                      borderMenuitems,
+diff --git a/qt6/common/config_file.cpp b/qt6/common/config_file.cpp
+index f29a5eff..5ec963a9 100644
+--- a/qt6/common/config_file.cpp
++++ b/qt6/common/config_file.cpp
+@@ -1327,6 +1327,7 @@ bool qtcReadConfig(const QString &file, Options *opts, Options *defOpts, bool ch
+             CFG_READ_BOOL(mapKdeIcons);
+ // #endif
+             CFG_READ_BOOL(gtkButtonOrder);
++            CFG_READ_BOOL(firefoxTheme);
+ // #if defined CONFIG_DIALOG
+             CFG_READ_BOOL(reorderGtkButtons);
+ // #endif
+@@ -1611,6 +1612,7 @@ void qtcDefaultSettings(Options *opts)
+     opts->bgndOpacity=opts->dlgOpacity=opts->menuBgndOpacity=100;
+     opts->shadowSize = qtcX11ShadowSize();
+     opts->gtkComboMenus=false;
++    opts->firefoxTheme=false;
+     opts->customMenubarsColor.setRgb(0, 0, 0);
+     opts->customSlidersColor.setRgb(0, 0, 0);
+     opts->customMenuNormTextColor.setRgb(0, 0, 0);
+@@ -2368,6 +2370,7 @@ bool qtcWriteConfig(KConfig *cfg, const Options &opts, const Options &def, bool
+         CFG_WRITE_ENTRY(gtkComboMenus);
+         CFG_WRITE_ENTRY(doubleGtkComboArrow);
+         CFG_WRITE_ENTRY(gtkButtonOrder);
++        CFG_WRITE_ENTRY(firefoxTheme);
+         CFG_WRITE_ENTRY(reorderGtkButtons);
+         CFG_WRITE_ENTRY(mapKdeIcons);
+         CFG_WRITE_ENTRY(shading);
+diff --git a/qt6/config/qtcurveconfig.cpp b/qt6/config/qtcurveconfig.cpp
+index 9d5f647d..c274cef4 100644
+--- a/qt6/config/qtcurveconfig.cpp
++++ b/qt6/config/qtcurveconfig.cpp
+@@ -1036,7 +1036,8 @@ QtCurveConfig::QtCurveConfig(QWidget *parent)
+                 dwtBtnAsPerTitleBar, dwtColAsPerTitleBar,
+                 dwtIconColAsPerTitleBar, dwtFontAsPerTitleBar,
+                 dwtTextAsPerTitleBar, dwtEffectAsPerTitleBar, dwtRoundTopOnly,
+-                smallRadio, gtkComboMenus, mapKdeIcons, colorMenubarMouseOver,
++                smallRadio, gtkComboMenus, mapKdeIcons, firefoxTheme,
++                colorMenubarMouseOver,
+                 useHighlightForMenu, gbLabel_bold, gbLabel_centred, fadeLines,
+                 menuIcons, onlyTicksInMenu, buttonStyleMenuSections, stdBtnSizes, forceAlternateLvCols, boldProgress,
+                 coloredTbarMo, borderSelection, squareEntry, squareLvSelection,
+@@ -1315,6 +1316,14 @@ void QtCurveConfig::save()
+         "qtcurve-gtk-writer", "--watch", nullptr
+     };
+     qtcSpawn(gtkWriter[0], gtkWriter, nullptr, nullptr);
++
++    // The same contract holds for the Firefox writer: qtcSpawn() reports no
++    // error, and the watch mode of a process that already runs writes the
++    // saved settings, because it watches stylerc.
++    static const char *const firefoxWriter[] = {
++        "qtcurve-firefox-writer", "--watch", nullptr
++    };
++    qtcSpawn(firefoxWriter[0], firefoxWriter, nullptr, nullptr);
+ }
+ 
+ void QtCurveConfig::defaults()
+@@ -3109,6 +3118,7 @@ void QtCurveConfig::setOptions(Options &opts)
+     opts.gtkButtonOrder=gtkButtonOrder->isChecked();
+     opts.reorderGtkButtons=reorderGtkButtons->isChecked();
+     opts.mapKdeIcons=mapKdeIcons->isChecked();
++    opts.firefoxTheme=firefoxTheme->isChecked();
+     opts.passwordChar=toInt(passwordChar->text());
+     opts.groupBox=(EFrame)groupBox->currentIndex();
+     opts.gbFactor=gbFactor->value();
+@@ -3430,6 +3440,7 @@ void QtCurveConfig::setWidgetOptions(const Options &opts)
+     gtkButtonOrder->setChecked(opts.gtkButtonOrder);
+     reorderGtkButtons->setChecked(opts.reorderGtkButtons);
+     mapKdeIcons->setChecked(opts.mapKdeIcons);
++    firefoxTheme->setChecked(opts.firefoxTheme);
+     setPasswordChar(opts.passwordChar);
+     groupBox->setCurrentIndex(opts.groupBox);
+     gbFactor->setValue(opts.gbFactor);
+@@ -3803,6 +3814,7 @@ bool QtCurveConfig::settingsChanged(const Options &opts)
+          gtkButtonOrder->isChecked()!=opts.gtkButtonOrder ||
+          reorderGtkButtons->isChecked()!=opts.reorderGtkButtons ||
+          mapKdeIcons->isChecked()!=opts.mapKdeIcons ||
++         firefoxTheme->isChecked()!=opts.firefoxTheme ||
+          groupBox->currentIndex()!=opts.groupBox ||
+          ((FRAME_SHADED==opts.groupBox || FRAME_FADED==opts.groupBox) && gbFactor->value()!=opts.gbFactor) ||
+ 
+diff --git a/qt6/config/qtcurveconfigbase.ui b/qt6/config/qtcurveconfigbase.ui
+index 54e2a96d..d66fbf0e 100644
+--- a/qt6/config/qtcurveconfigbase.ui
++++ b/qt6/config/qtcurveconfigbase.ui
+@@ -3837,6 +3837,23 @@
+          </property>
+         </widget>
+        </item>
++       <item row="7" column="0">
++        <widget class="QLabel" name="label_firefox">
++         <property name="text">
++          <string>Firefox:</string>
++         </property>
++        </widget>
++       </item>
++       <item row="7" column="1">
++        <widget class="QCheckBox" name="firefoxTheme">
++         <property name="toolTip">
++          <string>&lt;p&gt;If enabled, the QtCurve colours reach the chrome of every Firefox profile of this user.&lt;/p&gt;&lt;p&gt;Firefox reads that sheet only after toolkit.legacyUserProfileCustomizations.stylesheets is true in about:config, and it takes a change after a restart.&lt;/p&gt;</string>
++         </property>
++         <property name="text">
++          <string>Apply the settings to Firefox</string>
++         </property>
++        </widget>
++       </item>
+       </layout>
+      </widget>
+      <widget class="QWidget" name="page_26">
+@@ -4768,6 +4785,7 @@
+   <tabstop>reorderGtkButtons</tabstop>
+   <tabstop>stdBtnSizes</tabstop>
+   <tabstop>mapKdeIcons</tabstop>
++  <tabstop>firefoxTheme</tabstop>
+   <tabstop>passwordChar</tabstop>
+   <tabstop>expanderHighlight</tabstop>
+   <tabstop>noBgndGradientApps</tabstop>

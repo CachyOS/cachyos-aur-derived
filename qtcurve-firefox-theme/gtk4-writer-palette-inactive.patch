@@ -1,0 +1,45 @@
+Read the inactive titlebar colours into the palette
+
+The palette carried the active titlebar pair of the window manager
+group alone. A sheet that paints an inactive window frame needs the
+other pair of that group. A fallback to the window colours gives a
+value to a scheme that names neither key.
+
+The read mirrors the active pair, key for key. No GTK sheet reads the
+new members, so the four shipped sheets keep their bytes.
+
+The change sits on the branch work/firefox-theme of the local tree, as
+commit 2 of 8. The branch holds those eight commits above the head of
+work/gtk4-theme, which merge request !15 on system/qtcurve holds. The fork
+wyn/qtcurve takes work/firefox-theme, and a new merge request on
+system/qtcurve takes that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/gtk4/writer/palette.cpp b/gtk4/writer/palette.cpp
+index 22f14cb0..1ad85873 100644
+--- a/gtk4/writer/palette.cpp
++++ b/gtk4/writer/palette.cpp
+@@ -350,6 +350,9 @@ readPalette(const QString &file, const Options &opts, Palette &pal,
+     const KConfigGroup wm(cfg, QStringLiteral("WM"));
+     pal.titlebar = wm.readEntry("activeBackground", pal.window);
+     pal.titlebarText = wm.readEntry("activeForeground", pal.windowText);
++    pal.titlebarInactive = wm.readEntry("inactiveBackground", pal.window);
++    pal.titlebarInactiveText = wm.readEntry("inactiveForeground",
++                                            pal.windowText);
+ 
+     shadeLadder(opts, pal.button, pal.btn);
+     shadeLadder(opts, pal.base, pal.bgnd);
+diff --git a/gtk4/writer/palette.h b/gtk4/writer/palette.h
+index d7d5a85d..eb618bb0 100644
+--- a/gtk4/writer/palette.h
++++ b/gtk4/writer/palette.h
+@@ -54,6 +54,8 @@ struct Palette {
+     QColor tooltip, tooltipText;
+     QColor link, negative, neutral, positive;
+     QColor titlebar, titlebarText;
++    /** The inactive titlebar pair, which no GTK sheet reads. */
++    QColor titlebarInactive, titlebarInactiveText;
+     Shades btn, bgnd, win, hl, menu;
+     bool dark = false;
+ };

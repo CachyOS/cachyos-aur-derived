@@ -1,0 +1,32 @@
+Keep the menu opaque when the gradient carries alpha
+
+The popup menu paints its background in the replacing composition mode.
+The path first fills the rectangle of the menu with an opaque brush of
+the palette, because a menu background gradient can carry alpha. The next
+call covers the same rectangle in the same mode, so the fill reaches no
+pixel of the render. A gradient with alpha therefore gives a translucent
+menu, although the menu opacity option holds one hundred.
+
+The path now leaves the replacing mode after the fill. The background
+blends over the fill, so the menu keeps the opacity that the option
+states. A menu opacity below one hundred takes no fill and keeps the
+replacing mode, so a translucent menu does not move.
+
+The change sits on the branch work/style-paint of the local tree, as commit 6 of 21.
+A new merge request on system/qtcurve takes that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/qt6/style/qtcurve_primitive.cpp b/qt6/style/qtcurve_primitive.cpp
+index d45c001d..dc48ea43 100644
+--- a/qt6/style/qtcurve_primitive.cpp
++++ b/qt6/style/qtcurve_primitive.cpp
+@@ -1295,6 +1295,8 @@ Style::drawPrimitivePanelMenu(PrimitiveElement, const QStyleOption *option,
+     // colour - this makes it consistent with Gtk.
+     if (opts.menuBgndOpacity == 100) {
+         painter->fillRect(r, option->palette.brush(QPalette::Window));
++        // The background blends over that fill, which keeps the menu opaque.
++        painter->setCompositionMode(QPainter::CompositionMode_SourceOver);
+     }
+     drawBackground(painter, bgCols[ORIGINAL_SHADE], r,
+                    opts.menuBgndOpacity, BGND_MENU, opts.menuBgndAppearance);

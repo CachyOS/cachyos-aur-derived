@@ -1,0 +1,1056 @@
+Draw the caption buttons of the browser from QtCurve
+
+The browser paints the caption buttons of its own frame. It takes each
+glyph from the icon theme of GTK, and it colours the hover ground from
+the title bar pair. That caption matches no other window of the desktop.
+
+The sheet now holds a caption block. The block takes the appearance of
+each button away, and it gives the icon of the button one inline image.
+The glyphs are the family of the window decoration of QtCurve. Minimize
+takes the bar, maximize takes the window symbol, restore takes that
+symbol with a second window behind it, and close takes the cross. A
+window without focus takes a second set of images, from the inactive
+foreground that Button::glyphColor reads.
+
+firefox/writer/caption.cpp takes every measure from the decoration.
+Button::paint gives the square 11 pixels at the 24 pixel button of the
+browser. Button::drawGlyph gives the stroke 2 pixels, the frame 1 pixel,
+the bar 2 pixels and the restore step 2.75 pixels. The block carries the
+2 pixel gap and the 4 pixel edge pad of the decoration. The button size
+stays the 24 pixels of the browser, with its hit target.
+
+The hover moves the colour of the symbol and nothing else. No rule of
+the hover carries a ground, a ring or a pill. The rule at rest takes the
+ground away in every state. The line art fades at rest under the hover
+symbol setting, and the alpha byte of the image carries that fade. The
+close button takes the close colour of the decoration under the pointer.
+
+assert-ff-caption.sh decodes each image of a sheet of the build. It
+reads the shape, the measures and the colour of every image, and the
+property lines of every hover rule. Ten doctored copies must fail it.
+
+The change sits on the branch work/firefox-theme of the local tree, as
+commit 6 of 8. The branch holds those eight commits above the head of
+work/gtk4-theme, which merge request !15 on system/qtcurve holds. The fork
+wyn/qtcurve takes work/firefox-theme, and a new merge request on
+system/qtcurve takes that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/firefox/CMakeLists.txt b/firefox/CMakeLists.txt
+index 655baadd..06974be9 100644
+--- a/firefox/CMakeLists.txt
++++ b/firefox/CMakeLists.txt
+@@ -34,6 +34,7 @@ set(qtc_schemes "${CMAKE_CURRENT_SOURCE_DIR}/../gtk4/schemes")
+ 
+ set(qtcurve_firefox_writer_SRCS
+   writer/main.cpp
++  writer/caption.cpp
+   writer/ffmap.cpp
+   writer/manifest.cpp
+   writer/profiles.cpp
+@@ -149,7 +150,7 @@ add_custom_target(qtcurve-firefox-theme ALL DEPENDS ${qtc_ff_depends}
+ # The floor of assert-ff-varnames.sh. A check that reads an empty sheet finds
+ # no fault, so the run states the count that it must read. check/mkfloors.sh
+ # prints this line from one build, and no floor comes from a hand count.
+-set(qtc_ff_names 26)
++set(qtc_ff_names 29)
+ 
+ # The two sheets of the shipped schemes, which the checks below read. A run of
+ # a user writes the same text into a profile.
+@@ -163,6 +164,8 @@ add_custom_command(TARGET qtcurve-firefox-theme POST_BUILD
+           "${qtc_ff_work}/light.css" "${qtc_ff_check}/ff-varnames.txt"
+   COMMAND sh "${qtc_ff_check}/assert-ff-varnames.sh" -n ${qtc_ff_names}
+           "${qtc_ff_work}/dark.css" "${qtc_ff_check}/ff-varnames.txt"
++  COMMAND sh "${qtc_ff_check}/assert-ff-caption.sh" "${qtc_ff_work}/light.css"
++  COMMAND sh "${qtc_ff_check}/assert-ff-caption.sh" "${qtc_ff_work}/dark.css"
+   VERBATIM)
+ 
+ # The floor of the rows of the map, which assert-ff-agree.sh reads. A map of
+diff --git a/firefox/check/assert-ff-caption.sh b/firefox/check/assert-ff-caption.sh
+new file mode 100644
+index 00000000..2becfd8b
+--- /dev/null
++++ b/firefox/check/assert-ff-caption.sh
+@@ -0,0 +1,420 @@
++#!/bin/sh
++# assert-ff-caption.sh SHEET: the caption block of SHEET must hold one inline
++# image for each caption button. It must hold one more image for each state
++# that moves the colour of the line art. A window that holds no focus is one
++# such state. Each image must decode to one well formed SVG. It must carry the
++# shape of the decoration family, the measures of the decoration and the
++# colour of the sheet. The block must carry the button spacing of the
++# decoration, and no hover rule may carry a ground. The run then doctors ten
++# copies of SHEET, and it fails if the check passes a copy.
++set -eu
++usage='usage: assert-ff-caption.sh SHEET'
++sheet=${1:?$usage}
++
++tmp=$(mktemp -d)
++trap 'rm -rf "$tmp"' EXIT
++
++# The colour of the close line art under the pointer. CLOSE_COLOR in
++# qt6/common/common.h holds it, and no colour of the scheme feeds it.
++close_hover='#bf5252'
++
++# The alpha byte of the line art at rest, for a dark foreground and for a
++# light one. HOVER_BUTTON_ALPHA in qt6/common/common.h gives 0.25 and 0.65.
++dark_alpha=40
++light_alpha=a6
++
++# The alpha byte of the line art under the pointer. The decoration lifts the
++# fade there, so every hover image stands at the full opacity.
++lit_alpha=ff
++
++# The measures of the decoration at the 24 pixel button of the browser.
++# Button::paint() of qt6/kdecoration/qtcurvedecorationbutton.cpp gives the
++# square of the line art 11 pixels at an origin of 1 pixel.
++glyph_origin=1
++glyph_far=12
++
++# The widths of the line art, in pixels. Button::drawGlyph() gives these three
++# numbers at a square of 11 pixels.
++stroke_width=2
++bar_height=2
++frame_width=1
++
++# The side of the frame of a window symbol, in pixels. drawWindowSymbol()
++# insets that frame by one half of its width on each side.
++frame_side=10
++
++# The left edge of the window behind the restore symbol, in pixels. The step
++# of Button::drawGlyph() is 2.75 pixels at a square of 11 pixels.
++restore_left=3.75
++
++# The side of the image box of one button, in pixels. The box holds the square
++# of the line art and one half of the stroke width on each side.
++image_side=13
++
++# The head of every image. A sheet without the namespace paints no image at
++# all, because the browser reads the value as XML.
++svg_head='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 '
++svg_head=$svg_head$image_side' '$image_side'">'
++
++# The three properties of the button box. The browser puts the spacing on each
++# side of a button, so 1 pixel gives the 2 pixel gap of the decoration. The end
++# spacing is the 4 pixel edge pad of the decoration. The size is the button of
++# the browser, which holds the hit target of the browser.
++box_rules='  --titlebar-button-size: 24px !important;
++  --titlebar-button-spacing: 1px !important;
++  --titlebar-button-end-spacing: 4px !important;'
++
++# The three properties of the icon at rest. The transparent ground holds in
++# every state, because the selector of this rule carries no state.
++icon_rules='  background-color: transparent !important;
++  background-size: '$image_side'px !important;
++  border-radius: 0 !important;'
++
++# The selectors of the block, the shape of each one, the state of each one and
++# the colour source of each one. The source ink stands for the foreground of
++# a window that holds the focus. The source dim stands for the foreground of
++# a window that holds no focus. Each rule of a window with no focus carries
++# one class more than its pair, so it stands over that pair.
++rows='.titlebar-min bar rest ink
++.titlebar-min:hover bar lit ink
++.titlebar-max square rest ink
++.titlebar-max:hover square lit ink
++.titlebar-restore double rest ink
++.titlebar-restore:hover double lit ink
++.titlebar-close cross rest ink
++.titlebar-close:hover cross lit close
++.titlebar-close:hover:active cross lit ink
++.titlebar-min:-moz-window-inactive bar rest dim
++.titlebar-min:-moz-window-inactive:hover bar lit dim
++.titlebar-max:-moz-window-inactive square rest dim
++.titlebar-max:-moz-window-inactive:hover square lit dim
++.titlebar-restore:-moz-window-inactive double rest dim
++.titlebar-restore:-moz-window-inactive:hover double lit dim
++.titlebar-close:-moz-window-inactive cross rest dim
++.titlebar-close:-moz-window-inactive:hover cross lit close
++.titlebar-close:-moz-window-inactive:hover:active cross lit dim'
++
++# note LINE: prints one fault of the check that runs now.
++note() {
++    echo "assert-ff-caption: $1" >&2
++}
++
++# rule SHEET SELECTOR: prints the body of the icon rule of SELECTOR, with no
++# brace line. The rule of a selector ends at the first line that holds one
++# closing brace.
++rule() {
++    r_esc=$(printf '%s' "$2" | sed 's/[.[\*^$]/\\&/g')
++    sed -n "/^$r_esc > \.toolbarbutton-icon {\$/,/^}\$/p" "$1" |
++        sed -e '1d' -e '$d'
++}
++
++# uri SHEET SELECTOR: prints the encoded image of SELECTOR.
++uri() {
++    rule "$1" "$2" |
++        sed -n 's|^  background-image: url("data:image/svg+xml,\(.*\)")'\
++' !important;$|\1|p'
++}
++
++# decode: reads the encoded image and prints the SVG. The writer escapes the
++# five characters below and no other one, so a leftover escape is a fault.
++decode() {
++    sed -e 's/%20/ /g' -e 's/%22/"/g' -e 's/%23/#/g' -e 's/%3C/</g' \
++        -e 's/%3E/>/g'
++}
++
++# bare FILE: prints the SVG of FILE with every colour value in place of one
++# mark. The image of a button at rest and the image of the same button under
++# the pointer must give the same text.
++bare() {
++    sed -e 's/fill="#[0-9a-f]*"/fill="C"/g' \
++        -e 's/stroke="#[0-9a-f]*"/stroke="C"/g' "$1"
++}
++
++# colours FILE: prints each colour of the SVG FILE, one to a line, with no
++# repeat. The ground of an outlined shape carries no colour and drops out.
++colours() {
++    grep -o -e 'fill="[^"]*"' -e 'stroke="[^"]*"' "$1" |
++        sed 's/^[a-z]*="//;s/"$//' | grep -v '^none$' | sort -u
++}
++
++# count FILE PATTERN: prints the number of lines of FILE that hold PATTERN.
++# Every image stands on one line, so the run breaks each element out first.
++count() {
++    tr '<' '\n' < "$1" | grep -c "$2" || true
++}
++
++# shape FILE NAME: gives 0 while the SVG FILE holds the shape NAME. The test
++# reads the elements of the image and the measures of the decoration.
++shape() {
++    s_rect=$(count "$1" '^rect ')
++    s_path=$(count "$1" '^path ')
++    s_open=$(count "$1" '^[a-z]* [^>]*fill="none"')
++    case $2 in
++        # One filled bar along the bottom edge of the square.
++        bar) [ "$s_rect" -eq 1 ] && [ "$s_path" -eq 0 ] &&
++             [ "$s_open" -eq 0 ] &&
++             grep -qF "<rect x=\"$glyph_origin\" y=\"10\" width=\"11\"" \
++                 "$1" &&
++             grep -qF "height=\"$bar_height\"" "$1";;
++        # One thin frame with a filled bar along the top edge.
++        square) [ "$s_rect" -eq 2 ] && [ "$s_path" -eq 0 ] &&
++             [ "$s_open" -eq 1 ] &&
++             grep -qF "width=\"$frame_side\" height=\"$frame_side\"" "$1" &&
++             grep -qF "stroke-width=\"$frame_width\"" "$1";;
++        # The window behind in three fills, then the whole window in front.
++        double) [ "$s_rect" -eq 5 ] && [ "$s_path" -eq 0 ] &&
++             [ "$s_open" -eq 1 ] &&
++             grep -qF "<rect x=\"$restore_left\"" "$1" &&
++             grep -qF "stroke-width=\"$frame_width\"" "$1";;
++        # Two lines from corner to corner of the square.
++        cross) [ "$s_rect" -eq 0 ] && [ "$s_path" -eq 1 ] &&
++             [ "$s_open" -eq 1 ] &&
++             grep -qF "d=\"M$glyph_origin $glyph_origin"\
++"L$glyph_far $glyph_far"\
++"M$glyph_far $glyph_origin"\
++"L$glyph_origin $glyph_far\"" "$1" &&
++             grep -qF "stroke-width=\"$stroke_width\"" "$1";;
++        *) return 1;;
++    esac
++}
++
++# block SHEET SELECTOR WANTED: gives 0 while the icon rule of SELECTOR holds
++# every line of WANTED.
++block() {
++    printf '%s\n' "$3" > "$tmp/want"
++    rule "$1" "$2" > "$tmp/got"
++    b_miss=0
++    # A property name opens with two dashes, so every pattern below stands
++    # after the end of the options of grep.
++    while IFS= read -r b_line; do
++        grep -qF -- "$b_line" "$tmp/got" || b_miss=$((b_miss + 1))
++    done < "$tmp/want"
++    [ "$b_miss" -eq 0 ]
++}
++
++# heavy BYTE: gives 0 while the hexadecimal BYTE stands at 230 or over.
++# DARK_WINDOW_TEXT in qt6/common/common.h reads a colour as dark while one
++# channel stands under that value.
++heavy() {
++    printf '%s\n' "$1" | grep -qE '^(f[0-9a-f]|e[6-9a-f])$'
++}
++
++# fade COLOUR: prints the alpha byte of the line art of COLOUR at rest. The
++# fade of the decoration follows the foreground that the state gives it.
++fade() {
++    f_red=$(printf '%s' "$1" | cut -c2-3)
++    f_green=$(printf '%s' "$1" | cut -c4-5)
++    f_blue=$(printf '%s' "$1" | cut -c6-7)
++    if heavy "$f_red" && heavy "$f_green" && heavy "$f_blue"; then
++        printf '%s\n' "$light_alpha"
++    else
++        printf '%s\n' "$dark_alpha"
++    fi
++}
++
++# check SHEET: gives 0 while every contract of the block holds. It names the
++# first contract that fails on the standard error.
++check() {
++    c_sheet=$1
++    c_ink=$(sed -n 's/^  --toolbox-text-color: \(#[0-9a-f]*\) !important;$'\
++'/\1/p' "$c_sheet")
++    c_dim=$(sed -n 's/^  --toolbox-text-color-inactive: \(#[0-9a-f]*\)'\
++' !important;$/\1/p' "$c_sheet")
++    if [ -z "$c_ink" ] || [ -z "$c_dim" ]; then
++        note "$c_sheet declares no title bar foreground of a window state"
++        return 1
++    fi
++    grep -q '^\.titlebar-button {$' "$c_sheet" || {
++        note "$c_sheet holds no caption block"
++        return 1
++    }
++    if ! printf '%s\n' "$box_rules" > "$tmp/box" ||
++       ! sed -n '/^\.titlebar-buttonbox {$/,/^}$/p' "$c_sheet" \
++           > "$tmp/boxgot"; then
++        note "$c_sheet holds no button box block"
++        return 1
++    fi
++    c_miss=0
++    while IFS= read -r c_line; do
++        grep -qF -- "$c_line" "$tmp/boxgot" || c_miss=$((c_miss + 1))
++    done < "$tmp/box"
++    if [ "$c_miss" -ne 0 ]; then
++        note "$c_sheet drops $c_miss button box measures of the decoration"
++        return 1
++    fi
++    if ! block "$c_sheet" '.titlebar-button' "$icon_rules"; then
++        note "$c_sheet drops a measure or the ground strip of the icon"
++        return 1
++    fi
++    c_rest=$(fade "$c_ink")
++    c_drest=$(fade "$c_dim")
++    c_seen=0
++    # A read inside a pipe cannot set a variable of this shell. The loop
++    # therefore reads the rows from a file of the run.
++    printf '%s\n' "$rows" > "$tmp/rows"
++    while read -r c_sel c_shape c_state c_want; do
++        [ -n "$c_sel" ] || continue
++        uri "$c_sheet" "$c_sel" > "$tmp/uri"
++        if [ ! -s "$tmp/uri" ]; then
++            note "$c_sheet gives $c_sel no image"
++            return 1
++        fi
++        decode < "$tmp/uri" > "$tmp/svg"
++        if grep -q '%' "$tmp/svg"; then
++            note "$c_sel keeps an escape that the decoder does not know"
++            return 1
++        fi
++        if ! grep -qF "$svg_head" "$tmp/svg" ||
++           ! grep -q '</svg>$' "$tmp/svg"; then
++            note "$c_sel gives no well formed image"
++            return 1
++        fi
++        if ! shape "$tmp/svg" "$c_shape"; then
++            note "$c_sel gives no $c_shape shape at the decoration measures"
++            return 1
++        fi
++        if [ "$c_state" = rest ]; then
++            if [ "$c_want" = ink ]; then
++                c_col=$c_ink$c_rest
++            else
++                c_col=$c_dim$c_drest
++            fi
++            bare "$tmp/svg" > "$tmp/bare.$c_shape"
++        else
++            case $c_want in
++                ink) c_col=$c_ink$lit_alpha;;
++                dim) c_col=$c_dim$lit_alpha;;
++                *) c_col=$close_hover$lit_alpha;;
++            esac
++            # The hover rule carries the image and no other property, so no
++            # ground, ring or pill reaches the button under the pointer.
++            c_extra=$(rule "$c_sheet" "$c_sel" |
++                grep -cv '^  background-image: url("data:image/svg+xml,'\
++'.*") !important;$' || true)
++            if [ "$c_extra" -ne 0 ]; then
++                note "$c_sel carries $c_extra property lines beside the image"
++                return 1
++            fi
++            bare "$tmp/svg" > "$tmp/lit"
++            if ! cmp -s "$tmp/lit" "$tmp/bare.$c_shape"; then
++                note "$c_sel moves the geometry of the $c_shape shape"
++                return 1
++            fi
++        fi
++        colours "$tmp/svg" > "$tmp/got"
++        printf '%s\n' "$c_col" > "$tmp/exp"
++        if ! cmp -s "$tmp/got" "$tmp/exp"; then
++            note "$c_sel holds $(tr '\n' ' ' < "$tmp/got")and not $c_col"
++            return 1
++        fi
++        c_seen=$((c_seen + 1))
++    done < "$tmp/rows"
++    rows_count=$(grep -c . "$tmp/rows")
++    if [ "$c_seen" -ne "$rows_count" ]; then
++        note "$c_sheet gives $c_seen images of $rows_count"
++        return 1
++    fi
++    return 0
++}
++
++if ! check "$sheet"; then
++    note "the sheet fails the check"
++    exit 1
++fi
++seen=$c_seen
++
++# The controls below. Each one doctors a copy of the sheet, and the check must
++# fail over that copy.
++broken=0
++
++# control NAME COPY: the check must fail over the copy that the caller gives.
++control() {
++    c_name=$1
++    if check "$2" 2> "$tmp/control.log"; then
++        note "the check passed the control copy of $c_name"
++        exit 1
++    fi
++    broken=$((broken + 1))
++}
++
++# A sheet of a stale image: the palette moves and the images stay. A user of
++# a new colour scheme reads the old line art without this control.
++sed 's/^  --toolbox-text-color: .*$/  --toolbox-text-color: #010203'\
++' !important;/' "$sheet" > "$tmp/stale.css"
++control stale "$tmp/stale.css"
++
++# The same fault over the foreground of a window without focus. That window
++# reads the images of a window with focus without this control.
++sed 's/^  --toolbox-text-color-inactive: .*$'\
++'/  --toolbox-text-color-inactive: #040506 !important;/' "$sheet" \
++    > "$tmp/dim.css"
++control dim "$tmp/dim.css"
++
++# A sheet with no caption block, which leaves the glyphs of the browser.
++sed '/^\.titlebar-buttonbox {$/,$d' "$sheet" > "$tmp/dropped.css"
++control dropped "$tmp/dropped.css"
++
++# move TARGET SOURCE SHEET OUT: writes SHEET to OUT with the image of the
++# button SOURCE in place of the image of the button TARGET.
++move() {
++    m_esc=$(printf '%s' "$1" | sed 's/[.[\*^$]/\\&/g')
++    m_from=$(printf '%s' "$2" | sed 's/[.[\*^$]/\\&/g')
++    sed "/^$m_esc > \.toolbarbutton-icon {\$/,/^}\$/{
++/^  background-image:/d
++}" "$3" > "$tmp/cut.css"
++    sed -n "/^$m_from > \.toolbarbutton-icon {\$/,/^}\$/p" "$3" |
++        grep '^  background-image:' > "$tmp/bar.line"
++    sed "/^$m_esc > \.toolbarbutton-icon {\$/r $tmp/bar.line" \
++        "$tmp/cut.css" > "$4"
++}
++
++# A sheet that gives the close button the bar of the minimize button.
++move '.titlebar-close' '.titlebar-min' "$sheet" "$tmp/swapped.css"
++control swapped "$tmp/swapped.css"
++
++# A sheet that gives the maximize button that same bar. One shape of the
++# family stands for another one without this control.
++move '.titlebar-max' '.titlebar-min' "$sheet" "$tmp/family.css"
++control family "$tmp/family.css"
++
++# A sheet whose maximize image lost the ground of the frame, which leaves a
++# solid square outside the family.
++sed '/^\.titlebar-max > \.toolbarbutton-icon {$/,/^}$/{
++s/%20fill=%22none%22//
++}' "$sheet" > "$tmp/filled.css"
++control filled "$tmp/filled.css"
++
++# A sheet whose close button takes a ground under the pointer. The ruling
++# gives the hover the colour of the symbol and nothing else.
++sed '/^\.titlebar-close:hover > \.toolbarbutton-icon {$/{
++a\
++  background-color: rgba(255,255,255,0.15) !important;
++}' "$sheet" > "$tmp/ground.css"
++control ground "$tmp/ground.css"
++
++# A sheet whose hover image of the maximize button moved its frame one pixel
++# down. The shape of that image stands, so the pair of the rest image and the
++# hover image alone catches the move. A hover that moves the line art is a
++# second shape without this control.
++sed '/^\.titlebar-max:hover > \.toolbarbutton-icon {$/,/^}$/{
++s/y=%221.5%22/y=%222.5%22/
++}' "$sheet" > "$tmp/moved.css"
++control moved "$tmp/moved.css"
++
++# A sheet that gives a button of a window without focus the shape of another
++# button. The rules of that window stand outside the shape check of a window
++# with focus without this control.
++move '.titlebar-min:-moz-window-inactive' '.titlebar-max' "$sheet" \
++    "$tmp/focus.css"
++control focus "$tmp/focus.css"
++
++# A sheet that takes the button spacing of the browser back. The buttons then
++# stand 13 pixels apart, and not the 2 pixels of the decoration.
++sed 's/^  --titlebar-button-spacing: 1px !important;$/'\
++'  --titlebar-button-spacing: 6.5px !important;/' "$sheet" > "$tmp/loose.css"
++control loose "$tmp/loose.css"
++
++echo "assert-ff-caption: $sheet holds $seen images of the decoration family," \
++     "each one decodes to one SVG of the shape, the measures and the colour" \
++     "of the sheet, no hover rule carries a ground, and the check rejects" \
++     "each of the $broken control copies"
+diff --git a/firefox/check/ff-varnames.txt b/firefox/check/ff-varnames.txt
+index 61a0a5d4..667b0764 100644
+--- a/firefox/check/ff-varnames.txt
++++ b/firefox/check/ff-varnames.txt
+@@ -4,7 +4,7 @@
+ # Derivation: every name below stands in a token file of the chrome of Firefox
+ # 155.0, which omni.ja and browser/omni.ja hold. The files are
+ # tokens-shared.css, tokens-platform.css, browser-colors.css, toolbar.css,
+-# tab.tokens.css, toolbarbuttons.css, common-shared.css and
++# tab.tokens.css, toolbarbuttons.css, common-shared.css, browser.css and
+ # urlbar/urlbarview.tokens.css. A refresh of the pin reads the same files of
+ # the next major.
+ --toolbox-background-color
+@@ -33,3 +33,6 @@
+ --toolbarbutton-background-color-hover
+ --tab-background-color-hover
+ --toolbarbutton-background-color-active
++--titlebar-button-size
++--titlebar-button-spacing
++--titlebar-button-end-spacing
+diff --git a/firefox/writer/caption.cpp b/firefox/writer/caption.cpp
+new file mode 100644
+index 00000000..54daab0f
+--- /dev/null
++++ b/firefox/writer/caption.cpp
+@@ -0,0 +1,442 @@
++/*****************************************************************************
++ *   Copyright 2026 QtCurve authors                                          *
++ *                                                                           *
++ *   This program is free software; you can redistribute it and/or modify    *
++ *   it under the terms of the GNU Lesser General Public License as          *
++ *   published by the Free Software Foundation; either version 2.1 of the    *
++ *   License, or (at your option) version 3, or any later version accepted   *
++ *   by the membership of KDE e.V. (or its successor approved by the         *
++ *   membership of KDE e.V.), which shall act as a proxy defined in          *
++ *   Section 6 of version 3 of the license.                                  *
++ *                                                                           *
++ *   This program is distributed in the hope that it will be useful,         *
++ *   but WITHOUT ANY WARRANTY; without even the implied warranty of          *
++ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU       *
++ *   Lesser General Public License for more details.                         *
++ *                                                                           *
++ *   You should have received a copy of the GNU Lesser General Public        *
++ *   License along with this library. If not,                                *
++ *   see <http://www.gnu.org/licenses/>.                                     *
++ *****************************************************************************/
++
++#include "caption.h"
++
++#include "ffmap.h"
++
++#include <algorithm>
++#include <cmath>
++#include <cstring>
++
++namespace QtCurve {
++namespace Firefox {
++
++using Gtk::Palette;
++
++namespace {
++
++/**
++ * The side of one caption button of the browser, in CSS pixels. browser.css
++ * of browser/omni.ja holds the button size property at this number. The
++ * decoration takes its own side from the caption font, and no sheet reads
++ * that font. The sheet therefore keeps the side of the browser, which holds
++ * the hit target of the browser.
++ */
++const double buttonSide = 24.0;
++
++/**
++ * The gap between two caption buttons, in CSS pixels. buttonSpacing in
++ * qt6/kdecoration/qtcurvedecoration.cpp holds this gap. The browser puts the
++ * spacing property of one button on each side of that button. The sheet
++ * therefore gives the property one half of this number.
++ */
++const double buttonGap = 2.0;
++
++/**
++ * The gap between the window edge and the outermost caption button, in CSS
++ * pixels. buttonEdgePad in qt6/kdecoration/qtcurvedecoration.cpp holds it.
++ */
++const double edgeGap = 4.0;
++
++/**
++ * The divisor of the room around the line art. Button::paint() of
++ * qt6/kdecoration/qtcurvedecorationbutton.cpp takes two parts of the button
++ * side away on each axis, and each part is the side over this number.
++ */
++const double glyphDivisor = 3.5;
++
++/**
++ * The smallest side of the line art that carries the wide lines, in pixels.
++ * Button::drawGlyph() gives a stroke of 3 pixels, a bar of 4 pixels and a
++ * frame of 2 pixels above this side.
++ */
++const double wideGlyphSide = 16.0;
++
++/**
++ * The smallest side of the line art that carries the middle lines, in pixels.
++ * Button::drawGlyph() gives a stroke of 2 pixels and a bar of 2 pixels above
++ * this side, and 1 pixel of each at or under it.
++ */
++const double thinGlyphSide = 4.0;
++
++/**
++ * The narrowest frame of a window symbol, in pixels. Button::drawGlyph()
++ * gives this width at or under the wide side above, and 2 pixels over it.
++ */
++const double thinFrame = 1.0;
++
++/**
++ * The shortest step of the restore symbol, in pixels. Button::drawGlyph()
++ * takes the larger of this floor and one quarter of the side of the line art.
++ */
++const double restoreFloor = 2.0;
++
++/**
++ * The lightest channel value of a dark title bar foreground, from 0 to 255.
++ * DARK_WINDOW_TEXT in qt6/common/common.h reads a colour as dark while one
++ * channel stands under this value.
++ */
++const int darkTextCeiling = 230;
++
++/**
++ * The opacity of the line art of a dark foreground at rest, from 0.0 to 1.0.
++ * HOVER_BUTTON_ALPHA in qt6/common/common.h gives this figure, and the hover
++ * symbol setting alone brings it into the sheet.
++ */
++const double darkRestOpacity = 0.25;
++
++/** The opacity of the line art of a light foreground at rest, from 0.0 to 1.0. */
++const double lightRestOpacity = 0.65;
++
++/**
++ * The colour of the close line art under the pointer. CLOSE_COLOR in
++ * qt6/common/common.h holds this colour, and no colour of the scheme feeds
++ * it. A settings value that colours the buttons takes this colour away.
++ */
++const QColor closeHoverColour(191, 82, 82);
++
++/** The characters that stay as they are inside one data URI. */
++const char *const uriSafe =
++    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-._~:/=";
++
++/**
++ * Returns text with every character outside the safe set above in the percent
++ * form, such as %3C. The caller puts the result inside a url() of the sheet,
++ * where a raw quotation mark or a raw number sign ends the value early.
++ */
++QString
++percent(const QString &text)
++{
++    QString out;
++    out.reserve(text.size() * 3);
++    for (const QChar ch : text) {
++        const ushort code = ch.unicode();
++        if (code > 0 && code < 128 &&
++            strchr(uriSafe, (char)code) != nullptr) {
++            out += ch;
++        } else {
++            out += QString::asprintf("%%%02X", (unsigned)code);
++        }
++    }
++    return out;
++}
++
++/**
++ * Returns the CSS text of the number value, with two decimals at most and no
++ * tail of zeros. The sheet must hold one text for one number on every host,
++ * so the form takes no locale.
++ */
++QString
++num(double value)
++{
++    QString out = QString::asprintf("%.2f", value);
++    while (out.endsWith(QLatin1Char('0'))) {
++        out.chop(1);
++    }
++    if (out.endsWith(QLatin1Char('.'))) {
++        out.chop(1);
++    }
++    return out;
++}
++
++/**
++ * Returns the CSS colour of col at the opacity alpha, such as #232629a6. The
++ * image carries the fade of the decoration in the alpha byte. The image of a
++ * button at rest and the image of the same button under the pointer then hold
++ * one geometry and two colours.
++ *
++ * \param col    the colour of the line art.
++ * \param alpha  the opacity of the line art, from 0.0 to 1.0.
++ * \return the colour in the four byte hexadecimal form.
++ */
++QString
++inkText(const QColor &col, double alpha)
++{
++    return Gtk::hex(col) +
++        QString::asprintf("%02x", (unsigned)std::lround(alpha * 255.0));
++}
++
++/** The measures of the line art of one caption button, in CSS pixels. */
++struct Glyph {
++    /** The left and the top edge of the square of the line art. */
++    double origin;
++    /** The side of that square. */
++    double side;
++    /** The width of a line of the close symbol. */
++    double stroke;
++    /** The height of the bar at the top of a window symbol. */
++    double bar;
++    /** The width of the frame of a window symbol. */
++    double frame;
++    /**
++     * The offset of the window behind the restore symbol. That window sits
++     * one step to the right of the window in front, and one step above it.
++     */
++    double step;
++    /**
++     * The side of the image of one button. The box holds the square of the
++     * line art and one half of the stroke width on each side. That room holds
++     * the cap of the close symbol inside the box, because the browser clips
++     * an image at the edge of its box.
++     */
++    double image;
++};
++
++/**
++ * Returns the measures of the line art at the button side above.
++ * Button::paint() of the decoration holds the rule of the square, and
++ * Button::drawGlyph() holds the rule of every width.
++ */
++Glyph
++glyphOf()
++{
++    Glyph g;
++    double side = std::ceil(buttonSide - 2.0 * (buttonSide / glyphDivisor));
++    if (std::fmod(side, 2.0) == 0.0) {
++        // An even result gains 1 pixel, so the line art keeps a centre pixel.
++        side += 1.0;
++    }
++    g.side = side;
++    g.stroke = side > wideGlyphSide ? 3.0 : side > thinGlyphSide ? 2.0 : 1.0;
++    g.bar = side > wideGlyphSide ? 4.0 : side > thinGlyphSide ? 2.0 : 1.0;
++    g.frame = side > wideGlyphSide ? 2.0 : thinFrame;
++    g.step = std::max(restoreFloor, side / 4.0);
++    g.image = side + g.stroke;
++    g.origin = g.stroke / 2.0;
++    return g;
++}
++
++/** Returns one filled rectangle of the line art, in the colour col. */
++QString
++fillRect(double x, double y, double width, double height, const QString &col)
++{
++    return QStringLiteral("<rect x=\"%1\" y=\"%2\" width=\"%3\" height=\"%4\""
++                          " fill=\"%5\"/>")
++        .arg(num(x), num(y), num(width), num(height), col);
++}
++
++/**
++ * Returns the frame of one window symbol, in the colour col. The line sits
++ * inside the square by one half of the frame width. The outer edge of the
++ * line then lands on the edge that the caller gives. drawWindowSymbol() of
++ * the decoration insets the frame in the same way.
++ */
++QString
++frameRect(const Glyph &g, double x, double y, double side, const QString &col)
++{
++    const double inset = g.frame / 2.0;
++    return QStringLiteral("<rect x=\"%1\" y=\"%2\" width=\"%3\" height=\"%3\""
++                          " fill=\"none\" stroke=\"%4\" stroke-width=\"%5\"/>")
++        .arg(num(x + inset), num(y + inset), num(side - g.frame), col,
++             num(g.frame));
++}
++
++/**
++ * Returns one window symbol of the line art, in the colour col. The symbol is
++ * a thin frame with a thick bar along the top edge, as drawWindowSymbol() of
++ * the decoration draws it.
++ */
++QString
++windowSymbol(const Glyph &g, double x, double y, double side,
++             const QString &col)
++{
++    return frameRect(g, x, y, side, col) + fillRect(x, y, side, g.bar, col);
++}
++
++/** The four caption buttons that the browser shows. */
++enum class Shape {
++    Minimize,
++    Maximize,
++    Restore,
++    Close
++};
++
++/** Returns the line art of shape in the colour col, with no view box. */
++QString
++shapeArt(Shape shape, const Glyph &g, const QString &col)
++{
++    const double x = g.origin;
++    const double y = g.origin;
++    const double side = g.side;
++    const double inner = side - g.step;
++    switch (shape) {
++    case Shape::Minimize:
++        return fillRect(x, y + side - g.bar, side, g.bar, col);
++    case Shape::Maximize:
++        return windowSymbol(g, x, y, side, col);
++    case Shape::Restore:
++        // The window behind shows a bar, a right edge and one corner of the
++        // bottom edge. The window in front then covers the rest of it.
++        return fillRect(x + g.step, y, inner, g.bar, col) +
++            fillRect(x + side - g.frame, y, g.frame, inner, col) +
++            fillRect(x + side - g.step, y + side - g.step - g.frame, g.step,
++                     g.frame, col) +
++            windowSymbol(g, x, y + g.step, inner, col);
++    case Shape::Close:
++        return QStringLiteral("<path d=\"M%1 %2L%3 %4M%3 %2L%1 %4\""
++                              " fill=\"none\" stroke=\"%5\""
++                              " stroke-width=\"%6\"/>")
++            .arg(num(x), num(y), num(x + side), num(y + side), col,
++                 num(g.stroke));
++    }
++    return QString();
++}
++
++/**
++ * Returns the url() of the line art of shape in the colour col. The value
++ * carries the whole image, so the sheet reads no file of the disk.
++ */
++QString
++shapeUrl(Shape shape, const Glyph &g, const QString &col)
++{
++    const QString svg =
++        QStringLiteral("<svg xmlns=\"http://www.w3.org/2000/svg\""
++                       " viewBox=\"0 0 %1 %1\">%2</svg>")
++        .arg(num(g.image), shapeArt(shape, g, col));
++    return QStringLiteral("url(\"data:image/svg+xml,%1\")")
++        .arg(percent(svg));
++}
++
++/** Returns one rule that gives the icon of selector the image image. */
++QString
++imageRule(const QString &selector, const QString &image)
++{
++    return QStringLiteral("%1 > .toolbarbutton-icon {\n"
++                          "  background-image: %2 !important;\n"
++                          "}\n").arg(selector, image);
++}
++
++/**
++ * Returns the opacity of the line art at rest, from 0.0 to 1.0. The hover
++ * symbol setting fades the line art while the pointer sits away from the
++ * button, and every other setting holds it at 1.0.
++ */
++double
++restOpacity(const Options &opts, const QColor &col)
++{
++    if (!(opts.titlebarButtons & TITLEBAR_BUTTON_HOVER_SYMBOL)) {
++        return 1.0;
++    }
++    const bool dark = col.red() < darkTextCeiling ||
++        col.green() < darkTextCeiling || col.blue() < darkTextCeiling;
++    return dark ? darkRestOpacity : lightRestOpacity;
++}
++
++/** One caption button of the browser and the shape that it shows. */
++struct Entry {
++    /** The class selector of the button in the chrome of the browser. */
++    const char *selector;
++    /** The shape of the line art of that button. */
++    Shape shape;
++};
++
++/** The four buttons of the caption, in the order of the rules. */
++const Entry entries[] = {
++    {".titlebar-min", Shape::Minimize},
++    {".titlebar-max", Shape::Maximize},
++    {".titlebar-restore", Shape::Restore},
++    {".titlebar-close", Shape::Close}
++};
++
++/**
++ * The pseudo class of a window that holds no focus. Each rule of that window
++ * carries one class more than its pair, so it stands over that pair.
++ */
++const char *const idleClass = ":-moz-window-inactive";
++
++/**
++ * Returns the image rules of the four buttons in the ink colour col. Button::
++ * glyphColor() of qt6/kdecoration/qtcurvedecorationbutton.cpp reads the
++ * foreground of the state of the window, so the caller gives one colour and
++ * one class for each state.
++ *
++ * \param opts    the QtCurve settings, which give the fade and the colours.
++ * \param g       the measures of the line art.
++ * \param col     the foreground of the title bar of one window state.
++ * \param extra   the pseudo class of that state, which may be empty.
++ * \return the rules of the four buttons, which end with one newline.
++ */
++QString
++buttonRules(const Options &opts, const Glyph &g, const QColor &col,
++            const QString &extra)
++{
++    const QString rest = inkText(col, restOpacity(opts, col));
++    const QString lit = inkText(col, 1.0);
++    // The decoration gives the close line art the colour above under the
++    // pointer, and a settings value that colours the buttons takes it away.
++    const bool ownColour = (opts.titlebarButtons & TITLEBAR_BUTTON_COLOR) != 0;
++    const QString shut = ownColour ? lit : inkText(closeHoverColour, 1.0);
++
++    QString out;
++    for (const Entry &one : entries) {
++        const QString selector = QLatin1String(one.selector) + extra;
++        const QString hover = one.shape == Shape::Close ? shut : lit;
++        out += imageRule(selector, shapeUrl(one.shape, g, rest));
++        if (hover != rest) {
++            out += imageRule(selector + QStringLiteral(":hover"),
++                             shapeUrl(one.shape, g, hover));
++        }
++    }
++    if (shut != lit) {
++        // The decoration gives the foreground back while the button is down.
++        out += imageRule(QStringLiteral(".titlebar-close") + extra +
++                         QStringLiteral(":hover:active"),
++                         shapeUrl(Shape::Close, g, lit));
++    }
++    return out;
++}
++
++}
++
++QString
++buildCaption(const Options &opts, const Palette &pal)
++{
++    const Glyph g = glyphOf();
++    const QColor ink = ffColour(opts, pal, FfRole::TitlebarText);
++    const QColor idle = ffColour(opts, pal, FfRole::TitlebarInactiveText);
++
++    QString out =
++        QStringLiteral("\n.titlebar-buttonbox {\n"
++                       "  --titlebar-button-size: %1px !important;\n"
++                       "  --titlebar-button-spacing: %2px !important;\n"
++                       "  --titlebar-button-end-spacing: %3px !important;\n"
++                       "}\n"
++                       "\n.titlebar-button {\n"
++                       "  appearance: none !important;\n"
++                       "}\n"
++                       "\n.titlebar-button > .toolbarbutton-icon {\n"
++                       "  appearance: none !important;\n"
++                       "  background-color: transparent !important;\n"
++                       "  background-size: %4px !important;\n"
++                       "  border-radius: 0 !important;\n"
++                       "}\n")
++        .arg(num(buttonSide), num(buttonGap / 2.0), num(edgeGap),
++             num(g.image));
++    out += QLatin1Char('\n');
++    out += buttonRules(opts, g, ink, QString());
++    out += QLatin1Char('\n');
++    out += buttonRules(opts, g, idle, QLatin1String(idleClass));
++    return out;
++}
++
++}
++}
+diff --git a/firefox/writer/caption.h b/firefox/writer/caption.h
+new file mode 100644
+index 00000000..c7dcfb50
+--- /dev/null
++++ b/firefox/writer/caption.h
+@@ -0,0 +1,49 @@
++/*****************************************************************************
++ *   Copyright 2026 QtCurve authors                                          *
++ *                                                                           *
++ *   This program is free software; you can redistribute it and/or modify    *
++ *   it under the terms of the GNU Lesser General Public License as          *
++ *   published by the Free Software Foundation; either version 2.1 of the    *
++ *   License, or (at your option) version 3, or any later version accepted   *
++ *   by the membership of KDE e.V. (or its successor approved by the         *
++ *   membership of KDE e.V.), which shall act as a proxy defined in          *
++ *   Section 6 of version 3 of the license.                                  *
++ *                                                                           *
++ *   This program is distributed in the hope that it will be useful,         *
++ *   but WITHOUT ANY WARRANTY; without even the implied warranty of          *
++ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU       *
++ *   Lesser General Public License for more details.                         *
++ *                                                                           *
++ *   You should have received a copy of the GNU Lesser General Public        *
++ *   License along with this library. If not,                                *
++ *   see <http://www.gnu.org/licenses/>.                                     *
++ *****************************************************************************/
++
++#ifndef QTC_FIREFOX_CAPTION_H
++#define QTC_FIREFOX_CAPTION_H
++
++#include <palette.h>
++
++#include <QString>
++
++namespace QtCurve {
++namespace Firefox {
++
++/**
++ * Returns the caption rules of the sheet, which end with one newline. The
++ * rules take the appearance of the caption buttons away, and they hold no
++ * external file. Each button gets one inline image of the glyph family of
++ * the QtCurve window decoration, at the measures of that decoration. A
++ * window that holds no focus takes a second set of images, because the
++ * decoration reads the inactive foreground of the title bar.
++ *
++ * \param opts  the QtCurve settings, which give the button flags.
++ * \param pal   the colours of the live scheme or of a colour file.
++ * \return the caption rules, with one image for each state of a button.
++ */
++QString buildCaption(const Options &opts, const Gtk::Palette &pal);
++
++}
++}
++
++#endif
+diff --git a/firefox/writer/sheet.cpp b/firefox/writer/sheet.cpp
+index df4a06c6..762d7ace 100644
+--- a/firefox/writer/sheet.cpp
++++ b/firefox/writer/sheet.cpp
+@@ -21,6 +21,7 @@
+ 
+ #include "sheet.h"
+ 
++#include "caption.h"
+ #include "ffmap.h"
+ 
+ #include <emit.h>
+@@ -102,6 +103,7 @@ buildSheet(const Options &opts, const Palette &pal)
+     }
+     out += QStringLiteral("}\n");
+     out += toolboxImages(opts, pal);
++    out += buildCaption(opts, pal);
+     return out;
+ }
+ 
+diff --git a/firefox/writer/sheet.h b/firefox/writer/sheet.h
+index 3f387000..f40a3f07 100644
+--- a/firefox/writer/sheet.h
++++ b/firefox/writer/sheet.h
+@@ -31,10 +31,9 @@ namespace Firefox {
+ 
+ /**
+  * Returns the text of the sheet that the writer owns in a profile. The sheet
+- * holds one header line, then one :root block. That block declares every
+- * custom property of the map. One rule of the tool box follows it for each
+- * state of the window, while the titlebar appearance of that state carries a
+- * gradient.
++ * holds one header line, then one :root block of every custom property of
++ * the map. A gradient of the titlebar appearance adds one rule of the tool
++ * box for each state of the window. The caption rules end the sheet.
+  *
+  * \param opts  the QtCurve settings, which give the appearance and the ladders.
+  * \param pal   the colours of the live scheme or of a colour file.

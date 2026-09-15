@@ -1,0 +1,33 @@
+Match the two lines of a sunken separator
+
+The vertical branch of the tool bar separator draws its first line with
+the gap macro. It draws its second line with the literals six and
+twelve. The macro gives five while the option for faded lines holds
+true, and that is the shipped value. The two lines then hold different
+end points, and the second line loses one row at each end. The
+horizontal branch of the same paint takes the macro for both lines.
+
+The second line now takes the gap from the macro as well. The two lines
+share their end points under every value of the faded lines option. A
+configuration with no faded lines keeps the paint of before.
+
+The change sits on the branch work/style-paint of the local tree, as commit 18 of 21.
+A new merge request on system/qtcurve takes that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/qt6/style/qtcurve_primitive.cpp b/qt6/style/qtcurve_primitive.cpp
+index 2c4dabab..0b6b5053 100644
+--- a/qt6/style/qtcurve_primitive.cpp
++++ b/qt6/style/qtcurve_primitive.cpp
+@@ -405,8 +405,8 @@ Style::drawPrimitiveIndicatorToolBarSeparator(PrimitiveElement,
+                           true, true, false);
+ 
+             if (opts.toolbarSeparators == LINE_SUNKEN) {
+-                drawFadedLine(painter, QRect(x + 1, r.y() + 6, 1,
+-                                             r.height() - 12),
++                drawFadedLine(painter, QRect(x + 1, r.y() + TOOLBAR_SEP_GAP, 1,
++                                             r.height() - TOOLBAR_SEP_GAP * 2),
+                               m_backgroundCols[0], true, true, false);
+             }
+         } else {

@@ -1,0 +1,50 @@
+Reject a non-finite shade or alpha value from the config
+
+readDoubleList tests the count of the elements and the success flag of
+QString::toDouble. toDouble parses the texts nan, inf and -inf and
+reports success, so a value that is not finite passes the only defence
+of the function. The value then reaches QColor::setAlphaF and the shade
+routine unclamped.
+
+A stored nan paints as an alpha of zero and a stored inf paints as an
+alpha of one. The writer stores the same text again, so the value is a
+stable state of the file.
+
+Reject an element that is not finite in the same way as an element that
+does not parse. The first element then takes zero, which switches the
+group off, and the shipped shades and alphas paint.
+
+A reader oracle reads a shade list that starts with nan, and an alpha
+list of two infinities, as the off state. The old reader passed both to
+the paint code.
+
+The change sits on the branch work/config-io of the local tree, as commit 5 of 18.
+A new merge request on system/qtcurve takes that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/qt6/common/config_file.cpp b/qt6/common/config_file.cpp
+index 0f18e278..4c0f54e7 100644
+--- a/qt6/common/config_file.cpp
++++ b/qt6/common/config_file.cpp
+@@ -25,6 +25,8 @@
+ #include "common.h"
+ #include "config_file.h"
+ 
++#include <cmath>
++
+ #include <qglobal.h>
+ #include <QMap>
+ #include <QFile>
+@@ -746,7 +748,11 @@ static void readDoubleList(QtCConfig &cfg, const char *key, double *list, int co
+         int                        i;
+ 
+         for(i=0; i<count && ok; ++i, ++it)
++        {
+             list[i]=(*it).toDouble(&ok);
++            if(ok && !std::isfinite(list[i]))
++                ok=false;
++        }
+     }
+ 
+     if(!ok && strings.size())
