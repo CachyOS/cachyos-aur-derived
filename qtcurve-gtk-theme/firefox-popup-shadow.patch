@@ -1,0 +1,465 @@
+Follow the shadow setting for the popups of the browser
+
+QtCurve gives a drop shadow to a menu, a tooltip and a combo box list,
+and the popupShadow key switches that shadow off. The chrome of the
+browser paints a shadow of its own and reads no key of QtCurve. A user
+who switched the shadow off therefore kept it inside Firefox.
+
+The sheet now carries one rule of the menus and the panels, which
+popup.css of omni.ja reads for the content of each one. A true key
+takes the figures of the shadow that QtCurve draws for a popup of Qt.
+qtcX11ShadowInit() mixes a grey of 102 beside the window, and its
+gradient falls to zero across the shadowSize key. A probe fits the
+Gaussian of the browser to that curve. The blur is 0.220 of the key
+and the spread is 0.088 of it, at a root mean square error of 0.036.
+
+The room row holds the blur and the spread together, because the
+browser clips the shadow at that margin. The row carries no
+!important, because popup.css holds the same property at 0px under
+that weight where the window manager gives no alpha. The GTK sheet of
+QtCurve holds a fixed token, which reads no key of the size.
+
+A false key holds the property at none and states no room. An absent
+key gives the default of true, so an older settings file needs no
+migration. A tooltip takes the native appearance of the platform, and
+this property does not reach it. The static theme carries no rule of
+this kind, because a manifest of the browser holds colours alone.
+
+assert-ff-shadow.sh writes four passes over a private home at two
+sizes. It reads the pixel figures, the grey, the room and the weight
+of each pass, and 14 doctored copies must fail it.
+
+The change sits on the branch work/firefox-theme of the local tree, as
+commit 7 of 8. The branch holds those eight commits above the head of
+work/gtk4-theme, which merge request !15 on system/qtcurve holds. The fork
+wyn/qtcurve takes work/firefox-theme, and a new merge request on
+system/qtcurve takes that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/firefox/CMakeLists.txt b/firefox/CMakeLists.txt
+index 06974be9..e9f80582 100644
+--- a/firefox/CMakeLists.txt
++++ b/firefox/CMakeLists.txt
+@@ -149,8 +149,9 @@ add_custom_target(qtcurve-firefox-theme ALL DEPENDS ${qtc_ff_depends}
+ 
+ # The floor of assert-ff-varnames.sh. A check that reads an empty sheet finds
+ # no fault, so the run states the count that it must read. check/mkfloors.sh
+-# prints this line from one build, and no floor comes from a hand count.
+-set(qtc_ff_names 29)
++# prints this line from one build, and no floor comes from a hand count. The
++# sheet holds the shadow name under either setting, so the floor counts it.
++set(qtc_ff_names 31)
+ 
+ # The two sheets of the shipped schemes, which the checks below read. A run of
+ # a user writes the same text into a profile.
+@@ -215,6 +216,8 @@ add_custom_command(TARGET qtcurve-firefox-theme POST_BUILD
+           "${qtc_ff_run}/notice"
+   COMMAND sh "${qtc_ff_check}/assert-ff-keep.sh" "${qtc_ff_command}"
+           "${qtc_ff_run}/keep"
++  COMMAND sh "${qtc_ff_check}/assert-ff-shadow.sh" "${qtc_ff_command}"
++          "${qtc_ff_run}/shadow"
+   COMMAND sh "${qtc_ff_check}/assert-ff-toolbox.sh" "${qtc_ff_command}"
+           "${qtc_ff_run}/toolbox"
+   # The two runs below are the lock and the re-exec checks of the GTK writer,
+diff --git a/firefox/check/assert-ff-shadow.sh b/firefox/check/assert-ff-shadow.sh
+new file mode 100644
+index 00000000..8ef8b49c
+--- /dev/null
++++ b/firefox/check/assert-ff-shadow.sh
+@@ -0,0 +1,289 @@
++#!/bin/sh
++# assert-ff-shadow.sh WRITER WORKDIR: the sheet must carry one shadow rule of
++# the popups under either setting. A true key gives the blur, the spread, the
++# grey and the room of the shadowSize key. A false key holds the property at
++# none, and a file without the key gives the default. The run writes into
++# WORKDIR alone, because the writer rewrites the files of the caller.
++set -eu
++ulimit -c 0
++usage='usage: assert-ff-shadow.sh WRITER WORKDIR'
++writer=${1:?$usage}
++work=${2:?$usage}
++
++# A relative path leaves XDG_CONFIG_HOME outside the root of the file system.
++# The library of the writer then reads the configuration home of the caller.
++case $work in
++    /*) ;;
++    *) work=$PWD/$work;;
++esac
++
++owned=chrome/qtcurve-userChrome.css
++home=$work/home
++root=$home/.config/mozilla/firefox
++dir=$root/shadow.default
++qtc=$home/qtcurve
++sheet=$dir/$owned
++status=0
++
++# The rows of a true key at the shadowSize 30, which is the default of
++# lib/utils/x11helpers.cpp. sheet.cpp takes 0.220 of that key for the blur and
++# 0.088 of it for the spread, and the room is the sum of the two. The grey 102
++# is c1 of qtcX11ShadowInit(), and the opacity is the first step of the
++# gradient of lib/utils/shadow.cpp.
++shadow30='^  --panel-box-shadow: 0 0 7px 3px rgba(102,102,102,0.999)'\
++' !important;$'
++room30='^  --panel-box-shadow-margin: 10px;$'
++
++# The rows of a true key at the shadowSize 60. The two pixel figures and the
++# room double, and the grey and the opacity stay as they are.
++shadow60='^  --panel-box-shadow: 0 0 13px 5px rgba(102,102,102,0.999)'\
++' !important;$'
++room60='^  --panel-box-shadow-margin: 18px;$'
++
++# The rule of a false key. popup.css and global-shared.css of omni.ja hold the
++# same property at none for a platform that draws a shadow of its own.
++rule_off='^  --panel-box-shadow: none !important;$'
++
++fail() {
++    echo "assert-ff-shadow: $1" >&2
++    status=1
++}
++
++rm -rf "$work"
++mkdir -p "$dir/chrome" "$qtc"
++printf '[Profile0]\nName=shadow\nIsRelative=1\nPath=shadow.default\n' \
++    > "$root/profiles.ini"
++
++# settings LINES: writes the settings file of the user with the gate on and
++# the rows LINES after it. Empty LINES leave the shadow keys out.
++settings() {
++    printf '[Settings]\nfirefoxTheme=true\n%s' "$1" > "$qtc/stylerc"
++}
++
++# run NAME: runs one write pass over the private home, and holds the exit
++# code in the variable code.
++run() {
++    r_name=$1
++    code=0
++    HOME=$home XDG_CONFIG_HOME=$home/.config QTCURVE_CONFIG_DIR=$qtc \
++        "$writer" --write > "$work/$r_name.log" 2>&1 || code=$?
++}
++
++# holds FILE PATTERN: gives 0 while FILE carries PATTERN under the selector of
++# the menus and the panels.
++holds() {
++    grep -q '^menupopup, panel {$' "$1" && grep -q "$2" "$1"
++}
++
++# on FILE SHADOW ROOM: gives 0 while FILE gives the popups the two rows that
++# the caller names and no suppression. This is the check of a true setting,
++# and the controls below must fail it.
++on() {
++    if holds "$1" "$2" && grep -q "$3" "$1" &&
++        ! grep -q "$rule_off" "$1"; then
++        return 0
++    fi
++    echo "assert-ff-shadow: $1 carries no shadow rule of QtCurve" >&2
++    return 1
++}
++
++# on30 FILE and on60 FILE: the arm of each shadowSize of the run. A sheet of
++# one size must fail the arm of the other size.
++on30() {
++    on "$1" "$shadow30" "$room30"
++}
++
++on60() {
++    on "$1" "$shadow60" "$room60"
++}
++
++# off FILE: gives 0 while FILE holds the property at none, drops the shadow of
++# QtCurve and states no room. This is the check of a false setting, and the
++# controls below must fail it.
++off() {
++    if holds "$1" "$rule_off" &&
++        ! grep -q '^  --panel-box-shadow: 0 0 ' "$1" &&
++        ! grep -q '^  --panel-box-shadow-margin:' "$1"; then
++        return 0
++    fi
++    echo "assert-ff-shadow: $1 carries no suppression rule" >&2
++    return 1
++}
++
++# sums FILE: gives 0 while the room of FILE is the blur and the spread of it,
++# and the ink of it is one grey. The room is the whole room of the browser for
++# the shadow, so a room under the sum clips the blur away.
++sums() {
++    s_row=$(sed -n 's/^  --panel-box-shadow: 0 0 \([0-9]*\)px \([0-9]*\)px'\
++' rgba(\([0-9]*\),\([0-9]*\),\([0-9]*\),[0-9.]*) !important;$/\1 \2 \3 \4 \5/p' \
++        "$1")
++    s_room=$(sed -n 's/^  --panel-box-shadow-margin: \([0-9]*\)px;$/\1/p' "$1")
++    if [ -z "$s_row" ] || [ -z "$s_room" ]; then
++        echo "assert-ff-shadow: $1 holds no pair of shadow rows" >&2
++        return 1
++    fi
++    set -- $s_row
++    if [ "$s_room" -ne $(($1 + $2)) ]; then
++        echo "assert-ff-shadow: $1 px of blur and $2 px of spread need the" \
++             "room $(($1 + $2)) and not $s_room" >&2
++        return 1
++    fi
++    if [ "$3" -ne 102 ] || [ "$4" -ne 102 ] || [ "$5" -ne 102 ]; then
++        echo "assert-ff-shadow: the ink $3,$4,$5 is not the grey of" \
++             "qtcX11ShadowInit()" >&2
++        return 1
++    fi
++    return 0
++}
++
++# weight FILE: gives 0 while the shadow row of FILE carries !important and the
++# room row carries none. popup.css of omni.ja holds the room at 0px under
++# !important where the window manager gives no alpha, and that square popup
++# must stand.
++weight() {
++    if grep -q '^  --panel-box-shadow: .* !important;$' "$1" &&
++        grep -q '^  --panel-box-shadow-margin: [0-9]*px;$' "$1" &&
++        ! grep -q -- '--panel-box-shadow-margin:.*!important' "$1"; then
++        return 0
++    fi
++    echo "assert-ff-shadow: $1 holds the wrong weight on a shadow row" >&2
++    return 1
++}
++
++# 1. A true setting at the default size gives the shadow of QtCurve.
++settings 'popupShadow=true
++shadowSize=30
++'
++run true
++[ "$code" -eq 0 ] || fail "the true setting gave the code $code"
++[ -s "$sheet" ] || fail "the true setting wrote no sheet"
++on30 "$sheet" || fail "the true setting dropped the shadow rule"
++sums "$sheet" || fail "the true setting broke the room of the shadow"
++weight "$sheet" || fail "the true setting broke the weight of a row"
++cp "$sheet" "$work/on.css"
++
++# 2. The shadowSize key moves the pixel figures of the same true setting, and
++# the sheet of the profile moves with it.
++settings 'popupShadow=true
++shadowSize=60
++'
++run big
++[ "$code" -eq 0 ] || fail "the size 60 gave the code $code"
++on60 "$sheet" || fail "the size 60 dropped the shadow rule"
++sums "$sheet" || fail "the size 60 broke the room of the shadow"
++cp "$sheet" "$work/big.css"
++if cmp -s "$work/on.css" "$work/big.css"; then
++    fail "the shadowSize key left the sheet of the profile alone"
++fi
++grep -q 'restart' "$work/big.log" ||
++    fail "the shadowSize key printed no notice of a new sheet"
++
++# 3. A false setting holds the property at none, and the sheet of the profile
++# moves. The browser reads that rule for every menu and every panel, as the
++# GTK sheet of QtCurve reads none for the decoration of a popup.
++settings 'popupShadow=false
++shadowSize=30
++'
++run false
++[ "$code" -eq 0 ] || fail "the false setting gave the code $code"
++off "$sheet" || fail "the false setting wrote no suppression rule"
++cp "$sheet" "$work/off.css"
++if cmp -s "$work/on.css" "$work/off.css"; then
++    fail "the flip of the key left the sheet of the profile alone"
++fi
++grep -q 'restart' "$work/false.log" ||
++    fail "the flip of the key printed no notice of a new sheet"
++
++# 4. A settings file without the keys gives the shadow of the default size,
++# which qt6/common/config_file.cpp and lib/utils/x11helpers.cpp hold. A user
++# of an older file needs no migration.
++settings ''
++run absent
++[ "$code" -eq 0 ] || fail "the absent keys gave the code $code"
++on30 "$sheet" || fail "the absent keys dropped the shadow rule"
++cmp -s "$sheet" "$work/on.css" ||
++    fail "the absent keys and the true setting gave two sheets"
++
++# The controls below. Each one doctors a copy of a sheet of the run, and the
++# arm of that copy must fail.
++broken=0
++
++# control NAME ARM COPY: the arm that the caller names must fail over COPY.
++# The log of each control holds the line that the arm printed, so a reader of
++# the build tree sees every bite.
++control() {
++    c_name=$1
++    if "$2" "$3" 2> "$work/control-$c_name.log"; then
++        echo "assert-ff-shadow: the check passed the control copy of" \
++             "$c_name" >&2
++        exit 1
++    fi
++    broken=$((broken + 1))
++}
++
++# The sheet of one size against the arm of the other size. The pair proves
++# that the emitted figures follow the shadowSize key in both directions.
++control size30 on60 "$work/on.css"
++control size60 on30 "$work/big.css"
++
++# A sheet of a true setting that lost the block, which leaves the shadow of
++# the browser in place of the shadow of QtCurve.
++sed '/^menupopup, panel {$/,/^}$/d' "$work/on.css" > "$work/gone.css"
++control gone on30 "$work/gone.css"
++
++# A sheet of a true setting that suppresses, which is the stale sheet of a
++# user who switched the shadow back on.
++sed 's/^  --panel-box-shadow: .*$/  --panel-box-shadow: none !important;/' \
++    "$work/on.css" > "$work/flipped.css"
++control flipped on30 "$work/flipped.css"
++
++# A sheet of a false setting that paints the shadow of QtCurve, which is the
++# stale sheet of a user who switched the shadow off.
++grep "$shadow30" "$work/on.css" > "$work/alpha.line"
++sed "/$rule_off/d" "$work/off.css" > "$work/cut.css"
++sed "/^menupopup, panel {\$/r $work/alpha.line" "$work/cut.css" \
++    > "$work/kept.css"
++control kept off "$work/kept.css"
++
++# A sheet of a false setting that emits no rule at all. The browser then
++# keeps its own shadow under a key that asks for none.
++sed '/^menupopup, panel {$/,/^}$/d' "$work/off.css" > "$work/silent.css"
++control silent off "$work/silent.css"
++
++# A sheet of a false setting that keeps the room of a true setting. The room
++# widens every popup window for a shadow that no rule paints.
++sed "/^menupopup, panel {\$/a\\
++  --panel-box-shadow-margin: 10px;" "$work/off.css" > "$work/room.css"
++control room off "$work/room.css"
++
++# A sheet that paints a black shadow, which a dark theme of the user hides.
++sed 's/rgba(102,102,102,/rgba(0,0,0,/' "$work/on.css" > "$work/black.css"
++control black on30 "$work/black.css"
++control blacksum sums "$work/black.css"
++
++# A sheet with the room of the browser under the blur and the spread, which
++# clips the shadow away. This is the room of the sheet before this round.
++sed 's/^  --panel-box-shadow-margin: 10px;$/  --panel-box-shadow-margin: 4px;/' \
++    "$work/on.css" > "$work/tight.css"
++control tight on30 "$work/tight.css"
++control tightsum sums "$work/tight.css"
++
++# A sheet that holds the room under !important, which takes the square popup
++# of a window manager without alpha away.
++sed 's/^  --panel-box-shadow-margin: 10px;$/  --panel-box-shadow-margin: 10px'\
++' !important;/' "$work/on.css" > "$work/heavy.css"
++control heavy weight "$work/heavy.css"
++
++# A sheet of a true setting without the room, which leaves the browser at the
++# 4 px of tokens-shared.css and clips the blur.
++sed '/^  --panel-box-shadow-margin:/d' "$work/on.css" > "$work/noroom.css"
++control noroom on30 "$work/noroom.css"
++control noroomsum sums "$work/noroom.css"
++
++if [ $status -eq 0 ]; then
++    echo "assert-ff-shadow: the two sizes gave the pixel figures of the" \
++         "shadowSize key, the absent keys gave the default size, the false" \
++         "setting held the property at none and moved the sheet, and the" \
++         "check rejects each of the $broken control copies"
++fi
++exit $status
+diff --git a/firefox/check/ff-varnames.txt b/firefox/check/ff-varnames.txt
+index 667b0764..579c6f1e 100644
+--- a/firefox/check/ff-varnames.txt
++++ b/firefox/check/ff-varnames.txt
+@@ -30,6 +30,8 @@
+ --panel-background-color
+ --panel-text-color
+ --panel-border-color
++--panel-box-shadow
++--panel-box-shadow-margin
+ --toolbarbutton-background-color-hover
+ --tab-background-color-hover
+ --toolbarbutton-background-color-active
+diff --git a/firefox/writer/sheet.cpp b/firefox/writer/sheet.cpp
+index 762d7ace..c9a947c4 100644
+--- a/firefox/writer/sheet.cpp
++++ b/firefox/writer/sheet.cpp
+@@ -83,6 +83,64 @@ toolboxImages(const Options &opts, const Palette &pal)
+     return out;
+ }
+ 
++/**
++ * The colour of the drop shadow of a popup, as one channel from 0 to 255. c1
++ * of qtcX11ShadowInit() in lib/utils/x11helpers.cpp holds 0.4 of the range,
++ * and qtcFillShadowPixel() mixes that colour beside the window. The shadow of
++ * QtCurve is a grey glow, which a dark theme shows as well as a light one.
++ */
++const int shadowGrey = 102;
++
++/**
++ * The opacity of the drop shadow of a popup, from 0.0 to 1.0. The gradient of
++ * qtcCreateShadowGradient() in lib/utils/shadow.cpp starts at this value
++ * beside the window, and the blur of the browser carries the fall of it.
++ */
++const double shadowAlpha = 0.9985;
++
++/**
++ * The blur radius of the popup shadow, in pixels for each pixel of the
++ * shadowSize key. A fit of the Gaussian of the browser to the exponential
++ * gradient of QtCurve holds the least error at this figure.
++ */
++const double shadowBlurPerSize = 0.220;
++
++/**
++ * The spread of the popup shadow, in pixels for each pixel of the shadowSize
++ * key. The spread moves the edge of the Gaussian out of the popup, because
++ * the gradient of QtCurve starts at its peak.
++ */
++const double shadowSpreadPerSize = 0.088;
++
++/**
++ * Returns the shadow rule of the popups. A true setting gives the blur, the
++ * spread and the room of the browser from the shadowSize key of the settings.
++ * A false setting holds the property at none, which is the value that
++ * popup.css of omni.ja gives a platform with a shadow of its own.
++ */
++QString
++popupShadow(const Options &opts)
++{
++    if (!opts.popupShadow) {
++        return QStringLiteral("\nmenupopup, panel {\n"
++                              "  --panel-box-shadow: none !important;\n"
++                              "}\n");
++    }
++    const int blur = qRound(shadowBlurPerSize * opts.shadowSize);
++    const int spread = qRound(shadowSpreadPerSize * opts.shadowSize);
++    // The room row below carries no weight. popup.css of omni.ja holds the
++    // same property at 0px under !important while the window manager gives no
++    // alpha. The browser must keep that square popup.
++    return QStringLiteral("\nmenupopup, panel {\n"
++                          "  --panel-box-shadow: 0 0 %1px %2px %3 !important;\n"
++                          "  --panel-box-shadow-margin: %4px;\n"
++                          "}\n")
++        .arg(blur).arg(spread)
++        .arg(Gtk::rgba(QColor(shadowGrey, shadowGrey, shadowGrey),
++                       shadowAlpha))
++        .arg(blur + spread);
++}
++
+ }
+ 
+ QString
+@@ -103,6 +161,7 @@ buildSheet(const Options &opts, const Palette &pal)
+     }
+     out += QStringLiteral("}\n");
+     out += toolboxImages(opts, pal);
++    out += popupShadow(opts);
+     out += buildCaption(opts, pal);
+     return out;
+ }
+diff --git a/firefox/writer/sheet.h b/firefox/writer/sheet.h
+index f40a3f07..41f4ed2f 100644
+--- a/firefox/writer/sheet.h
++++ b/firefox/writer/sheet.h
+@@ -32,8 +32,9 @@ namespace Firefox {
+ /**
+  * Returns the text of the sheet that the writer owns in a profile. The sheet
+  * holds one header line, then one :root block of every custom property of
+- * the map. A gradient of the titlebar appearance adds one rule of the tool
+- * box for each state of the window. The caption rules end the sheet.
++ * the map. A titlebar gradient adds one rule of the tool box for each state
++ * of the window. The popup rule of the shadow setting and the caption rules
++ * end the sheet.
+  *
+  * \param opts  the QtCurve settings, which give the appearance and the ladders.
+  * \param pal   the colours of the live scheme or of a colour file.
