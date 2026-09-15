@@ -458,4 +458,16 @@ package() {
 	test -L "$pkgdir/usr/lib/systemd/user/plasma-workspace.target.wants/qtcurve-gtk-writer.service"
 	grep -qx 'X-systemd-skip=true' "$pkgdir/etc/xdg/autostart/qtcurve-gtk-writer.desktop"
 	readelf -d "$pkgdir/usr/lib/qt/plugins/styles/qtcurve.so" | grep -q libQt5X11Extras
+
+	# The add-on and its manifest belong to qtcurve-firefox-theme. This package
+	# keeps the writer, its autostart file and its unit. The rmdir stops the build
+	# when a later change of upstream puts another file in the data directory.
+	rm -r "$pkgdir/usr/share/qtcurve/firefox"
+	rmdir "$pkgdir/usr/share/qtcurve"
+	test ! -e "$pkgdir/usr/share/qtcurve"
+	test -x "$pkgdir/usr/bin/qtcurve-firefox-writer"
+	test -s "$pkgdir/etc/xdg/autostart/qtcurve-firefox-writer.desktop"
+	test -s "$pkgdir/usr/lib/systemd/user/qtcurve-firefox-writer.service"
+	test -L "$pkgdir/usr/lib/systemd/user/plasma-workspace.target.wants/qtcurve-firefox-writer.service"
+	grep -qx 'X-systemd-skip=true' "$pkgdir/etc/xdg/autostart/qtcurve-firefox-writer.desktop"
 }
