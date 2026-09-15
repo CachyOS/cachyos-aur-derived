@@ -1,7 +1,7 @@
 pkgbase = qtcurve-gtk-theme
 	pkgdesc = The QtCurve theme data for GTK 2, GTK 3 and GTK 4; the engines and the writer are in qtcurve
 	pkgver = 20260909
-	pkgrel = 5
+	pkgrel = 6
 	url = https://invent.kde.org/system/qtcurve
 	arch = any
 	license = LGPL-2.1-only
@@ -122,6 +122,7 @@ pkgbase = qtcurve-gtk-theme
 	source = firefox-caption-buttons.patch
 	source = firefox-popup-shadow.patch
 	source = firefox-icons.patch
+	source = gtk4-writer-popup-shadow.patch
 	sha256sums = e01dbf05c24c11a3660e6185a9a7607d0838d4560ab717d44b449e9520476f6e
 	sha256sums = 60d6c52289f3b6e7c0645bb9acaa96a769801f66e77f50cd5551b7e613611152
 	sha256sums = e4219281d09f042bac722d7ab6a6784b9b56ea34129e8b877942c91770d9a912
@@ -223,5 +224,6 @@ pkgbase = qtcurve-gtk-theme
 	sha256sums = e47187daf6d94e8ae87c821f8743d2f568ce6156d0f454688fc897f9fb9d909b
 	sha256sums = 01be28b03a708296cfc214d3471e83be1d7c646bdc6ef7e427c644a6842bb90f
 	sha256sums = efead2938a01e987d2bac361a1a959ad11dafd469d86e22f7b05719570a8f53d
+	sha256sums = 9b6e1905a2518684555afad6674301d5b41df5463eae583c8e6b1b5ee83abe80
 
 pkgname = qtcurve-gtk-theme

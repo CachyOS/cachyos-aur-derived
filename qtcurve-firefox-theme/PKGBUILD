@@ -139,6 +139,7 @@ source=(
 	firefox-caption-buttons.patch
 	firefox-popup-shadow.patch
 	firefox-icons.patch
+	gtk4-writer-popup-shadow.patch
 )
 sha256sums=('e01dbf05c24c11a3660e6185a9a7607d0838d4560ab717d44b449e9520476f6e'
             '60d6c52289f3b6e7c0645bb9acaa96a769801f66e77f50cd5551b7e613611152'
@@ -240,7 +241,8 @@ sha256sums=('e01dbf05c24c11a3660e6185a9a7607d0838d4560ab717d44b449e9520476f6e'
             'dd1ab7751127a3af906cb309e00c5f04d94dc8386fe66faf79c4c8fe5817192d'
             'e47187daf6d94e8ae87c821f8743d2f568ce6156d0f454688fc897f9fb9d909b'
             '01be28b03a708296cfc214d3471e83be1d7c646bdc6ef7e427c644a6842bb90f'
-            'efead2938a01e987d2bac361a1a959ad11dafd469d86e22f7b05719570a8f53d')
+            'efead2938a01e987d2bac361a1a959ad11dafd469d86e22f7b05719570a8f53d'
+            '9b6e1905a2518684555afad6674301d5b41df5463eae583c8e6b1b5ee83abe80')
 
 pkgver() {
 	git -C "$_srcname" log -1 --format=%cd --date=format:%Y%m%d
@@ -370,6 +372,10 @@ prepare() {
 	# The patch adds a check, so it takes the three way merge of git.
 	git -C "$_srcname" add -A
 	git -C "$_srcname" apply --3way "$srcdir/firefox-icons.patch"
+	# The patch follows the shadow setting for the popups of the GTK sheets.
+	# The patch adds a settings file, so it takes the three way merge of git.
+	git -C "$_srcname" add -A
+	git -C "$_srcname" apply --3way "$srcdir/gtk4-writer-popup-shadow.patch"
 }
 
 build() {
