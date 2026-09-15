@@ -3,6 +3,13 @@ _start_notice() {
 The GTK theme follows the QtCurve settings through a watch process. The
 process starts at each login. To start it now, run:
 systemctl --user start qtcurve-gtk-writer.service
+
+The Firefox chrome follows the QtCurve settings through a second watch
+process that starts at each login. The process reads "Apply the settings to
+Firefox" in the QtCurve settings dialogue. With the setting off, the process
+deletes the files of the writer from each Firefox profile. The process then
+stops, and no Firefox watch runs for that user. To start it now, run:
+systemctl --user start qtcurve-firefox-writer.service
 EOF
 }
 
@@ -13,6 +20,10 @@ Before you remove the package, run qtcurve-gtk-writer --remove-gtk to delete
 them. Run qtcurve-gtk-writer --remove-qt to delete your saved settings and
 presets; the GTK theme then follows the defaults. Run qtcurve-gtk-writer
 --purge-settings to delete both.
+
+The Firefox writer of this package writes a style sheet into each Firefox
+profile. Run qtcurve-firefox-writer --remove to delete those files. pacman
+deletes no file under a home directory.
 EOF
 }
 

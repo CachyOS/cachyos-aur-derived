@@ -1,7 +1,7 @@
 pkgbase = qtcurve
 	pkgdesc = A configurable set of widget styles for Qt5, Qt6, KDE Frameworks 6, GTK 2, GTK 3 and GTK 4; the GTK theme data is in qtcurve-gtk-theme
 	pkgver = 20260909
-	pkgrel = 7
+	pkgrel = 8
 	url = https://invent.kde.org/system/qtcurve
 	install = qtcurve.install
 	arch = x86_64
