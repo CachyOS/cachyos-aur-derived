@@ -4,7 +4,7 @@ _electron=electron43
 pkgver=2.22.3
 
 pkgname=heroic-games-launcher
-pkgrel=1
+pkgrel=2
 pkgdesc="An Open Source Launcher for GOG, Epic Games and Amazon Games"
 arch=(x86_64)
 url=https://heroicgameslauncher.com/
@@ -34,6 +34,7 @@ optdepends=(
     "gamescope"
     "mangohud"
 )
+replaces=(heroic-games-launcher-bin)
 source=(
     "${pkgname}::git+https://github.com/Heroic-Games-Launcher/HeroicGamesLauncher.git#tag=v${pkgver}"
     "heroic.sh"
