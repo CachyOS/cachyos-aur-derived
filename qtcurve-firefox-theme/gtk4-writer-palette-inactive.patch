@@ -9,10 +9,10 @@ The read mirrors the active pair, key for key. No GTK sheet reads the
 new members, so the four shipped sheets keep their bytes.
 
 The change sits on the branch work/firefox-theme of the local tree, as
-commit 2 of 8. The branch holds those eight commits above the head of
+commit 2 of 10. The branch holds those ten commits above the head of
 work/gtk4-theme, which merge request !15 on system/qtcurve holds. The fork
-wyn/qtcurve takes work/firefox-theme, and a new merge request on
-system/qtcurve takes that branch.
+wyn/qtcurve holds work/firefox-theme. Merge request !29 on system/qtcurve
+holds that branch.
 
 Drop this patch when upstream merges the change.
 

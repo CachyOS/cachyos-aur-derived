@@ -5,7 +5,7 @@ _commit=68a3b41753b66a2f00cf98667a68458961f5cb25
 _srcname=qtcurve
 pkgname=qtcurve-gtk-theme
 pkgver=20260909
-pkgrel=6
+pkgrel=7
 pkgdesc="The QtCurve theme data for GTK 2, GTK 3 and GTK 4; the engines and the writer are in qtcurve"
 arch=(any)
 url="https://invent.kde.org/system/qtcurve"
@@ -145,6 +145,8 @@ source=(
 	firefox-popup-shadow.patch
 	firefox-icons.patch
 	gtk4-writer-popup-shadow.patch
+	gtk4-writer-browser-scrollbar.patch
+	firefox-sidebar-scrollbar.patch
 )
 sha256sums=('e01dbf05c24c11a3660e6185a9a7607d0838d4560ab717d44b449e9520476f6e'
             '60d6c52289f3b6e7c0645bb9acaa96a769801f66e77f50cd5551b7e613611152'
@@ -239,15 +241,17 @@ sha256sums=('e01dbf05c24c11a3660e6185a9a7607d0838d4560ab717d44b449e9520476f6e'
             '390f92b47341e8f2207ef17724b0ff60f56cae1a812095fc180dc52d38787b35'
             '7bcef7ed080217326a386c845d9b9005396858c346edbc1d07cc8b5a4c0e87df'
             '6832c1a41632f1a21c81a236c28887a4ea46b82b7252c41ce52be98f132de036'
-            'd5b2989d1ebdc8e65de640b9c870af2257a1b3ebd07de2d4eddcbb6606f22909'
-            'b694b290d78ce57d687a7125fefed27f82ce985e581f3234769036cf6b69a17f'
-            '01b23b190ed3b4b7ad54f02f954eb17c32ee158423625de35c11a418839a9d87'
-            '7fc0522b7a8c4877389249454a781bb4d80652538755c388e8ba573cd64a4459'
-            'dd1ab7751127a3af906cb309e00c5f04d94dc8386fe66faf79c4c8fe5817192d'
-            'e47187daf6d94e8ae87c821f8743d2f568ce6156d0f454688fc897f9fb9d909b'
-            '01be28b03a708296cfc214d3471e83be1d7c646bdc6ef7e427c644a6842bb90f'
-            'efead2938a01e987d2bac361a1a959ad11dafd469d86e22f7b05719570a8f53d'
-            '9b6e1905a2518684555afad6674301d5b41df5463eae583c8e6b1b5ee83abe80')
+            '80294e1a1fc939b747d5721cf4b26a08cfc726596733a969e9fd7db5b37f4006'
+            '4f17d604271c64efd7f9e4e25ab6068a7756a08199039ad7a0dc3637e6f7590f'
+            '16ff4439a748aff413d919867072bfee66695f7a3ce5160cc6fab76cfb7f240d'
+            '9e78db637102c8517acdb8c16fbb8b38529a3bdfdadeca24c7130892053c8c11'
+            'fae574472b9573978ede2eba9928c49b37694239a20c188fcf27806d800984ad'
+            'e444c5fd3886680de6d5ab71cf002a4247c8abc1073b8109b1d55bc70dde00ad'
+            '785de608b149ab86b031cc67ac780879fc48f7775897f22da44b9f123232768d'
+            '439405712c23dc20ccc1c68ad82523c00832ca58ae522040b535b521fc8857e3'
+            '9b6e1905a2518684555afad6674301d5b41df5463eae583c8e6b1b5ee83abe80'
+            '93b2381927e4d35c6079b30f55967906c41743f26233768c046d774e294ab84e'
+            '8319c09ca2902e17b2aab3176b217dbc9249e85916a1ae6015d688741a509b0a')
 
 pkgver() {
 	git -C "$_srcname" log -1 --format=%cd --date=format:%Y%m%d
@@ -381,6 +385,16 @@ prepare() {
 	# The patch adds a settings file, so it takes the three way merge of git.
 	git -C "$_srcname" add -A
 	git -C "$_srcname" apply --3way "$srcdir/gtk4-writer-popup-shadow.patch"
+	# The patch colours the scroll bars of the browser from QtCurve. The
+	# patch holds the context of the package tree, because the patch above
+	# moves the same floors and the same node table. The patch adds a check,
+	# so it takes the three way merge of git.
+	git -C "$_srcname" add -A
+	git -C "$_srcname" apply --3way "$srcdir/gtk4-writer-browser-scrollbar.patch"
+	# The patch colours the sidebar scroll bars of the browser from QtCurve.
+	# The patch adds a check, so it takes the three way merge of git.
+	git -C "$_srcname" add -A
+	git -C "$_srcname" apply --3way "$srcdir/firefox-sidebar-scrollbar.patch"
 }
 
 build() {
