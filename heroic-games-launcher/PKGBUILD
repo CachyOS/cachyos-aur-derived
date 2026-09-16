@@ -1,7 +1,7 @@
 # Adapted from `heroic-games-launcher` PKGBUILD at <https://aur.archlinux.org/pkgbase/heroic-games-launcher/>, originally maintained by Fabio 'Lolix' Loli <fabio.loli@disroot.org> -> https://github.com/FabioLolix
 
 _electron=electron43
-pkgver=2.22.1
+pkgver=2.22.3
 
 pkgname=heroic-games-launcher
 pkgrel=1
@@ -40,12 +40,10 @@ source=(
     "${pkgname}-5877.patch::https://github.com/Heroic-Games-Launcher/HeroicGamesLauncher/pull/5877.patch"
     "heroic.sh"
 )
-sha256sums=(
-    'cabb6f90e46f34f4af7388e3ab7c40ddd3502cda73fbeb145d40080d8f76d995'
-    '6659c5b2ccd503fd02417ca81a87fb062477cd8cde7fb270e7c05131d9bf3b6e'
-    'fadb28b05ce74b0af7d709e5b728c6aeab6cd937b80a9f86dbf065e6d83a4022'
-    'df5fb2b5afc70f46a63913846c4f5d55372584a1468173833fe5106db2303c07'
-)
+sha256sums=('0846c998e8a39dc146f1273f4e7a587f172e3075f7de42dc936fe845b70b2f10'
+            '6659c5b2ccd503fd02417ca81a87fb062477cd8cde7fb270e7c05131d9bf3b6e'
+            'fadb28b05ce74b0af7d709e5b728c6aeab6cd937b80a9f86dbf065e6d83a4022'
+            'df5fb2b5afc70f46a63913846c4f5d55372584a1468173833fe5106db2303c07')
 
 prepare() {
     sed -i "s|@ELECTRON@|${_electron}|" heroic.sh
