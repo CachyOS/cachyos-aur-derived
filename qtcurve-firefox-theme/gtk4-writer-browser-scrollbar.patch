@@ -17,12 +17,10 @@ of Style::sliderColors() under each slider key, one step of that
 ladder for the pointer, and the groove colour of the bar. Every
 groove path of the style paints the groove at step two of a shade
 ladder, so one colour serves every setting. The ground takes the
-Base seed of the palette, and an earlier measurement read a generic
-rule that the window colour of the theme grounds. A new helper of
-palette.cpp holds the derivation, and the writer of the browser
-theme reads the same helper. The block carries colours alone. A
-border of the chain paints no pixel of the browser, and an image of
-it stands unproven.
+Base seed of the palette. The helper of palette.cpp holds the
+derivation, and the block reads it. The block carries colours
+alone. A border of the chain paints no pixel of the browser, and an
+image of it stands unproven.
 
 assert-browser.sh binds the block to the settings over eleven arms.
 assert-alphas.sh now takes a comment of a whole line, because the
@@ -37,7 +35,7 @@ holds that branch.
 Drop this patch when upstream merges the change.
 
 diff --git a/gtk4/CMakeLists.txt b/gtk4/CMakeLists.txt
-index 5e2ba2a3..95cd7011 100644
+index dcb71967..79c5b860 100644
 --- a/gtk4/CMakeLists.txt
 +++ b/gtk4/CMakeLists.txt
 @@ -97,13 +97,13 @@ set(qtc_check "${CMAKE_CURRENT_SOURCE_DIR}/check")
@@ -93,9 +91,9 @@ index 5e2ba2a3..95cd7011 100644
 -set(qtc_follow_cover3 380)
 +set(qtc_follow_cover3 384)
  set(qtc_follow_cover4 185)
--set(qtc_follow_grad3 446)
-+set(qtc_follow_grad3 450)
- set(qtc_follow_grad4 235)
+-set(qtc_follow_grad3 442)
++set(qtc_follow_grad3 446)
+ set(qtc_follow_grad4 231)
 -set(qtc_follow_flat3 290)
 +set(qtc_follow_flat3 294)
  set(qtc_follow_flat4 115)
@@ -128,8 +126,8 @@ index 5e2ba2a3..95cd7011 100644
  set(qtc_shades_opt4 179)
  add_custom_command(TARGET qtcurve-gtk-theme POST_BUILD
    COMMAND sh "${qtc_check}/assert-alphas.sh" -s -a -d gtk4
-@@ -633,6 +633,15 @@ add_custom_command(TARGET qtcurve-gtk-theme POST_BUILD
-           "${qtc_shadow_size}" "${qtc_shadow_big}"
+@@ -642,6 +642,15 @@ add_custom_command(TARGET qtcurve-gtk-theme POST_BUILD
+           "${qtc_cover_dir}/scrollbar" "${qtc_light}" "${qtc_distinct}"
    VERBATIM)
  
 +# The scroll bar block of the browser. A browser reads the GTK 3 sheet of a
@@ -495,11 +493,11 @@ index 561f2034..d7f560e8 100644
  switch | border | 0.750 |  |
  switch:checked | border | 0.750 |  |
 diff --git a/gtk4/check/shades-grad.txt b/gtk4/check/shades-grad.txt
-index 60d45228..9605a5d9 100644
+index ae4d3f90..edaa73fa 100644
 --- a/gtk4/check/shades-grad.txt
 +++ b/gtk4/check/shades-grad.txt
 @@ -132,6 +132,9 @@ scrollbar > range > trough > slider | border | 0.750 |  |
- scrollbar > range > trough > slider:hover | background-image | 1.200 1.030 0.984 1.030 0.900 1.030 1.060 1.030 |  |
+ scrollbar > range > trough > slider:hover | background-image | 1.040 1.030 0.980 1.030 |  |
  scrollbar > range > trough > slider:hover | background-color | 1.030 |  |
  scrollbar > range > trough > slider:hover | border | 0.750 |  |
 +#MozillaGtkWidget scrollbar | background-color | 0.900 | gtk3 |
@@ -573,144 +571,11 @@ index b11b956b..39dfc842 100644
      /** True while a header bar of the dialect holds a window handle child. */
      bool windowHandle;
      /**
-diff --git a/gtk4/writer/palette.cpp b/gtk4/writer/palette.cpp
-index 1ad85873..e88e586f 100644
---- a/gtk4/writer/palette.cpp
-+++ b/gtk4/writer/palette.cpp
-@@ -241,6 +241,80 @@ menuRole(const Options &opts)
-     return opts.lighterPopupMenuBgnd != 0 ? Role::Base : Role::Window;
- }
- 
-+ScrollSpec
-+scrollSpec(const Options &opts, const Palette &pal)
-+{
-+    // Style::sliderColors() holds the button ladder while the settings build
-+    // no thumb ladder, and Style::getFill() takes the darker pair of steps
-+    // under SHADE_DARKEN alone. Every other value of the key, such as
-+    // SHADE_WINDOW_BORDER, reaches the same default arm as SHADE_NONE.
-+    Role role = Role::Button;
-+    QColor seed;
-+    int rest = ORIGINAL_SHADE;
-+    int hover = SHADE_ORIG_HIGHLIGHT;
-+    switch (opts.shadeSliders) {
-+    case SHADE_DARKEN:
-+        rest = 2;
-+        hover = SHADE_2_HIGHLIGHT;
-+        break;
-+    case SHADE_SELECTED:
-+        role = Role::Highlight;
-+        break;
-+    case SHADE_BLEND_SELECTED:
-+        role = Role::None;
-+        seed = midColor(pal.highlight, pal.button);
-+        break;
-+    case SHADE_CUSTOM:
-+        role = Role::None;
-+        seed = opts.customSlidersColor;
-+        break;
-+    default:
-+        break;
-+    }
-+
-+    ScrollSpec spec;
-+    spec.rest = ScrollTone { role, seed, rest };
-+    spec.hover = ScrollTone { role, seed, hover };
-+    // Style::sliderColors() gives the thumb ladder to the pointer alone under
-+    // colorSliderMouseOver. The reader clears that key under SHADE_NONE and
-+    // SHADE_DARKEN, whose ladder is the button ladder already.
-+    if (opts.colorSliderMouseOver) {
-+        spec.rest = ScrollTone { Role::Button, QColor(), ORIGINAL_SHADE };
-+    }
-+
-+    // Every groove path of Style::drawComplexControl() paints the visible
-+    // groove at the step 2 of a shade ladder, so the track holds that step
-+    // under every setting. The ladder of the base colour carries it.
-+    spec.track = ScrollTone { Role::Base, QColor(), 2 };
-+    return spec;
-+}
-+
-+QColor
-+scrollColour(const Options &opts, const Palette &pal, const ScrollTone &t)
-+{
-+    if (t.step < 0 || t.step > TOTAL_SHADES) {
-+        failUnknown("Shade", t.step);
-+        return QColor();
-+    }
-+    switch (t.role) {
-+    case Role::None: {
-+        Shades own;
-+        shadeLadder(opts, t.seed, own);
-+        return own[t.step];
-+    }
-+    case Role::Base:
-+        return pal.bgnd[t.step];
-+    case Role::Button:
-+        return pal.btn[t.step];
-+    case Role::Highlight:
-+        return pal.hl[t.step];
-+    default:
-+        break;
-+    }
-+    failUnknown("Role", int(t.role));
-+    return QColor();
-+}
-+
- /** The groups and the keys that a shipped .colors file must hold. */
- static const struct {
-     const char *group;
-diff --git a/gtk4/writer/palette.h b/gtk4/writer/palette.h
-index eb618bb0..fd911e67 100644
---- a/gtk4/writer/palette.h
-+++ b/gtk4/writer/palette.h
-@@ -118,6 +118,43 @@ QColor roleColour(const Palette &pal, Role role, const QColor &fallback);
-  */
- Role menuRole(const Options &opts);
- 
-+/** One colour of a scroll bar: a shade ladder and one step of that ladder. */
-+struct ScrollTone {
-+    /** Role of the ladder, or Role::None for a ladder of the seed colour. */
-+    Role role;
-+    /** Seed colour of the ladder while role is Role::None. */
-+    QColor seed;
-+    /** Step of the ladder, from 0 to TOTAL_SHADES. */
-+    int step;
-+};
-+
-+/** The three colours that a browser reads off the scroll bar of a theme. */
-+struct ScrollSpec {
-+    /** Colour of the thumb while the pointer stands off it. */
-+    ScrollTone rest;
-+    /** Colour of the thumb under the pointer and under the button. */
-+    ScrollTone hover;
-+    /** Colour of the ground of the bar, which a browser takes as the track. */
-+    ScrollTone track;
-+};
-+
-+/**
-+ * Returns the scroll bar colours of the settings opts and the palette pal.
-+ * Style::drawSbSliderHandle() paints the thumb of Qt from the two thumb
-+ * tones, and the groove arm of Style::drawComplexControl() paints the bar of
-+ * Qt from the track tone.
-+ */
-+ScrollSpec scrollSpec(const Options &opts, const Palette &pal);
-+
-+/**
-+ * Returns the colour of the scroll bar tone t. A tone of the role None takes
-+ * the ladder that shadeLadder() builds over the seed of the tone, and a step
-+ * or a role outside the contract of ScrollTone gives exit code 5 and an
-+ * invalid colour.
-+ */
-+QColor scrollColour(const Options &opts, const Palette &pal,
-+                    const ScrollTone &t);
-+
- /**
-  * Fills out with the ladder that Style::shadeColors() builds for the base
-  * colour, under the custom shades, the contrast and the shading model of opts.
 diff --git a/gtk4/writer/widgets.cpp b/gtk4/writer/widgets.cpp
-index a97200db..0ae5634f 100644
+index 14b5d7f1..2de07a57 100644
 --- a/gtk4/writer/widgets.cpp
 +++ b/gtk4/writer/widgets.cpp
-@@ -205,6 +205,24 @@ ranked(const QString &selector, Rank rank)
+@@ -234,6 +234,24 @@ ranked(const QString &selector, Rank rank)
      return out.join(QStringLiteral(", "));
  }
  
@@ -735,23 +600,7 @@ index a97200db..0ae5634f 100644
  /** Holds one emitter run: the settings, the palette, the sheet and the nodes. */
  class Writer {
  public:
-@@ -269,6 +287,15 @@ private:
-     {
-         return lad(tone(r), i);
-     }
-+    /**
-+     * Returns the tone of the scroll bar tone t. A tone of a seed colour
-+     * gives a literal, because no colour name of the sheet carries it.
-+     */
-+    Tone scrollTone(const ScrollTone &t) const
-+    {
-+        return lad(t.role == Role::None ? fixedTone(t.seed) : tone(t.role),
-+                   t.step);
-+    }
-     /**
-      * Declares the custom property name with the tone t and returns the text
-      * of one use of it.
-@@ -619,6 +646,7 @@ private:
+@@ -672,6 +690,7 @@ private:
      void progressBar();
      void levelBar();
      void scrollBar();
@@ -759,7 +608,7 @@ index a97200db..0ae5634f 100644
      void toggleSwitch();
      void separator();
      void toolBar();
-@@ -1620,6 +1648,33 @@ Writer::scrollBar()
+@@ -1678,6 +1697,33 @@ Writer::scrollBar()
                         "scrollbar slider:hover"), hover);
  }
  
@@ -793,7 +642,7 @@ index a97200db..0ae5634f 100644
  void
  Writer::toggleSwitch()
  {
-@@ -2362,6 +2417,7 @@ Writer::run()
+@@ -2438,6 +2484,7 @@ Writer::run()
      progressBar();
      levelBar();
      scrollBar();

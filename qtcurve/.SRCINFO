@@ -1,7 +1,7 @@
 pkgbase = qtcurve
 	pkgdesc = A configurable set of widget styles for Qt5, Qt6, KDE Frameworks 6, GTK 2, GTK 3 and GTK 4; the GTK theme data is in qtcurve-gtk-theme
 	pkgver = 20260909
-	pkgrel = 9
+	pkgrel = 10
 	url = https://invent.kde.org/system/qtcurve
 	install = qtcurve.install
 	arch = x86_64
@@ -156,6 +156,7 @@ pkgbase = qtcurve
 	source = firefox-popup-shadow.patch
 	source = firefox-icons.patch
 	source = gtk4-writer-popup-shadow.patch
+	source = gtk4-writer-scrollbar-parity.patch
 	source = gtk4-writer-browser-scrollbar.patch
 	source = firefox-sidebar-scrollbar.patch
 	sha256sums = e01dbf05c24c11a3660e6185a9a7607d0838d4560ab717d44b449e9520476f6e
@@ -260,7 +261,8 @@ pkgbase = qtcurve
 	sha256sums = 785de608b149ab86b031cc67ac780879fc48f7775897f22da44b9f123232768d
 	sha256sums = 439405712c23dc20ccc1c68ad82523c00832ca58ae522040b535b521fc8857e3
 	sha256sums = 9b6e1905a2518684555afad6674301d5b41df5463eae583c8e6b1b5ee83abe80
-	sha256sums = 93b2381927e4d35c6079b30f55967906c41743f26233768c046d774e294ab84e
+	sha256sums = 297f9366557406bf61cf3e53e4e840e98426b02d8a1368ad9e08c7df7ee3f271
+	sha256sums = ed09ec03a802beac1a77501421082a631a015e5f45180034ac34288cc5b626b1
 	sha256sums = 8319c09ca2902e17b2aab3176b217dbc9249e85916a1ae6015d688741a509b0a
 
 pkgname = qtcurve
