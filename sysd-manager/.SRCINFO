@@ -1,7 +1,7 @@
 pkgbase = sysd-manager
 	pkgdesc = A user-friendly GUI to manage systemd units
-	pkgver = 2.20.7
-	pkgrel = 2
+	pkgver = 2.22.2
+	pkgrel = 1
 	url = https://github.com/plrigaux/sysd-manager
 	arch = x86_64
 	license = GPL-3.0-or-later
@@ -12,7 +12,7 @@ pkgbase = sysd-manager
 	depends = systemd-libs
 	depends = gtksourceview5
 	depends = gettext
-	source = sysd-manager-2.20.7.tar.gz::https://github.com/plrigaux/sysd-manager/archive/refs/tags/v2.20.7.tar.gz
-	sha256sums = 33b7fd0077d8b24bf719142be6acce23e3614dfc2bf603ce37dea5ebf63b7cc6
+	source = sysd-manager-2.22.2.tar.gz::https://github.com/plrigaux/sysd-manager/archive/refs/tags/v2.22.2.tar.gz
+	sha256sums = ad4d6401cee0a9bca1ced2a574e8c4ddc6fa06b2d27f716b1af129b6d8bc5b54
 
 pkgname = sysd-manager
