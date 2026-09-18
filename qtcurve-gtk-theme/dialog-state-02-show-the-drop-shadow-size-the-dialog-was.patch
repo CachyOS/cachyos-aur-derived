@@ -1,0 +1,31 @@
+Show the drop shadow size the dialog was given
+
+QtCurveConfig::setWidgetOptions() reads the process wide
+qtcX11ShadowSize() for the drop shadow size. Every neighbouring line
+reads the options that the caller gave. The Defaults button therefore
+keeps the size of the current configuration. A return to the current
+preset shows the size of the preset that the user opened last. The
+next Apply writes that stale size over the saved one.
+
+Read opts.shadowSize, the way the line above it reads
+opts.menuBgndOpacity. Both qtcDefaultSettings() and qtcReadConfig()
+put the wanted size in the options, so the dialog must show it.
+
+The change sits on the branch work/dialog-state of the local tree, as commit 2 of 12.
+A new merge request on system/qtcurve takes that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/qt6/config/qtcurveconfig.cpp b/qt6/config/qtcurveconfig.cpp
+index 55e76bed..f07ae914 100644
+--- a/qt6/config/qtcurveconfig.cpp
++++ b/qt6/config/qtcurveconfig.cpp
+@@ -3545,7 +3545,7 @@ void QtCurveConfig::setWidgetOptions(const Options &opts)
+     dlgOpacity->setValue(opts.dlgOpacity);
+     menuBgndImage->setCurrentIndex(opts.menuBgndImage.type);
+     menuBgndOpacity->setValue(opts.menuBgndOpacity);
+-    dropShadowSize->setValue(qtcX11ShadowSize());
++    dropShadowSize->setValue(opts.shadowSize);
+     dwtAppearance->setCurrentIndex(opts.dwtAppearance);
+     tooltipAppearance->setCurrentIndex(opts.tooltipAppearance);
+     dwtBtnAsPerTitleBar->setChecked(opts.dwtSettings&DWT_BUTTONS_AS_PER_TITLEBAR);

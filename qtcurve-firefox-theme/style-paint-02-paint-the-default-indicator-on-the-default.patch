@@ -1,0 +1,39 @@
+Paint the default indicator on the default button only
+
+drawPrimitiveButton() treats a button as the default button when three
+conditions hold. The button effect is not plain, the mouse-over colour is
+glow, and the focus style is full or filled. Every focused button of such
+a configuration then takes the default button colours, the darkened fill,
+the coloured border, the corner mark or the glow. The button that the
+style option reports as the default button loses its own mark, because
+each neighbour now carries the same mark. The Default Button page of the
+dialog names the one button that takes the mark.
+
+The label of a promoted button stays plain, because drawControl() reads
+the DefaultButton feature of the style option for the bold font. The
+promotion therefore contradicts the style option that it overrides.
+
+The style now takes the default flag from the style option alone. A
+focused button keeps the rectangle of its focus style, which the focus
+option draws.
+
+The change sits on the branch work/style-paint of the local tree, as commit 2 of 21.
+A new merge request on system/qtcurve takes that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/qt6/style/qtcurve_primitive.cpp b/qt6/style/qtcurve_primitive.cpp
+index b0373574..d31daa97 100644
+--- a/qt6/style/qtcurve_primitive.cpp
++++ b/qt6/style/qtcurve_primitive.cpp
+@@ -1146,10 +1146,6 @@ Style::drawPrimitiveButton(PrimitiveElement element, const QStyleOption *option,
+         opt.state |= State_Raised;
+     }
+ 
+-    isDefault = (isDefault ||
+-                 (doEtch && oneOf(opts.focus, FOCUS_FULL, FOCUS_FILLED) &&
+-                  opts.coloredMouseOver == MO_GLOW &&
+-                  opt.state & State_HasFocus && opt.state & State_Enabled));
+     if (isFlat && !isDown && !(opt.state & State_MouseOver)) {
+         return true;
+     }

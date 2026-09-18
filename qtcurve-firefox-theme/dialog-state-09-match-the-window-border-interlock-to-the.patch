@@ -1,0 +1,42 @@
+Match the window border interlock to the style
+
+QtCurveConfig::windowBorder_menuColorChanged() clears the titlebar
+only box each time the user ticks the menubar colour box. The style
+keeps both bits. qtcCheckConfig() drops the menubar colour bit beside
+a blended titlebar, or beside a menubar shade of the window border,
+and beside nothing else. The dialog throws a live setting away. The
+rule fails as an exclusion as well. The other click order leaves both
+boxes ticked, and the page writes a window border of 3.
+
+The same handler leaves the blend box ticked, and that pair is the one
+the style does repair. The user ticks the menubar colour box, the file
+keeps the bit, and the next read drops it.
+
+Clear the blend box instead of the titlebar only box.
+windowBorder_blendChanged() already holds that pair in the other
+direction, so each combination that the page writes now survives a
+load and an Apply.
+
+The change sits on the branch work/dialog-state of the local tree, as commit 9 of 12.
+A new merge request on system/qtcurve takes that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/qt6/config/qtcurveconfig.cpp b/qt6/config/qtcurveconfig.cpp
+index 8a247d1e..5ab86a9c 100644
+--- a/qt6/config/qtcurveconfig.cpp
++++ b/qt6/config/qtcurveconfig.cpp
+@@ -1572,9 +1572,12 @@ void QtCurveConfig::windowBorder_blendChanged()
+ 
+ void QtCurveConfig::windowBorder_menuColorChanged()
+ {
++    // qtcCheckConfig() drops the menubar colour beside a blended titlebar, and
++    // beside a menubar shade of the window border. The style keeps the menubar
++    // colour beside the titlebar only colour.
+     if(windowBorder_menuColor->isChecked())
+     {
+-        windowBorder_colorTitlebarOnly->setChecked(false);
++        windowBorder_blend->setChecked(false);
+         if(SHADE_WINDOW_BORDER==shadeMenubars->currentIndex())
+             shadeMenubars->setCurrentIndex(SHADE_NONE);
+     }

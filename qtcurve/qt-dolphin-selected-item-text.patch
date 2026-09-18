@@ -1,0 +1,184 @@
+Keep the text of a selected item readable in Dolphin
+
+The item view of Dolphin paints its own item text over the selection
+pill that the style draws. A colour scheme can give the text colour
+and the selection colour almost the same luminance. The style then
+paints an opaque pill, and the text on the pill has no contrast.
+
+The style now walks the widget parents at PE_PanelItemViewItem and
+looks for the Dolphin viewport class KItemListContainerViewport. For
+a selected item in that view, the style measures the contrast ratio
+of the text colour against the opaque selection colour. When the
+ratio is below 1.6, the style paints the pill with an alpha of 0.32.
+Under the pointer the alpha is 0.40. The view background then shows
+through the pill, and the text keeps the contrast that the scheme
+gives it against the view background. The two alpha values are the
+values that Dolphin uses for its own Breeze selection rectangle. The
+1.6 floor is the lowest ratio at which the text stays legible. The
+translucent pill keeps the same alpha in an inactive window.
+
+The Qt 5 style tests QPalette::HighlightedText, because a Qt 5 build
+of Dolphin draws the text of a selected item with that role. The Qt 6
+style tests QPalette::Text, because Dolphin now draws the text of a
+selected item with the normal text role. Item views outside the
+Dolphin viewport keep the opaque pill.
+
+The change sits on the branch dolphin-selected-item-text of the local
+tree. The fork wyn/qtcurve holds that branch. Merge request !28 on
+system/qtcurve holds that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/qt5/style/qtcurve_primitive.cpp b/qt5/style/qtcurve_primitive.cpp
+index d9bd519..7293795 100644
+--- a/qt5/style/qtcurve_primitive.cpp
++++ b/qt5/style/qtcurve_primitive.cpp
+@@ -21,6 +21,7 @@
+  *****************************************************************************/
+ 
+ #include "qtcurve_p.h"
++#include <qtcurve-utils/color.h>
+ #include <qtcurve-utils/qtprops.h>
+ 
+ #include <QMdiSubWindow>
+@@ -31,6 +32,7 @@
+ #include <QListView>
+ #include <QPixmapCache>
+ #include <QDockWidget>
++#include <QGraphicsView>
+ #include <QGroupBox>
+ #include <QDial>
+ #include <QCheckBox>
+@@ -774,6 +776,24 @@ Style::drawPrimitiveQtcBackground(PrimitiveElement,
+     return true;
+ }
+ 
++static const double qtcItemTextMinContrast = 1.6;
++static const qreal qtcDolphinSelectedPillAlpha = 0.32;
++static const qreal qtcDolphinPointerPillAlpha = 0.40;
++
++static inline bool
++qtcItemTextContrastsOnColor(const QPalette &palette,
++                            QPalette::ColorGroup cg,
++                            QPalette::ColorRole textRole,
++                            const QColor &background)
++{
++    const QColor textColor = palette.color(cg, textRole);
++    const double textLuma = qtcColorLuma(&textColor);
++    const double backgroundLuma = qtcColorLuma(&background);
++    const double high = textLuma > backgroundLuma ? textLuma : backgroundLuma;
++    const double low = textLuma < backgroundLuma ? textLuma : backgroundLuma;
++    return (high + 0.05) / (low + 0.05) >= qtcItemTextMinContrast;
++}
++
+ bool
+ Style::drawPrimitivePanelItemViewItem(PrimitiveElement,
+                                       const QStyleOption *option,
+@@ -832,16 +852,31 @@ Style::drawPrimitivePanelItemViewItem(PrimitiveElement,
+                            QListView::IconMode)))));
+         bool modAlpha = (!(state & State_Active) &&
+                          m_inactiveChangeSelectionColor);
++        const QWidget *dolphinViewport = widget;
++        while (dolphinViewport &&
++               !dolphinViewport->inherits("KItemListContainerViewport")) {
++            dolphinViewport = dolphinViewport->parentWidget();
++        }
++        const bool dolphinItemList = dolphinViewport &&
++            qobject_cast<const QGraphicsView*>(dolphinViewport);
++        const bool dolphinTextPill = dolphinItemList &&
++            (state & State_Selected) &&
++            !qtcItemTextContrastsOnColor(palette, cg,
++                                         QPalette::HighlightedText, color);
+         if (hover && !hasCustomBackground) {
+             if (!(state & State_Selected)) {
+                 color.setAlphaF(theThemedApp == APP_PLASMA && !widget ?
+                                 0.5 * (modAlpha ? 0.75 : 1.0) : 0.20);
++            } else if (dolphinTextPill) {
++                color.setAlphaF(qtcDolphinPointerPillAlpha);
+             } else {
+                 color = color.lighter(110);
+                 if (modAlpha) {
+                     color.setAlphaF(INACTIVE_SEL_ALPHA);
+                 }
+             }
++        } else if (dolphinTextPill) {
++            color.setAlphaF(qtcDolphinSelectedPillAlpha);
+         } else if (modAlpha) {
+             color.setAlphaF(color.alphaF() * INACTIVE_SEL_ALPHA);
+         }
+diff --git a/qt6/style/qtcurve_primitive.cpp b/qt6/style/qtcurve_primitive.cpp
+index 531c6be..97936c9 100644
+--- a/qt6/style/qtcurve_primitive.cpp
++++ b/qt6/style/qtcurve_primitive.cpp
+@@ -21,6 +21,7 @@
+  *****************************************************************************/
+ 
+ #include "qtcurve_p.h"
++#include <qtcurve-utils/color.h>
+ #include <qtcurve-utils/qtprops.h>
+ 
+ #include <QMdiSubWindow>
+@@ -31,6 +32,7 @@
+ #include <QListView>
+ #include <QPixmapCache>
+ #include <QDockWidget>
++#include <QGraphicsView>
+ #include <QGroupBox>
+ #include <QDial>
+ #include <QCheckBox>
+@@ -774,6 +776,24 @@ Style::drawPrimitiveQtcBackground(PrimitiveElement,
+     return true;
+ }
+ 
++static const double qtcItemTextMinContrast = 1.6;
++static const qreal qtcDolphinSelectedPillAlpha = 0.32;
++static const qreal qtcDolphinPointerPillAlpha = 0.40;
++
++static inline bool
++qtcItemTextContrastsOnColor(const QPalette &palette,
++                            QPalette::ColorGroup cg,
++                            QPalette::ColorRole textRole,
++                            const QColor &background)
++{
++    const QColor textColor = palette.color(cg, textRole);
++    const double textLuma = qtcColorLuma(&textColor);
++    const double backgroundLuma = qtcColorLuma(&background);
++    const double high = textLuma > backgroundLuma ? textLuma : backgroundLuma;
++    const double low = textLuma < backgroundLuma ? textLuma : backgroundLuma;
++    return (high + 0.05) / (low + 0.05) >= qtcItemTextMinContrast;
++}
++
+ bool
+ Style::drawPrimitivePanelItemViewItem(PrimitiveElement,
+                                       const QStyleOption *option,
+@@ -832,16 +852,30 @@ Style::drawPrimitivePanelItemViewItem(PrimitiveElement,
+                            QListView::IconMode)))));
+         bool modAlpha = (!(state & State_Active) &&
+                          m_inactiveChangeSelectionColor);
++        const QWidget *dolphinViewport = widget;
++        while (dolphinViewport &&
++               !dolphinViewport->inherits("KItemListContainerViewport")) {
++            dolphinViewport = dolphinViewport->parentWidget();
++        }
++        const bool dolphinItemList = dolphinViewport &&
++            qobject_cast<const QGraphicsView*>(dolphinViewport);
++        const bool dolphinTextPill = dolphinItemList &&
++            (state & State_Selected) &&
++            !qtcItemTextContrastsOnColor(palette, cg, QPalette::Text, color);
+         if (hover && !hasCustomBackground) {
+             if (!(state & State_Selected)) {
+                 color.setAlphaF(theThemedApp == APP_PLASMA && !widget ?
+                                 0.5 * (modAlpha ? 0.75 : 1.0) : 0.20);
++            } else if (dolphinTextPill) {
++                color.setAlphaF(qtcDolphinPointerPillAlpha);
+             } else {
+                 color = color.lighter(110);
+                 if (modAlpha) {
+                     color.setAlphaF(INACTIVE_SEL_ALPHA);
+                 }
+             }
++        } else if (dolphinTextPill) {
++            color.setAlphaF(qtcDolphinSelectedPillAlpha);
+         } else if (modAlpha) {
+             color.setAlphaF(color.alphaF() * INACTIVE_SEL_ALPHA);
+         }

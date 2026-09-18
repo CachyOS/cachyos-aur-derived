@@ -1,0 +1,45 @@
+Make the check success lines name their controls
+
+The success line of assert-shadow held the words "fails" and "broken".
+The success line of assert-latch held the words "failure lines". Both
+lines go to standard output, which the two scripts keep for a pass. A
+reader of a build log therefore found a failure word on the channel of
+the pass. That reader read a green run as a red one.
+
+The new lines name the controls. assert-shadow rejects control copies,
+which is the vocabulary of the comment above its own controls.
+assert-latch calls the fault a control. Its lines of the code 5 then
+read as the proof that the check finds the fault.
+
+The live counts, the two channels, the failure lines on standard error
+and every exit code stay as they were. No script and no build rule
+reads the success prose of either check.
+
+The change sits on the branch work/gtk4-theme of the local tree, as the
+seventh commit. The fork wyn/qtcurve holds that branch. Merge request !15 on
+system/qtcurve holds that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/gtk4/check/assert-latch.sh b/gtk4/check/assert-latch.sh
+index ce0f353b..4d640c7b 100644
+--- a/gtk4/check/assert-latch.sh
++++ b/gtk4/check/assert-latch.sh
+@@ -98,5 +98,5 @@ if ! kill -0 "$pid" 2>/dev/null; then
+     echo "assert-latch: the watch mode stopped after the fault" >&2
+     exit 1
+ fi
+-echo "assert-latch: the fault gave $five failure lines of the code 5, and the" \
+-     "pass after it gave a line of its own"
++echo "assert-latch: the count of the lines of the code 5 under the" \
++     "control fault is $five. The pass after the fault gave a line of its own"
+diff --git a/gtk4/check/assert-shadow.sh b/gtk4/check/assert-shadow.sh
+index dea02425..e921068a 100644
+--- a/gtk4/check/assert-shadow.sh
++++ b/gtk4/check/assert-shadow.sh
+@@ -168,4 +168,4 @@ sed 's/margin: 10px/margin: 11px/' "$on3" > "$tmp/byte.css"
+ control byte "$tmp/byte.css" "$off3" "$on4" "$off4" "$shipped3"
+ 
+ echo "assert-shadow: the two arms hold the contract of '$psel', and the" \
+-     "check fails each of the $broken broken sheets"
++     "check rejects each of the $broken control copies"

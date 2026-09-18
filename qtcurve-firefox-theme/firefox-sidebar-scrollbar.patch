@@ -1,0 +1,447 @@
+Colour the sidebar scroll bars of the browser from QtCurve
+
+The static theme carries the two sidebar colours, so the browser marks
+the root of each sidebar document. Its own rules then force a grey pair
+of scroll bar colours on that root. The sidebars therefore kept a grey
+bar while every other surface took the colours of QtCurve.
+
+The owned sheet now carries one rule of that root. It states the thumb
+and the track as literal colours under !important. The sheet stands at
+the user origin and the rules of the browser carry no !important, so the
+rule wins. buildSheet() writes each row of the map as one custom
+property, and a scroll bar colour is no custom property. The rule
+therefore takes a section of its own, beside the images of the tool box
+and the shadow of a popup.
+
+The pair reads the helper of palette.cpp that the block of the GTK sheet
+reads, so the two arms of the theme hold one derivation. Two new roles
+of ffmap.h carry the pair, and the rows of the map hold neither one. The
+pin of the properties holds names of the browser alone, and the schema
+of the static theme names no scroll bar. A user of the static theme
+alone therefore keeps the grey pair.
+
+The rule paints the sidebars of HTML. The classic tree of XUL reads no
+scroll bar colour of CSS, and the block of the GTK sheet colours that
+tree.
+
+assert-ff-scrollbar.sh binds the rule to the settings over eleven arms.
+
+The change sits on the branch work/firefox-theme of the local tree, as
+commit 10 of 10. The branch holds those ten commits above the head of
+work/gtk4-theme, which merge request !15 on system/qtcurve holds. The fork
+wyn/qtcurve holds work/firefox-theme. Merge request !29 on system/qtcurve
+holds that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/firefox/CMakeLists.txt b/firefox/CMakeLists.txt
+index b7c94c5e..64a88ac5 100644
+--- a/firefox/CMakeLists.txt
++++ b/firefox/CMakeLists.txt
+@@ -191,6 +191,15 @@ add_custom_command(TARGET qtcurve-firefox-theme POST_BUILD
+           "${qtc_ff_light}" "${qtc_ff_dark}" "${qtc_ff_preview_src}"
+   VERBATIM)
+ 
++# The scroll bar rule of the sidebars. buildSheet() writes every row of the
++# map as one custom property of the root, so no row of the map can carry that
++# rule and no run above reads it. The check below runs the writer over the
++# slider keys, the pointer key and the groove keys of the settings.
++add_custom_command(TARGET qtcurve-firefox-theme POST_BUILD
++  COMMAND sh "${qtc_ff_check}/assert-ff-scrollbar.sh" "${qtc_ff_command}"
++          "${qtc_ff_work}/scrollbar" "${qtc_ff_light}" "${qtc_ff_dark}"
++  VERBATIM)
++
+ # The two writers must hold no lock name in common, because each one runs a
+ # watch instance of its own.
+ add_custom_command(TARGET qtcurve-firefox-theme POST_BUILD
+diff --git a/firefox/check/assert-ff-scrollbar.sh b/firefox/check/assert-ff-scrollbar.sh
+new file mode 100644
+index 00000000..eae15533
+--- /dev/null
++++ b/firefox/check/assert-ff-scrollbar.sh
+@@ -0,0 +1,302 @@
++#!/bin/sh
++# assert-ff-scrollbar.sh WRITER WORKDIR LIGHT DARK: the owned sheet must carry
++# one scroll bar rule of the sidebars, which holds two literal colours and
++# !important. The thumb must follow the slider keys of the settings, the track
++# must hold one step of the base ladder under every key, and the manifest must
++# hold no key of the pair. The run writes one settings file and one sheet for
++# each arm under WORKDIR, over the colour files LIGHT and DARK. It then breaks
++# one contract in a copy of an arm, and it fails if the check passes the
++# broken copy.
++set -eu
++usage='usage: assert-ff-scrollbar.sh WRITER WORKDIR LIGHT DARK'
++writer=${1:?$usage}
++work=${2:?$usage}
++light=${3:?$usage}
++dark=${4:?$usage}
++
++# A relative path leaves the sheets outside the directory that the caller
++# names, because the writer runs in a directory of its own.
++case $work in
++    /*) ;;
++    *) work=$PWD/$work;;
++esac
++
++# The colour of the custom arm, which the thumb must carry byte for byte.
++custom='#ff8800'
++# The arms of the slider keys and the arms of the groove keys.
++sliders='none darken selected blend custom mo'
++grooves='thin wide page corner square'
++
++rm -rf "$work"
++mkdir -p "$work/arm" "$work/broken"
++
++# settings NAME BODY: writes the settings file of the arm NAME, which holds
++# the keys of BODY over the shipped preset. BODY carries one escape of a new
++# line for each key.
++settings() {
++    printf '[Settings]\n%b' "$2" > "$work/$1.qtcurve"
++}
++
++# sheet NAME: writes the owned sheet of the arm NAME.
++sheet() {
++    "$writer" --stdout --force --settings "$work/$1.qtcurve" \
++        --scheme "$light" --out "$work/arm/$1.css"
++}
++
++# The five slider keys, one arm each, and the pointer key.
++settings none 'shadeSliders=none\n'
++settings darken 'shadeSliders=darken\n'
++settings selected 'shadeSliders=origselected\n'
++settings blend 'shadeSliders=selected\n'
++settings custom "shadeSliders=$custom\\n"
++settings mo 'shadeSliders=origselected\ncolorSliderMouseOver=true\n'
++# The five groove arms, which hold the four corners of the groove keys and the
++# square corner of no button. No one of them may move a colour of the pair.
++settings thin 'flatSbarButtons=true\nthinSbarGroove=true\n'
++settings wide 'flatSbarButtons=true\nthinSbarGroove=false\n'
++settings page 'flatSbarButtons=false\nthinSbarGroove=true\n'
++settings corner 'flatSbarButtons=false\nthinSbarGroove=true\nscrollbarType=none\n'
++settings square \
++    'flatSbarButtons=false\nthinSbarGroove=true\nscrollbarType=none\nround=none\n'
++
++for arm in $sliders $grooves; do
++    sheet "$arm"
++done
++
++# The manifest of two arms that hold two pairs. No colour key of the schema
++# reaches a scroll bar, so the two files must come out byte equal.
++for arm in none selected; do
++    "$writer" --manifest --force --settings "$work/$arm.qtcurve" \
++        --scheme "$light" --scheme-dark "$dark" \
++        --out "$work/arm/$arm.json"
++done
++
++# rules DIR ARM: prints the count of the scroll bar rules of the sheet of ARM.
++rules() {
++    grep -c '^:root\[lwt-sidebar\] {$' "$1/$2.css" || true
++}
++
++# body DIR ARM: prints the declarations of the scroll bar rule of the sheet of
++# ARM, and prints nothing for a sheet that holds no such rule.
++body() {
++    sed -n '/^:root\[lwt-sidebar\] {$/,/^}$/p' "$1/$2.css" | sed '1d;$d'
++}
++
++# pair DIR ARM: prints the thumb colour and the track colour of the sheet of
++# ARM, with one space between them. It prints nothing while the rule does not
++# hold the exact shape of the contract.
++pair() {
++    body "$1" "$2" | sed -n \
++'s/^  scrollbar-color: \(#[0-9a-f]\{6\}\) \(#[0-9a-f]\{6\}\) !important;$/\1 \2/p'
++}
++
++# thumb DIR ARM, track DIR ARM: print one half of the pair of ARM.
++thumb() {
++    pair "$1" "$2" | cut -d' ' -f1
++}
++track() {
++    pair "$1" "$2" | cut -d' ' -f2
++}
++
++# seed DIR ARM: prints the base colour that the sheet of ARM gives the sidebar,
++# which is the seed of the ladder that the track takes one step of.
++seed() {
++    sed -n \
++'s/^  --sidebar-background-color: \(#[0-9a-f]\{6\}\) !important;$/\1/p' \
++        "$1/$2.css"
++}
++
++# check DIR: gives 0 while the seven contracts hold over the arm files of DIR.
++# It names the first contract that fails on the standard error.
++check() {
++    d=$1
++
++    # 1. Each arm holds one rule of one declaration, and that declaration
++    # states two literal colours under !important.
++    for c_arm in $sliders $grooves; do
++        if [ "$(rules "$d" "$c_arm")" -ne 1 ]; then
++            echo "assert-ff-scrollbar: $c_arm holds" \
++                 "$(rules "$d" "$c_arm") rules of the sidebars" >&2
++            return 1
++        fi
++        if [ "$(body "$d" "$c_arm" | wc -l)" -ne 1 ]; then
++            echo "assert-ff-scrollbar: the rule of $c_arm holds" \
++                 "$(body "$d" "$c_arm" | wc -l) declarations" >&2
++            return 1
++        fi
++        if [ -z "$(pair "$d" "$c_arm")" ]; then
++            echo "assert-ff-scrollbar: the rule of $c_arm reads" \
++                 "'$(body "$d" "$c_arm")'" >&2
++            return 1
++        fi
++    done
++
++    # 2. No custom property carries the pair. The pin of the properties holds
++    # names of the browser alone, and a name of the writer would fail it.
++    for c_arm in $sliders $grooves; do
++        if grep -qi '^  --.*scroll' "$d/$c_arm.css"; then
++            echo "assert-ff-scrollbar: $c_arm declares a property of the" \
++                 "scroll bar" >&2
++            return 1
++        fi
++    done
++
++    # 3. The five slider keys give five thumbs of their own, and the reader
++    # takes the colour value of the key as the custom colour of the slider.
++    c_none=$(thumb "$d" none)
++    c_custom=$(thumb "$d" custom)
++    if [ "$c_custom" != "$custom" ]; then
++        echo "assert-ff-scrollbar: the custom arm holds the thumb" \
++             "'$c_custom'" >&2
++        return 1
++    fi
++    if [ "$(for c_arm in none darken selected blend custom; do
++                thumb "$d" "$c_arm"
++            done | sort -u | wc -l)" -ne 5 ]; then
++        echo "assert-ff-scrollbar: two slider keys give one thumb" >&2
++        return 1
++    fi
++
++    # 4. The pointer key moves the thumb to the button colour, which is the
++    # thumb of the arm that holds no slider ladder.
++    if [ "$(thumb "$d" mo)" != "$c_none" ]; then
++        echo "assert-ff-scrollbar: the pointer key holds the thumb" \
++             "'$(thumb "$d" mo)'" >&2
++        return 1
++    fi
++    if [ "$(thumb "$d" selected)" = "$c_none" ]; then
++        echo "assert-ff-scrollbar: the selected arm holds the button" \
++             "thumb" >&2
++        return 1
++    fi
++
++    # 5. A groove key moves no thumb, because the thumb reads the slider keys
++    # alone.
++    if [ "$(for c_arm in $grooves; do thumb "$d" "$c_arm"; done |
++            sort -u | wc -l)" -ne 1 ]; then
++        echo "assert-ff-scrollbar: a groove key moves the thumb" >&2
++        return 1
++    fi
++
++    # 6. No key of the settings moves the track, which takes the one step of
++    # the base ladder that the ground of the bar carries. A step of that
++    # ladder is no seed of it, so the track stands off the base colour.
++    if [ "$(for c_arm in $sliders $grooves; do track "$d" "$c_arm"; done |
++            sort -u | wc -l)" -ne 1 ]; then
++        echo "assert-ff-scrollbar: a key of the settings moves the track" >&2
++        return 1
++    fi
++    for c_arm in $sliders $grooves; do
++        c_seed=$(seed "$d" "$c_arm")
++        if [ -z "$c_seed" ]; then
++            echo "assert-ff-scrollbar: $c_arm gives the sidebar no base" \
++                 "colour" >&2
++            return 1
++        fi
++        if [ "$(track "$d" "$c_arm")" = "$c_seed" ]; then
++            echo "assert-ff-scrollbar: the track of $c_arm holds the seed" \
++                 "'$c_seed'" >&2
++            return 1
++        fi
++    done
++
++    # 7. The static manifest holds no key of the pair, so two arms of two
++    # pairs give one manifest.
++    if ! cmp -s "$d/none.json" "$d/selected.json"; then
++        echo "assert-ff-scrollbar: the manifest follows the slider key" >&2
++        return 1
++    fi
++    return 0
++}
++
++if ! check "$work/arm"; then
++    echo "assert-ff-scrollbar: the arms fail the check" >&2
++    exit 1
++fi
++
++# The controls below. Each one breaks one contract in a copy of the arms, and
++# the check must fail over that copy.
++broken=0
++
++# control NAME: the check must fail over the copy under the broken directory.
++control() {
++    if check "$work/broken" 2> "$work/control.log"; then
++        echo "assert-ff-scrollbar: the check passed the broken copy of $1" >&2
++        exit 1
++    fi
++    broken=$((broken + 1))
++}
++
++# copy: writes a fresh copy of every arm file under the broken directory.
++copy() {
++    rm -rf "$work/broken"
++    cp -r "$work/arm" "$work/broken"
++}
++
++# The rule cut out of one arm, which is the sheet before this check shipped.
++copy
++sed '/^:root\[lwt-sidebar\] {$/,/^}$/d' "$work/arm/none.css" \
++    > "$work/broken/none.css"
++control 'the rule of an arm'
++
++# The rule of no !important, which loses to the author rule of the browser.
++copy
++sed 's/ !important;$/;/' "$work/arm/none.css" > "$work/broken/none.css"
++control 'the !important of the rule'
++
++# The pair the other way about, which paints the track over the thumb.
++copy
++sed -E 's/^  scrollbar-color: (#[0-9a-f]{6}) (#[0-9a-f]{6}) !important;$/  scrollbar-color: \2 \1 !important;/' \
++    "$work/arm/none.css" > "$work/broken/none.css"
++control 'the order of the pair'
++
++# A thumb of another arm, which is a doctored sheet.
++copy
++sed "s/^  scrollbar-color: #[0-9a-f]\{6\} /  scrollbar-color: $custom /" \
++    "$work/arm/none.css" > "$work/broken/none.css"
++control 'the thumb of an arm'
++
++# A custom property in place of the pair, which the pin of the properties
++# rejects because no such name stands in the browser.
++copy
++sed 's/^  scrollbar-color: .*$/  --qtc-scrollbar-color: auto !important;/' \
++    "$work/arm/none.css" > "$work/broken/none.css"
++control 'a property of the writer'
++
++# A second rule of the sidebars, which leaves the colour of the sheet open.
++copy
++cat "$work/arm/none.css" > "$work/broken/none.css"
++printf ':root[lwt-sidebar] {\n  scrollbar-color: %s %s !important;\n}\n' \
++    "$custom" "$custom" >> "$work/broken/none.css"
++control 'a second rule'
++
++# The track of one groove arm at the thumb of that arm, which is a track that
++# a branch on the groove keys can write.
++copy
++sed -E 's/^(  scrollbar-color: )(#[0-9a-f]{6}) #[0-9a-f]{6} /\1\2 \2 /' \
++    "$work/arm/thin.css" > "$work/broken/thin.css"
++control 'the track of a groove arm'
++
++# The track of every arm at the seed of the ladder, which is the track that
++# the block of the GTK sheet held before the one ground shipped.
++copy
++for arm in $sliders $grooves; do
++    base=$(seed "$work/arm" "$arm")
++    sed -E "s/^(  scrollbar-color: #[0-9a-f]{6}) #[0-9a-f]{6} /\\1 $base /" \
++        "$work/arm/$arm.css" > "$work/broken/$arm.css"
++done
++control 'the seed of the track'
++
++# A manifest that follows the slider key, which no colour key of the schema
++# can carry.
++copy
++sed '2i\  "qtcurve-scrollbar": "#ff8800",' "$work/arm/selected.json" \
++    > "$work/broken/selected.json"
++control 'a colour of the manifest'
++
++rm -rf "$work/broken"
++echo "assert-ff-scrollbar: the rule of the sidebars holds two literal" \
++     "colours under !important over $(echo $sliders $grooves | wc -w) arms," \
++     "it follows the slider keys and the pointer key, it holds one track" \
++     "off the base colour under every key, the manifest holds no colour of" \
++     "it, and the check rejects each of the $broken control copies"
+diff --git a/firefox/writer/ffmap.cpp b/firefox/writer/ffmap.cpp
+index cc59a7a3..ae9f2d2c 100644
+--- a/firefox/writer/ffmap.cpp
++++ b/firefox/writer/ffmap.cpp
+@@ -178,7 +178,7 @@ const char *const roleNames[] = {
+     "titlebar", "titlebarText", "titlebarInactive", "titlebarInactiveText",
+     "window", "windowText", "base", "text", "windowBorder", "buttonFocus",
+     "highlight", "highlightText", "menu", "menuText", "menuBorder",
+-    "buttonHover", "buttonActive", "clear"
++    "buttonHover", "buttonActive", "scrollThumb", "scrollTrack", "clear"
+ };
+ 
+ }
+@@ -239,6 +239,10 @@ ffColour(const Options &opts, const Palette &pal, FfRole role)
+         return pal.btn[hoverShade];
+     case FfRole::ButtonActive:
+         return pal.btn[activeShade];
++    case FfRole::ScrollThumb:
++        return Gtk::scrollColour(opts, pal, Gtk::scrollSpec(opts, pal).rest);
++    case FfRole::ScrollTrack:
++        return Gtk::scrollColour(opts, pal, Gtk::scrollSpec(opts, pal).track);
+     case FfRole::Clear:
+         return QColor(0, 0, 0, 0);
+     }
+diff --git a/firefox/writer/ffmap.h b/firefox/writer/ffmap.h
+index 58cf8ec8..183dc001 100644
+--- a/firefox/writer/ffmap.h
++++ b/firefox/writer/ffmap.h
+@@ -28,8 +28,9 @@ namespace QtCurve {
+ namespace Firefox {
+ 
+ /**
+- * The palette source of one row of the map. A ladder role takes one step of a
+- * shade ladder, and Clear is the one row that no colour of the palette feeds.
++ * The palette source of one colour of the theme, where a ladder role takes
++ * one step of a shade ladder. Clear takes no colour of the palette, and a
++ * source outside the rows of the map reaches a rule of the sheet alone.
+  */
+ enum class FfRole {
+     Titlebar,
+@@ -49,6 +50,8 @@ enum class FfRole {
+     MenuBorder,
+     ButtonHover,
+     ButtonActive,
++    ScrollThumb,
++    ScrollTrack,
+     Clear
+ };
+ 
+diff --git a/firefox/writer/sheet.cpp b/firefox/writer/sheet.cpp
+index ca51fcec..c302629c 100644
+--- a/firefox/writer/sheet.cpp
++++ b/firefox/writer/sheet.cpp
+@@ -161,6 +161,21 @@ popupShadow(const Options &opts)
+         .arg(blur + spread);
+ }
+ 
++/**
++ * Returns the scroll bar rule of the sidebars of the browser. The rule takes
++ * !important, because a user rule of no !important loses to the author rule
++ * of the browser that greys those sidebars.
++ */
++QString
++sidebarScrollBar(const Options &opts, const Palette &pal)
++{
++    return QStringLiteral("\n:root[lwt-sidebar] {\n"
++                          "  scrollbar-color: %1 %2 !important;\n"
++                          "}\n")
++        .arg(Gtk::hex(ffColour(opts, pal, FfRole::ScrollThumb)),
++             Gtk::hex(ffColour(opts, pal, FfRole::ScrollTrack)));
++}
++
+ }
+ 
+ QString
+@@ -183,6 +198,7 @@ buildSheet(const Options &opts, const Palette &pal)
+     out += toolboxImages(opts, pal);
+     out += iconFills();
+     out += popupShadow(opts);
++    out += sidebarScrollBar(opts, pal);
+     out += buildCaption(opts, pal);
+     return out;
+ }

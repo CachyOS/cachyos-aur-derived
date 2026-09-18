@@ -1,0 +1,92 @@
+Skip the widget property chain for opaque backgrounds
+
+The event notify callback of the plugin runs for every event of every
+object of the process. For a widget without a native window it calls
+prePolish, which builds the widget property holder and reads it. The
+read runs QObject::property on a 31 character name. It then adds an
+index lookup of the meta object and two copies. It creates the property
+on the first touch.
+
+The body of prePolish does work only when one of bgndOpacity,
+dlgOpacity and menuBgndOpacity differs from 100. prePolish now tests
+the three option values first, and it returns before it touches the
+property holder. The update request branch of the callback takes the
+same guard. It reads the option values of the style of the widget on
+each call, so a style swap cannot leave a stale test. A widget with
+another style keeps the reset.
+
+The property stays lazily created by the other holder sites. Every
+writer of the opacity field writes 100 while the three options equal
+100, and the field starts at 100. A configuration with an active
+opacity option runs the chain as before.
+
+The measurement takes perf stat -e instructions:u over twenty
+subtraction pairs per arm. Each pair sends a scripted trace of 1000
+mouse moves to the offscreen widget gallery. The result is 14 981
+instructions per move before and 8 466 after, a gain of 43.5 percent.
+The first frame of a 500 widget window drops from 1032 to 780 million
+instructions. The two builds give a byte equal gallery render over
+seven option configurations.
+
+The change sits on the branch work/perf of the local tree, as commit 1 of 1.
+A new merge request on system/qtcurve takes that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/qt6/style/prepolish.cpp b/qt6/style/prepolish.cpp
+index 02c1a89f..3266b7c5 100644
+--- a/qt6/style/prepolish.cpp
++++ b/qt6/style/prepolish.cpp
+@@ -31,7 +31,7 @@ namespace QtCurve {
+ __attribute__((hot)) void
+ Style::prePolish(QWidget *widget) const
+ {
+-    if (!widget)
++    if (!widget || !qtcOpacityActive(opts))
+         return;
+     QtcQWidgetProps props(widget);
+     // HACK:
+diff --git a/qt6/style/qtcurve.h b/qt6/style/qtcurve.h
+index 92ce90ce..61e3277e 100644
+--- a/qt6/style/qtcurve.h
++++ b/qt6/style/qtcurve.h
+@@ -66,6 +66,19 @@ class ShortcutHandler;
+ class ShadowHelper;
+ class StylePlugin;
+ 
++//! check whether one of the three background opacity options is active
++/*! Each of the three options holds a percent value, and 100 percent is
++    opaque.
++    \param opts the option set of a style instance.
++    \return true when bgndOpacity, dlgOpacity or menuBgndOpacity differs from
++    100. */
++QTC_ALWAYS_INLINE static inline bool
++qtcOpacityActive(const Options &opts)
++{
++    return (opts.bgndOpacity != 100 || opts.dlgOpacity != 100 ||
++            opts.menuBgndOpacity != 100);
++}
++
+ class Style: public ParentStyleClass {
+     Q_OBJECT
+     Q_CLASSINFO("X-KDE-CustomElements", "true")
+diff --git a/qt6/style/qtcurve_plugin.cpp b/qt6/style/qtcurve_plugin.cpp
+index 116d98b0..f94fcc23 100644
+--- a/qt6/style/qtcurve_plugin.cpp
++++ b/qt6/style/qtcurve_plugin.cpp
+@@ -107,8 +107,13 @@ qtcEventCallback(void **cbdata)
+             style->prePolish(widget);
+         }
+     } else if (widget && event->type() == QEvent::UpdateRequest) {
+-        QtcQWidgetProps props(widget);
+-        props->opacity = 100;
++        // A widget with another style keeps the reset, because QtCurve cannot
++        // read the option set of that style.
++        Style *style = getStyle(widget);
++        if (!style || qtcOpacityActive(style->options())) {
++            QtcQWidgetProps props(widget);
++            props->opacity = 100;
++        }
+     } else {
+         polishQuickControl(receiver);
+     }

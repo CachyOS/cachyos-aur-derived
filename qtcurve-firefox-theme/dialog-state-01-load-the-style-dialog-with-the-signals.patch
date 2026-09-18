@@ -1,0 +1,334 @@
+Load the style dialog with the signals blocked
+
+QtCurveConfig::setWidgetOptions() writes each input through a setter
+that emits. An interlock slot then runs part way through the load. It
+reads an input that the loader has not reached yet, and it writes a
+value that the configuration does not hold. A stored rounding of max
+falls back to extra. A stored pair of GTK button order flags loses one
+flag. The unified spin button flag and the custom title bar button
+flag go the same way. The next Apply writes each damaged value over
+the file.
+
+The load also depends on those signals for the enabled state. An input
+whose index does not change emits nothing. The affected inputs keep
+the enabled state of the user interface file. They include the colour
+button of the combo box, the group box factor, two more colour buttons
+and the thin groove box.
+
+Block the signals of every child widget for the whole load. Add
+updateEnableStates(), which sets the state of each dependent input
+from its master input. The load calls it once at the end, and
+updateChanged() calls it for the interactive path, so one function
+holds each rule.
+
+The change sits on the branch work/dialog-state of the local tree, as commit 1 of 12.
+A new merge request on system/qtcurve takes that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/qt6/config/qtcurveconfig.cpp b/qt6/config/qtcurveconfig.cpp
+index 1d8b7092..55e76bed 100644
+--- a/qt6/config/qtcurveconfig.cpp
++++ b/qt6/config/qtcurveconfig.cpp
+@@ -1390,7 +1390,6 @@ void QtCurveConfig::coloredMouseOverChanged()
+ 
+ void QtCurveConfig::shadeSlidersChanged()
+ {
+-    customSlidersColor->setEnabled(SHADE_CUSTOM==shadeSliders->currentIndex());
+     updateChanged();
+     if(gradPreview)
+         gradPreview->repaint();
+@@ -1398,11 +1397,6 @@ void QtCurveConfig::shadeSlidersChanged()
+ 
+ void QtCurveConfig::shadeMenubarsChanged()
+ {
+-    customMenubarsColor->setEnabled(SHADE_CUSTOM==shadeMenubars->currentIndex());
+-    customMenuNormTextColor->setEnabled(SHADE_WINDOW_BORDER!=shadeMenubars->currentIndex());
+-    customMenuSelTextColor->setEnabled(SHADE_WINDOW_BORDER!=shadeMenubars->currentIndex());
+-    customMenuTextColor->setEnabled(SHADE_WINDOW_BORDER!=shadeMenubars->currentIndex());
+-    shadeMenubarOnlyWhenActive->setEnabled(SHADE_WINDOW_BORDER!=shadeMenubars->currentIndex());
+     if(SHADE_WINDOW_BORDER==shadeMenubars->currentIndex())
+         windowBorder_menuColor->setChecked(false);
+     updateChanged();
+@@ -1410,50 +1404,41 @@ void QtCurveConfig::shadeMenubarsChanged()
+ 
+ void QtCurveConfig::shadeCheckRadioChanged()
+ {
+-    customCheckRadioColor->setEnabled(SHADE_CUSTOM==shadeCheckRadio->currentIndex());
+     updateChanged();
+ }
+ 
+ void QtCurveConfig::customMenuTextColorChanged()
+ {
+-    customMenuNormTextColor->setEnabled(SHADE_WINDOW_BORDER!=shadeMenubars->currentIndex() && customMenuTextColor->isChecked());
+-    customMenuSelTextColor->setEnabled(SHADE_WINDOW_BORDER!=shadeMenubars->currentIndex() && customMenuTextColor->isChecked());
+     updateChanged();
+ }
+ 
+ void QtCurveConfig::menuStripeChanged()
+ {
+-    customMenuStripeColor->setEnabled(SHADE_CUSTOM==menuStripe->currentIndex());
+-    menuStripeAppearance->setEnabled(SHADE_NONE!=menuStripe->currentIndex());
+     updateChanged();
+ }
+ 
+ void QtCurveConfig::shadePopupMenuChanged()
+ {
+-    lighterPopupMenuBgnd->setEnabled(!shadePopupMenu->isChecked());
++    updateEnableStates();
+ }
+ 
+ void QtCurveConfig::progressColorChanged()
+ {
+-    customProgressColor->setEnabled(SHADE_CUSTOM==progressColor->currentIndex());
+     updateChanged();
+ }
+ 
+ void QtCurveConfig::comboBtnChanged()
+ {
+-    customComboBtnColor->setEnabled(SHADE_CUSTOM==comboBtn->currentIndex());
+     updateChanged();
+ }
+ 
+ void QtCurveConfig::sortedLvChanged()
+ {
+-    customSortedLvColor->setEnabled(SHADE_CUSTOM==sortedLv->currentIndex());
+     updateChanged();
+ }
+ 
+ void QtCurveConfig::crColorChanged()
+ {
+-    customCrBgndColor->setEnabled(SHADE_CUSTOM==crColor->currentIndex());
+     updateChanged();
+ }
+ 
+@@ -1462,7 +1447,6 @@ void QtCurveConfig::stripedProgressChanged()
+     bool allowAnimation=STRIPE_NONE!=stripedProgress->currentIndex() &&
+                         STRIPE_FADE!=stripedProgress->currentIndex();
+ 
+-    animatedProgress->setEnabled(allowAnimation);
+     if(animatedProgress->isChecked() && !allowAnimation)
+         animatedProgress->setChecked(false);
+     updateChanged();
+@@ -1475,7 +1459,6 @@ void QtCurveConfig::activeTabAppearanceChanged()
+ 
+     if(colorSelTab->value() && disableCol)
+         colorSelTab->setValue(MIN_COLOR_SEL_TAB_FACTOR);
+-    colorSelTab->setEnabled(!disableCol);
+     updateChanged();
+ }
+ 
+@@ -1483,8 +1466,6 @@ void QtCurveConfig::tabMoChanged()
+ {
+     if(TAB_MO_GLOW==tabMouseOver->currentIndex())
+         roundAllTabs->setChecked(true);
+-    roundAllTabs->setEnabled(TAB_MO_GLOW!=tabMouseOver->currentIndex());
+-    roundAllTabs_false->setEnabled(TAB_MO_GLOW!=tabMouseOver->currentIndex());
+     updateChanged();
+ }
+ 
+@@ -1511,7 +1492,6 @@ void QtCurveConfig::unifySpinBtnsToggled()
+ {
+     if(unifySpinBtns->isChecked())
+         unifySpin->setChecked(false);
+-    unifySpin->setDisabled(unifySpinBtns->isChecked());
+     updateChanged();
+ }
+ 
+@@ -1519,7 +1499,6 @@ void QtCurveConfig::unifySpinToggled()
+ {
+     if(unifySpin->isChecked())
+         unifySpinBtns->setChecked(false);
+-    unifySpinBtns->setDisabled(unifySpin->isChecked());
+     updateChanged();
+ }
+ 
+@@ -1672,14 +1651,11 @@ void QtCurveConfig::bgndAppearanceChanged()
+ {
+     if(APPEARANCE_STRIPED==bgndAppearance->currentIndex())
+         bgndGrad->setCurrentIndex(GT_HORIZ);
+-    bgndGrad->setEnabled(APPEARANCE_STRIPED!=bgndAppearance->currentIndex() && APPEARANCE_FILE!=bgndAppearance->currentIndex());
+-    bgndAppearance_btn->setVisible(APPEARANCE_FILE==bgndAppearance->currentIndex());
+     updateChanged();
+ }
+ 
+ void QtCurveConfig::bgndImageChanged()
+ {
+-    bgndImage_btn->setVisible(IMG_FILE==bgndImage->currentIndex());
+     updateChanged();
+ }
+ 
+@@ -1687,14 +1663,11 @@ void QtCurveConfig::menuBgndAppearanceChanged()
+ {
+     if(APPEARANCE_STRIPED==menuBgndAppearance->currentIndex())
+         menuBgndGrad->setCurrentIndex(GT_HORIZ);
+-    menuBgndGrad->setEnabled(APPEARANCE_STRIPED!=menuBgndAppearance->currentIndex() && APPEARANCE_FILE!=menuBgndAppearance->currentIndex());
+-    menuBgndAppearance_btn->setVisible(APPEARANCE_FILE==menuBgndAppearance->currentIndex());
+     updateChanged();
+ }
+ 
+ void QtCurveConfig::menuBgndImageChanged()
+ {
+-    menuBgndImage_btn->setVisible(IMG_FILE==menuBgndImage->currentIndex());
+     updateChanged();
+ }
+ 
+@@ -1724,7 +1697,6 @@ void QtCurveConfig::configureMenuBgndImageFile()
+ 
+ void QtCurveConfig::groupBoxChanged()
+ {
+-    gbFactor->setEnabled(FRAME_SHADED==groupBox->currentIndex() || FRAME_FADED==groupBox->currentIndex());
+     updateChanged();
+ }
+ 
+@@ -2504,6 +2476,8 @@ void QtCurveConfig::setPasswordChar(int ch)
+ 
+ void QtCurveConfig::updateChanged()
+ {
++    updateEnableStates();
++
+     // Check if we have a floating preview!
+     if(!mdiWindow && settingsChanged(previewStyle))
+         updatePreview();
+@@ -2512,6 +2486,87 @@ void QtCurveConfig::updateChanged()
+         emit changed(true);
+ }
+ 
++/**
++ * Set the enabled state and the visible state of each input that a second
++ * input controls. The load path and the interactive path both call this
++ * function.
++ */
++void QtCurveConfig::updateEnableStates()
++{
++    customSlidersColor->setEnabled(SHADE_CUSTOM==shadeSliders->currentIndex());
++    customMenubarsColor->setEnabled(SHADE_CUSTOM==shadeMenubars->currentIndex());
++    customCheckRadioColor->setEnabled(SHADE_CUSTOM==shadeCheckRadio->currentIndex());
++    customComboBtnColor->setEnabled(SHADE_CUSTOM==comboBtn->currentIndex());
++    customSortedLvColor->setEnabled(SHADE_CUSTOM==sortedLv->currentIndex());
++    customProgressColor->setEnabled(SHADE_CUSTOM==progressColor->currentIndex());
++    customMenuStripeColor->setEnabled(SHADE_CUSTOM==menuStripe->currentIndex());
++    menuStripeAppearance->setEnabled(SHADE_NONE!=menuStripe->currentIndex());
++
++    bool menubarText(SHADE_WINDOW_BORDER!=shadeMenubars->currentIndex());
++
++    customMenuTextColor->setEnabled(menubarText);
++    shadeMenubarOnlyWhenActive->setEnabled(menubarText);
++    customMenuNormTextColor->setEnabled(menubarText && customMenuTextColor->isChecked());
++    customMenuSelTextColor->setEnabled(menubarText && customMenuTextColor->isChecked());
++
++    crColor->setEnabled(crButton->isChecked());
++    customCrBgndColor->setEnabled(crButton->isChecked() &&
++                                  SHADE_CUSTOM==crColor->currentIndex());
++
++    lighterPopupMenuBgnd->setEnabled(!shadePopupMenu->isChecked());
++    animatedProgress->setEnabled(STRIPE_NONE!=stripedProgress->currentIndex() &&
++                                 STRIPE_FADE!=stripedProgress->currentIndex());
++    colorSelTab->setEnabled(APPEARANCE_FLAT!=activeTabAppearance->currentIndex() &&
++                            APPEARANCE_RAISED!=activeTabAppearance->currentIndex());
++    roundAllTabs->setEnabled(TAB_MO_GLOW!=tabMouseOver->currentIndex());
++    roundAllTabs_false->setEnabled(TAB_MO_GLOW!=tabMouseOver->currentIndex());
++
++    // The style gives unifySpin the first claim, so a stored pair that holds
++    // both flags keeps unifySpin live.
++    unifySpin->setDisabled(unifySpinBtns->isChecked() && !unifySpin->isChecked());
++    unifySpinBtns->setDisabled(unifySpin->isChecked());
++
++    bgndGrad->setEnabled(APPEARANCE_STRIPED!=bgndAppearance->currentIndex() &&
++                         APPEARANCE_FILE!=bgndAppearance->currentIndex());
++    bgndAppearance_btn->setVisible(APPEARANCE_FILE==bgndAppearance->currentIndex());
++    bgndImage_btn->setVisible(IMG_FILE==bgndImage->currentIndex());
++    menuBgndGrad->setEnabled(APPEARANCE_STRIPED!=menuBgndAppearance->currentIndex() &&
++                             APPEARANCE_FILE!=menuBgndAppearance->currentIndex());
++    menuBgndAppearance_btn->setVisible(APPEARANCE_FILE==menuBgndAppearance->currentIndex());
++    menuBgndImage_btn->setVisible(IMG_FILE==menuBgndImage->currentIndex());
++
++    gbFactor->setEnabled(FRAME_SHADED==groupBox->currentIndex() ||
++                         FRAME_FADED==groupBox->currentIndex());
++    thinSbarGroove->setEnabled(flatSbarButtons->isChecked());
++
++    for (auto *w: {titlebarButtons_colorClose, titlebarButtons_colorMin,
++                titlebarButtons_colorMax, titlebarButtons_colorKeepAbove,
++                titlebarButtons_colorKeepBelow, titlebarButtons_colorHelp,
++                titlebarButtons_colorMenu, titlebarButtons_colorShade,
++                titlebarButtons_colorAllDesktops}) {
++        w->setEnabled(titlebarButtons_custom->isChecked());
++    }
++
++    for (auto *w: {titlebarButtons_colorCloseIcon,
++                titlebarButtons_colorMinIcon, titlebarButtons_colorMaxIcon,
++                titlebarButtons_colorKeepAboveIcon,
++                titlebarButtons_colorKeepBelowIcon,
++                titlebarButtons_colorHelpIcon, titlebarButtons_colorMenuIcon,
++                titlebarButtons_colorShadeIcon,
++                titlebarButtons_colorAllDesktopsIcon,
++                titlebarButtons_colorCloseInactiveIcon,
++                titlebarButtons_colorMinInactiveIcon,
++                titlebarButtons_colorMaxInactiveIcon,
++                titlebarButtons_colorKeepAboveInactiveIcon,
++                titlebarButtons_colorKeepBelowInactiveIcon,
++                titlebarButtons_colorHelpInactiveIcon,
++                titlebarButtons_colorMenuInactiveIcon,
++                titlebarButtons_colorShadeInactiveIcon,
++                titlebarButtons_colorAllDesktopsInactiveIcon}) {
++        w->setEnabled(titlebarButtons_customIcon->isChecked());
++    }
++}
++
+ void QtCurveConfig::gtkButtonOrderChanged()
+ {
+     if(gtkButtonOrder->isChecked())
+@@ -3325,6 +3380,11 @@ static QColor getColor(const TBCols &cols, int btn, int offset=0, const QColor &
+ 
+ void QtCurveConfig::setWidgetOptions(const Options &opts)
+ {
++    const QList<QWidget*> inputs(findChildren<QWidget*>());
++
++    for (QWidget *w: inputs)
++        w->blockSignals(true);
++
+     round->setCurrentIndex(opts.round);
+     scrollbarType->setCurrentIndex(opts.scrollbarType);
+     lighterPopupMenuBgnd->setValue(opts.lighterPopupMenuBgnd);
+@@ -3374,17 +3434,6 @@ void QtCurveConfig::setWidgetOptions(const Options &opts)
+     customMenuSelTextColor->setColor(opts.customMenuSelTextColor);
+     customMenuTextColor->setChecked(opts.customMenuTextColor);
+ 
+-    customSlidersColor->setEnabled(SHADE_CUSTOM==opts.shadeSliders);
+-    customMenubarsColor->setEnabled(SHADE_CUSTOM==opts.shadeMenubars);
+-    customMenuNormTextColor->setEnabled(customMenuTextColor->isChecked());
+-    customMenuSelTextColor->setEnabled(customMenuTextColor->isChecked());
+-    customCheckRadioColor->setEnabled(SHADE_CUSTOM==opts.shadeCheckRadio);
+-    customMenuStripeColor->setEnabled(SHADE_CUSTOM==opts.menuStripe);
+-    menuStripeAppearance->setEnabled(SHADE_NONE!=opts.menuStripe);
+-
+-    animatedProgress->setEnabled(STRIPE_NONE!=stripedProgress->currentIndex() &&
+-                                 STRIPE_FADE!=stripedProgress->currentIndex());
+-
+     fillSlider->setChecked(opts.fillSlider);
+     stripedSbar->setChecked(opts.stripedSbar);
+     sliderStyle->setCurrentIndex(opts.sliderStyle);
+@@ -3604,6 +3653,11 @@ void QtCurveConfig::setWidgetOptions(const Options &opts)
+                           opts.menuBgndImage.pos);
+ //     printf("SET WO MENU \"%s\"  \"%s\"", opts.menuBgndImage.pixmap.file.toLatin1().constData(), menuBgndImageDlg->fileName().toLatin1().constData());
+     menuBgndPixmapDlg->set(getThemeFile(opts.menuBgndPixmap.file));
++
++    for (QWidget *w: inputs)
++        w->blockSignals(false);
++
++    updateEnableStates();
+ }
+ 
+ int QtCurveConfig::getDwtSettingsFlags()
+diff --git a/qt6/config/qtcurveconfig.h b/qt6/config/qtcurveconfig.h
+index a10869eb..acdb83c8 100644
+--- a/qt6/config/qtcurveconfig.h
++++ b/qt6/config/qtcurveconfig.h
+@@ -211,6 +211,7 @@ private:
+     void unifySpinBtnsToggled();
+     void unifySpinToggled();
+     void updateChanged();
++    void updateEnableStates();
+     void updateGradStop();
+     void updatePreview();
+     void updateTitlebarButtonColorState();

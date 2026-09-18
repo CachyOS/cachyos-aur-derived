@@ -1,0 +1,30 @@
+Keep the drag exceptions across a settings change
+
+The style hands the two window drag exception lists to the window
+manager at the start. A change of the KDE global settings starts the
+window manager again, and that call carries no list. The window manager
+clears both stored sets before it reads a list. It therefore drops the
+white list and the black list of the configuration file. A widget that
+the file names then takes the wrong drag behaviour.
+
+The call now carries both lists, as the call of the start does. The
+drag exceptions of the file survive a settings change.
+
+The change sits on the branch work/style-paint of the local tree, as commit 16 of 21.
+A new merge request on system/qtcurve takes that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/qt6/style/qtcurve.cpp b/qt6/style/qtcurve.cpp
+index 63d34cc2..fae68ab8 100644
+--- a/qt6/style/qtcurve.cpp
++++ b/qt6/style/qtcurve.cpp
+@@ -4384,7 +4384,7 @@ void Style::kdeGlobalSettingsChange(int type, int)
+     // }
+ 
+     m_blurHelper->setEnabled(Utils::compositingActive());
+-    m_windowManager->initialize(opts.windowDrag);
++    m_windowManager->initialize(opts.windowDrag, opts.windowDragWhiteList.values(), opts.windowDragBlackList.values());
+ }
+ 
+ void Style::borderSizesChanged()

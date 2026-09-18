@@ -1,0 +1,260 @@
+Merge an import line at the front of a user sheet
+
+A user sheet of another toolkit drops an import that stands after a
+rule. The line of the writer must therefore stand first in such a
+file. The GTK files take the line at the end, and those bytes must
+not move.
+
+The merge now takes a placement value. The end arm keeps the append
+to the trimmed content. The front arm puts the line after a leading
+@charset rule and before every other byte. A parser reads that rule
+at the head of a file alone. The front arm copies every other byte
+in place, so a file of another line ending keeps it.
+
+The front arm cuts at the semicolon of the charset rule, not at the
+first line break. A sheet that holds the rule and a style rule on
+one line therefore takes the import before that style rule. The
+remove pass takes back the bytes of the front merge alone, so such
+a sheet gives its exact bytes back.
+
+The import line follows the lock names into the main file of the
+binary, so each writer owns the line that it merges.
+
+The change sits on the branch work/firefox-theme of the local tree, as
+commit 3 of 10. The branch holds those ten commits above the head of
+work/gtk4-theme, which merge request !15 on system/qtcurve holds. The fork
+wyn/qtcurve holds work/firefox-theme. Merge request !29 on system/qtcurve
+holds that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/gtk4/writer/main.cpp b/gtk4/writer/main.cpp
+index 939a83ac..4cb9fbfa 100644
+--- a/gtk4/writer/main.cpp
++++ b/gtk4/writer/main.cpp
+@@ -46,9 +46,11 @@ using namespace QtCurve::Gtk;
+ namespace QtCurve {
+ namespace Gtk {
+ 
+-// The lock names of this binary, which lock.h declares.
++// The lock names and the import line of this binary, which lock.h and
++// userfile.h declare.
+ const char *const daemonLockName = "qtcurve-gtk-writer.lock";
+ const char *const writeLockName = "qtcurve-gtk-writer-write.lock";
++const char *const importStatement = "@import 'qtcurve.css';";
+ 
+ }
+ }
+@@ -272,13 +274,13 @@ writeDialect(const Options &opts, const Palette &pal, Dialect dialect)
+     QFile old(path);
+     if (old.open(QIODevice::ReadOnly) && old.readAll() == content) {
+         old.close();
+-        return mergeImport(dir + QStringLiteral("/gtk.css"));
++        return mergeImport(dir + QStringLiteral("/gtk.css"), Placement::End);
+     }
+     const int written = writeOwned(path, content);
+     if (written != 0) {
+         return written;
+     }
+-    return mergeImport(dir + QStringLiteral("/gtk.css"));
++    return mergeImport(dir + QStringLiteral("/gtk.css"), Placement::End);
+ }
+ 
+ /**
+diff --git a/gtk4/writer/userfile.cpp b/gtk4/writer/userfile.cpp
+index 9411f640..185c10fc 100644
+--- a/gtk4/writer/userfile.cpp
++++ b/gtk4/writer/userfile.cpp
+@@ -29,8 +29,6 @@
+ namespace QtCurve {
+ namespace Gtk {
+ 
+-const char *const importStatement = "@import 'qtcurve.css';";
+-
+ /**
+  * Writes content to path through a temporary name in the same directory, and
+  * one rename() then replaces the target.
+@@ -113,8 +111,52 @@ copyAssets(const QString &srcDir, const QString &dstDir)
+     return 0;
+ }
+ 
++/**
++ * Returns the offset of contents after a leading @charset rule, and 0 when
++ * the file starts with another byte. The offset holds the semicolon of the
++ * rule and one line break after it. A CSS parser reads that rule at the head
++ * of a file alone, so no byte of the writer can stand before it.
++ */
++static int
++charsetEnd(const QByteArray &contents)
++{
++    if (!contents.startsWith("@charset")) {
++        return 0;
++    }
++    const int line = contents.indexOf('\n');
++    const int semi = contents.indexOf(';');
++    if (semi < 0 || (line >= 0 && semi > line)) {
++        // The first line closes no rule, so the whole line stands first.
++        return line < 0 ? (int)contents.size() : line + 1;
++    }
++    int end = semi + 1;
++    if (end < contents.size() && contents[end] == '\r') {
++        end++;
++    }
++    if (end < contents.size() && contents[end] == '\n') {
++        end++;
++    }
++    return end;
++}
++
++/**
++ * Puts statement and one newline after a leading @charset rule of contents,
++ * and at the front of contents when the file holds no such rule. Every other
++ * byte of the file keeps its place and its order.
++ */
++static QByteArray
++frontMerge(const QByteArray &contents, const QByteArray &statement)
++{
++    const int at = charsetEnd(contents);
++    QByteArray out = contents.left(at);
++    out.append(statement);
++    out.append('\n');
++    out.append(contents.mid(at));
++    return out;
++}
++
+ int
+-mergeImport(const QString &path)
++mergeImport(const QString &path, Placement placement)
+ {
+     if (!QDir().mkpath(QFileInfo(path).absolutePath())) {
+         return 6;
+@@ -125,16 +167,20 @@ mergeImport(const QString &path)
+                 path.toLocal8Bit().constData());
+         return 6;
+     }
+-    contents = contents.trimmed();
+     const QByteArray statement(importStatement);
+     if (contents.contains(statement)) {
+         return 0;
+     }
+-    if (!contents.isEmpty()) {
++    if (placement == Placement::Front) {
++        contents = frontMerge(contents, statement);
++    } else {
++        contents = contents.trimmed();
++        if (!contents.isEmpty()) {
++            contents.append('\n');
++        }
++        contents.append(statement);
+         contents.append('\n');
+     }
+-    contents.append(statement);
+-    contents.append('\n');
+     if (!saveWhole(path, contents)) {
+         fprintf(stderr, "qtcurve-gtk-writer: cannot merge %s\n",
+                 path.toLocal8Bit().constData());
+@@ -155,20 +201,31 @@ removeImport(const QString &path, bool *changed)
+                 path.toLocal8Bit().constData());
+         return 6;
+     }
+-    const QByteArray contents = raw.trimmed();
+-    QList<QByteArray> kept;
+-    const QList<QByteArray> lines = contents.split('\n');
+-    for (const QByteArray &one : lines) {
+-        if (one.trimmed() != QByteArray(importStatement)) {
+-            kept.append(one);
++    QByteArray out;
++    QByteArray front(importStatement);
++    front.append('\n');
++    const int at = charsetEnd(raw);
++    if (at > 0 && raw.mid(at, front.size()) == front) {
++        // The front merge puts the line here, and this arm takes back the
++        // bytes of that merge alone.
++        out = raw;
++        out.remove(at, front.size());
++    } else {
++        const QByteArray contents = raw.trimmed();
++        QList<QByteArray> kept;
++        const QList<QByteArray> lines = contents.split('\n');
++        for (const QByteArray &one : lines) {
++            if (one.trimmed() != QByteArray(importStatement)) {
++                kept.append(one);
++            }
++        }
++        if (kept.size() == lines.size()) {
++            return 0;
++        }
++        out = kept.join('\n').trimmed();
++        if (!out.isEmpty()) {
++            out.append('\n');
+         }
+-    }
+-    if (kept.size() == lines.size()) {
+-        return 0;
+-    }
+-    QByteArray out = kept.join('\n').trimmed();
+-    if (!out.isEmpty()) {
+-        out.append('\n');
+     }
+     if (!saveWhole(path, out)) {
+         fprintf(stderr, "qtcurve-gtk-writer: cannot remove the import of %s\n",
+diff --git a/gtk4/writer/userfile.h b/gtk4/writer/userfile.h
+index 746e1159..7e01c03e 100644
+--- a/gtk4/writer/userfile.h
++++ b/gtk4/writer/userfile.h
+@@ -28,9 +28,22 @@
+ namespace QtCurve {
+ namespace Gtk {
+ 
+-/** The one line of the shared gtk.css file that QtCurve owns. */
++/**
++ * The one line of the shared sheet of the user that QtCurve owns. Each binary
++ * that links this file defines its own line.
++ */
+ extern const char *const importStatement;
+ 
++/** The place of the import line in the shared sheet of the user. */
++enum class Placement {
++    /** After every statement of the file. */
++    End,
++    /**
++     * Before every statement of the file, and after a leading @charset rule.
++     */
++    Front
++};
++
+ /**
+  * Writes content to path through a temporary name in the same directory.
+  * One rename() replaces the target, so a reader sees the old file or the
+@@ -49,18 +62,24 @@ int writeOwned(const QString &path, const QByteArray &content);
+ int copyAssets(const QString &srcDir, const QString &dstDir);
+ 
+ /**
+- * Appends the QtCurve import line to path when the trimmed content of the
+- * file does not hold it. The function writes no byte when the line is there,
+- * and a write that fails keeps the old content of the file.
++ * Puts the QtCurve import line into path when the content of the file does
++ * not hold it. End appends the line to the trimmed content, and Front puts
++ * the line before every other byte and keeps a leading @charset rule first.
++ * The function writes no byte when the line is there, and a write that fails
++ * keeps the old content of the file.
+  *
++ * \param path       the shared sheet of the user, which the call can make.
++ * \param placement  the end or the front of the file.
+  * \return 0 on success, and 6 when the read or the write of the file fails.
+  */
+-int mergeImport(const QString &path);
++int mergeImport(const QString &path, Placement placement);
+ 
+ /**
+- * Removes the QtCurve import line from path and keeps every other line. The
+- * function writes no byte when no line matches, and a write that fails keeps
+- * the old content of the file.
++ * Removes the QtCurve import line from path and keeps every other line. A
++ * line after a leading @charset rule goes away with the bytes of the front
++ * merge alone, and that file keeps every other byte. The function writes no
++ * byte when the file holds no import line, and a write that fails keeps the
++ * old content of the file.
+  *
+  * \param changed  the call sets it to true when the file loses the line.
+  * \return 0 on success or on a missing file, and 6 on a read or write fault.

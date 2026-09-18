@@ -1,69 +1,34 @@
 # Maintainer: Wyn <Wyn@CachyOS>
-# Contributor: Maxim Devaev <mdevaev@gmail.com>
 
 _commit=68a3b41753b66a2f00cf98667a68458961f5cb25
 _srcname=qtcurve
-pkgname=qtcurve
+pkgname=qtcurve-firefox-theme
 pkgver=20260909
-pkgrel=10
-pkgdesc="A configurable set of widget styles for Qt5, Qt6, KDE Frameworks 6, GTK 2, GTK 3 and GTK 4; the GTK theme data is in qtcurve-gtk-theme"
-arch=(x86_64)
+pkgrel=3
+pkgdesc="The QtCurve theme for the Firefox chrome; the writer that follows the settings is in qtcurve"
+arch=(any)
 url="https://invent.kde.org/system/qtcurve"
-license=(LGPL-2.1-only LGPL-3.0-only MIT)
-depends=(
-	cairo
-	frameworkintegration
-	gdk-pixbuf2
-	glib2
-	glibc
-	gtk2
-	karchive
-	kcmutils
-	kcolorscheme
-	kcompletion
-	kconfig
-	kconfigwidgets
-	kcoreaddons
-	kdecoration
-	kguiaddons
-	ki18n
-	kiconthemes
-	kio
-	kwidgetsaddons
-	kwindowsystem
-	kxmlgui
-	libgcc
-	libstdc++
-	libx11
-	libxcb
-	pango
-	perl
-	qt5-base
-	qt5-svg
-	qt5-x11extras
-	qt6-base
-	qt6-svg
-)
+license=(LGPL-2.1-only LGPL-3.0-only)
+# The add-on holds colour keys alone, and Firefox reads it without a library.
+depends=()
 optdepends=(
-	# The writer copies the glyphs from the assets directory of the theme.
-	'qtcurve-gtk-theme: QtCurve look in GTK applications'
+	# Firefox reads an add-on of the extensions directory of the system.
+	'firefox: the browser that the theme paints'
+	# The writer of qtcurve carries the whole look into each Firefox profile.
+	'qtcurve: Firefox chrome that follows the QtCurve settings'
 )
 makedepends=(
 	cmake
 	extra-cmake-modules
 	git
-	kcmutils
-	kdecoration
+	gtk2
+	kcolorscheme
+	kconfig
+	kcoreaddons
+	qt6-base
+	qt6-svg
 )
-
-conflicts=(
-	qtcurve-gtk2
-	qtcurve-kde
-	qtcurve-qt5
-	qtcurve-utils
-)
-replaces=("${conflicts[@]}")
-install=qtcurve.install
+install=qtcurve-firefox-theme.install
 # The fix patches of the seven work branches, in the order that the branches
 # merge. A file name states the branch and the position of the commit in that
 # branch, and the header of a file holds the whole commit message. The array
@@ -439,59 +404,30 @@ build() {
 		-DCMAKE_BUILD_TYPE=None \
 		-DCMAKE_INSTALL_PREFIX=/usr \
 		-DCMAKE_INSTALL_LIBDIR=lib \
-		-DKDE_INSTALL_LIBDIR=lib \
 		-DENABLE_QT4=OFF \
-		-DENABLE_QT5=ON \
-		-DQTC_QT5_ENABLE_KDE=OFF \
-		-DENABLE_QT6=ON \
-		-DQTC_QT6_ENABLE_KDE=ON \
-		-DQTC_QT6_ENABLE_KDECORATION=ON \
+		-DENABLE_QT5=OFF \
+		-DENABLE_QT6=OFF \
 		-DENABLE_GTK2=ON \
 		-DENABLE_GTK4=ON \
-		-DBUILD_TESTING=ON
+		-DQTC_INSTALL_PO=OFF \
+		-DBUILD_TESTING=OFF
 	cmake --build "$_srcname/build"
 
 	grep -qF "\"$(git -C "$_srcname" describe)\"" "$_srcname/build/version.cpp"
 }
 
-check() {
-	ctest --test-dir "$_srcname/build" --output-on-failure --no-tests=error -E '^test-printf$'
-}
-
 package() {
-	DESTDIR="$pkgdir" cmake --install "$_srcname/build"
-	rm -r "$pkgdir/usr/share/themes"
-	test ! -e "$pkgdir/usr/share/themes"
+	local stage="$srcdir/stage"
+	rm -rf "$stage"
+	DESTDIR="$stage" cmake --install "$_srcname/build"
 
-	# The style helpers that QtCurve took from Oxygen carry an MIT notice. The
-	# notice names the copyright holder, so the package must ship the text.
-	# Upstream keeps no MIT licence file. Take the text from the comment block
-	# in qt6/style/shadowhelper.cpp.
-	sed -n '/^\/\/ Copyright (c) 2010 Hugo/,/IN THE SOFTWARE\./p' "$_srcname/qt6/style/shadowhelper.cpp" |
-		sed 's|^// \?||' |
-		install -Dm644 /dev/stdin "$pkgdir/usr/share/licenses/$pkgname/MIT"
+	# Firefox reads an add-on of the system under the identifier of the browser.
+	# The file name is the identifier of the add-on, which the manifest holds.
+	local id=qtcurve-firefox-theme@wyn.invent.kde.org
+	local dir="usr/share/mozilla/extensions/{ec8030f7-c20a-464f-9b0e-13a3a9e97384}"
+	install -Dm644 "$stage/usr/share/qtcurve/firefox/$id.xpi" "$pkgdir/$dir/$id.xpi"
 
-	test -s "$pkgdir/usr/share/licenses/$pkgname/MIT"
-	test -f "$pkgdir/usr/lib/qt/plugins/styles/qtcurve.so"
-	test -f "$pkgdir/usr/lib/qt6/plugins/styles/qtcurve.so"
-	test -f "$pkgdir/usr/lib/qt6/plugins/org.kde.kdecoration3/org.kde.qtcurve.so"
-	test -f "$pkgdir/usr/lib/qt6/plugins/org.kde.kdecoration3.kcm/kcm_qtcurvedecoration.so"
-	test -x "$pkgdir/usr/bin/qtcurve-gtk-writer"
-	test -s "$pkgdir/etc/xdg/autostart/qtcurve-gtk-writer.desktop"
-	test -s "$pkgdir/usr/lib/systemd/user/qtcurve-gtk-writer.service"
-	test -L "$pkgdir/usr/lib/systemd/user/plasma-workspace.target.wants/qtcurve-gtk-writer.service"
-	grep -qx 'X-systemd-skip=true' "$pkgdir/etc/xdg/autostart/qtcurve-gtk-writer.desktop"
-	readelf -d "$pkgdir/usr/lib/qt/plugins/styles/qtcurve.so" | grep -q libQt5X11Extras
-
-	# The add-on and its manifest belong to qtcurve-firefox-theme. This package
-	# keeps the writer, its autostart file and its unit. The rmdir stops the build
-	# when a later change of upstream puts another file in the data directory.
-	rm -r "$pkgdir/usr/share/qtcurve/firefox"
-	rmdir "$pkgdir/usr/share/qtcurve"
-	test ! -e "$pkgdir/usr/share/qtcurve"
-	test -x "$pkgdir/usr/bin/qtcurve-firefox-writer"
-	test -s "$pkgdir/etc/xdg/autostart/qtcurve-firefox-writer.desktop"
-	test -s "$pkgdir/usr/lib/systemd/user/qtcurve-firefox-writer.service"
-	test -L "$pkgdir/usr/lib/systemd/user/plasma-workspace.target.wants/qtcurve-firefox-writer.service"
-	grep -qx 'X-systemd-skip=true' "$pkgdir/etc/xdg/autostart/qtcurve-firefox-writer.desktop"
+	test -s "$pkgdir/$dir/$id.xpi"
+	test "$(find "$pkgdir" ! -type d | wc -l)" -eq 1
+	test -z "$(find "$pkgdir" ! -type d ! -path "$pkgdir/$dir/$id.xpi")"
 }

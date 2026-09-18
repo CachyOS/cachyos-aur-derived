@@ -3,7 +3,7 @@
 #
 # The check reports a commit hash. The hash never equals pkgver. Compare the
 # hash with _commit in the PKGBUILD. The date of that commit gives pkgver.
-[qtcurve]
+[qtcurve-gtk-theme]
 source = "git"
 git = "https://invent.kde.org/system/qtcurve.git"
 use_commit = true

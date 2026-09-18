@@ -1,0 +1,79 @@
+Let each writer name its own locks
+
+The lock code held one definition of the two lock file names. Every
+binary that links it then takes the same daemon lock and the same
+write lock. A second writer of another file set needs a pair of its
+own. The two writers hold no file in common, so one shared write lock
+costs contention and buys nothing.
+
+The definitions move into the main file of the binary, and lock.h
+keeps the extern declarations. The lock functions read the names
+through those declarations, so no signature changes and the two names
+of this writer stay the same.
+
+The change sits on the branch work/firefox-theme of the local tree, as
+commit 1 of 10. The branch holds those ten commits above the head of
+work/gtk4-theme, which merge request !15 on system/qtcurve holds. The fork
+wyn/qtcurve holds work/firefox-theme. Merge request !29 on system/qtcurve
+holds that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/gtk4/writer/lock.cpp b/gtk4/writer/lock.cpp
+index d365ac14..51f554f6 100644
+--- a/gtk4/writer/lock.cpp
++++ b/gtk4/writer/lock.cpp
+@@ -36,9 +36,6 @@
+ namespace QtCurve {
+ namespace Gtk {
+ 
+-const char *const daemonLockName = "qtcurve-gtk-writer.lock";
+-const char *const writeLockName = "qtcurve-gtk-writer-write.lock";
+-
+ namespace {
+ 
+ /** The name of the variable that carries the lock descriptor over an exec. */
+diff --git a/gtk4/writer/lock.h b/gtk4/writer/lock.h
+index fb9d1611..375af0dd 100644
+--- a/gtk4/writer/lock.h
++++ b/gtk4/writer/lock.h
+@@ -32,10 +32,16 @@ namespace Gtk {
+ /** The exit code of a mode that does not get the write lock. */
+ const int lockBusyCode = 7;
+ 
+-/** The file name of the lock of the one watch instance. */
++/**
++ * The file name of the lock of the one watch instance. Each binary that links
++ * this file defines its own pair of names.
++ */
+ extern const char *const daemonLockName;
+ 
+-/** The file name of the lock of the shared state of the user. */
++/**
++ * The file name of the lock of the shared state of the user. Each binary that
++ * links this file defines its own pair of names.
++ */
+ extern const char *const writeLockName;
+ 
+ /**
+diff --git a/gtk4/writer/main.cpp b/gtk4/writer/main.cpp
+index f121740f..939a83ac 100644
+--- a/gtk4/writer/main.cpp
++++ b/gtk4/writer/main.cpp
+@@ -43,6 +43,16 @@
+ using namespace QtCurve;
+ using namespace QtCurve::Gtk;
+ 
++namespace QtCurve {
++namespace Gtk {
++
++// The lock names of this binary, which lock.h declares.
++const char *const daemonLockName = "qtcurve-gtk-writer.lock";
++const char *const writeLockName = "qtcurve-gtk-writer-write.lock";
++
++}
++}
++
+ namespace {
+ 
+ /** The name that the GTK theme setting must hold before the writer writes. */

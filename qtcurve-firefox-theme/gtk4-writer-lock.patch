@@ -1,0 +1,837 @@
+Give the writer a daemon lock and a write lock
+
+A dialog save, a login autostart and a package hook all start the
+writer. Several passes therefore rewrote the files of one user at one
+moment, and several watch instances ran beside each other.
+
+Two locks of flock(2) in the configuration home bound this. The daemon
+lock holds one watch instance. A second instance names the pid of the
+holder and stops with the code 0, because one instance is the state that
+the caller wants.
+
+The write lock holds one mode body. A one shot mode waits 2 s and then
+stops with the code 7. A pass of the watch mode that meets the deadline
+starts the debounce again. A held lock therefore delays an edit and does
+not drop it. The sheet mode takes no lock, because the four sheet rules
+of the build run beside each other and write no file of a user.
+
+The kernel gives a lock of flock(2) up at every death of the holder. The
+design therefore holds no stale state and reads no pid file. The lock
+path follows XDG_CONFIG_HOME, so each check run and each user gets a
+lock of its own.
+
+A session bus that does not answer still parks the pass that reads it.
+The locks bound the count of the processes and name the holder, and they
+do not bound the bus.
+
+The new check drives the writer over a private home. Every wait in it is
+a counted poll, so no arm can stop the build.
+
+The change sits on the branch work/gtk4-theme of the local tree, as the
+eighth commit. The fork wyn/qtcurve holds that branch. Merge request !15 on
+system/qtcurve holds that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/gtk4/CMakeLists.txt b/gtk4/CMakeLists.txt
+index 6988112f..b289e005 100644
+--- a/gtk4/CMakeLists.txt
++++ b/gtk4/CMakeLists.txt
+@@ -19,6 +19,7 @@ set(qtcurve_gtk_writer_SRCS
+   writer/dialect.cpp
+   writer/userfile.cpp
+   writer/watch.cpp
++  writer/lock.cpp
+   "${CMAKE_CURRENT_SOURCE_DIR}/../qt6/common/common.cpp"
+   "${CMAKE_CURRENT_SOURCE_DIR}/../qt6/common/config_file.cpp")
+ 
+@@ -631,7 +632,7 @@ if(QTC_GTK3_RENDER)
+     VERBATIM)
+ endif()
+ 
+-# The two rows below run the writer over the files of a user, and not over a
++# The rows below run the writer over the files of a user, and not over a
+ # sheet of the build. Each row holds a private HOME and XDG_CONFIG_HOME, so
+ # the run leaves the files of the caller alone.
+ set(qtc_writer_work "${CMAKE_CURRENT_BINARY_DIR}/check/writer")
+@@ -640,6 +641,8 @@ add_custom_command(TARGET qtcurve-gtk-theme POST_BUILD
+           "${qtc_writer_work}/keep"
+   COMMAND sh "${qtc_check}/assert-latch.sh" "${qtc_writer_command}"
+           "${qtc_writer_work}/latch"
++  COMMAND sh "${qtc_check}/assert-lock.sh" "${qtc_writer_command}"
++          "${qtc_writer_work}/lock"
+   VERBATIM)
+ 
+ # The cross check against the daemon itself, which the caller asks for. Set
+diff --git a/gtk4/check/assert-lock.sh b/gtk4/check/assert-lock.sh
+new file mode 100644
+index 00000000..5f4fc43b
+--- /dev/null
++++ b/gtk4/check/assert-lock.sh
+@@ -0,0 +1,204 @@
++#!/bin/sh
++# assert-lock.sh WRITER WORKDIR: one watch instance runs at a time, and one
++# mode body rewrites the shared files at a time. The run starts the writer over
++# a private home. It reads the two locks through the exit codes, the log lines
++# and the liveness of each run. No arm reads a sheet of the user, because
++# copyAssets() stops a pass of a build host before the sheet lands. HOME,
++# XDG_CONFIG_HOME and QTCURVE_CONFIG_DIR point into WORKDIR, because the writer
++# rewrites the files of the caller. Every wait is a counted poll of steps of
++# one second, so no arm can stop the build.
++set -eu
++usage='usage: assert-lock.sh WRITER WORKDIR'
++writer=${1:?$usage}
++work=${2:?$usage}
++
++conf=$work/config
++qtc=$work/qtcurve
++hold=$work/hold
++lock=$conf/qtcurve-gtk-writer.lock
++holdvar=
++pids=
++last=
++code=0
++sevens=0
++
++clean() {
++    for p in $pids; do
++        kill "$p" 2>/dev/null || true
++    done
++    rm -f "$hold" 2>/dev/null || true
++}
++
++# A signal that stops the run leaves a writer of the run alive and a hold file
++# in place. The trap takes both away, and SIGKILL runs no trap.
++trap clean EXIT
++trap 'clean; exit 1' HUP INT QUIT TERM
++
++rm -rf "$work"
++mkdir -p "$conf/gtk-3.0" "$conf/gtk-4.0" "$qtc"
++printf '[Settings]\nappearance=gradient\n' > "$qtc/stylerc"
++ulimit -c 0
++
++fail() {
++    echo "assert-lock: $1" >&2
++    exit 1
++}
++
++# running PID: gives 0 while the process PID runs. A process that ended and
++# waits for its parent holds the state Z, and it does not run.
++running() {
++    state=$(sed -n 's/^State:[[:space:]]*//p' "/proc/$1/status" 2>/dev/null) ||
++        return 1
++    case $state in
++        Z*|'') return 1;;
++        *) return 0;;
++    esac
++}
++
++# start LOG ARGS...: starts one run of the writer over the private home, and
++# holds the pid of that run in the variable last. The variable holdvar names
++# the hold file of a holder, and it is empty for every other run.
++start() {
++    log=$1
++    shift
++    HOME=$work XDG_CONFIG_HOME=$conf QTCURVE_CONFIG_DIR=$qtc \
++        QTC_GTK_TEST_HOLD=$holdvar "$writer" "$@" > "$log" 2>&1 &
++    last=$!
++    pids="$pids $last"
++}
++
++# wait_exit PID LIMIT NAME: waits at most LIMIT seconds for the run PID to
++# end, and holds the exit code of that run in the variable code. A run that
++# stays at the limit takes a signal, and the check fails.
++wait_exit() {
++    i=0
++    while [ "$i" -lt "$2" ]; do
++        if ! running "$1"; then
++            code=0
++            wait "$1" || code=$?
++            return 0
++        fi
++        sleep 1
++        i=$((i + 1))
++    done
++    kill "$1" 2>/dev/null || true
++    fail "$3 runs after $2 seconds"
++}
++
++# wait_line LIMIT FILE TEXT NAME: waits at most LIMIT seconds for the file
++# FILE to hold the text TEXT.
++wait_line() {
++    i=0
++    while [ "$i" -lt "$1" ]; do
++        if grep -qF "$3" "$2" 2>/dev/null; then
++            return 0
++        fi
++        sleep 1
++        i=$((i + 1))
++    done
++    fail "$4"
++}
++
++# wait_file LIMIT FILE NAME: waits at most LIMIT seconds for the file FILE to
++# hold a byte.
++wait_file() {
++    i=0
++    while [ "$i" -lt "$1" ]; do
++        if [ -s "$2" ]; then
++            return 0
++        fi
++        sleep 1
++        i=$((i + 1))
++    done
++    fail "$3"
++}
++
++# 1. The first watch instance takes the daemon lock and names its pid there.
++start "$work/watch1.log" --watch --force
++daemon=$last
++sleep 2
++running "$daemon" || fail "the watch mode stopped at the first pass"
++wait_file 15 "$lock" "the watch mode wrote no pid into the daemon lock"
++
++# 2. The second watch instance stops at once, and it names the holder.
++start "$work/watch2.log" --watch --force
++wait_exit "$last" 10 "the second watch instance"
++if [ "$code" -ne 0 ]; then
++    fail "the second watch instance gave the code $code and not 0"
++fi
++grep -qF "a watch instance runs with the pid" "$work/watch2.log" ||
++    fail "the second watch instance named no holder of the daemon lock"
++running "$daemon" || fail "the first watch instance stopped at the second one"
++
++# 3. A write behind a holder waits for the deadline, and it gives the code 7.
++# The hold runs inside the write lock. The wait of the loser is therefore the
++# wait of the deadline and not the wait of a pass.
++kill "$daemon" 2>/dev/null || true
++wait_exit "$daemon" 10 "the first watch instance"
++: > "$hold"
++holdvar=$hold
++start "$work/hold1.log" --write --force
++holder=$last
++holdvar=
++wait_line 15 "$work/hold1.log" "the test hold starts" \
++    "the holder took no write lock"
++start "$work/loser.log" --write --force
++sleep 1
++running "$last" || fail "the write of the loser gave a code inside one second"
++wait_exit "$last" 8 "the write of the loser"
++if [ "$code" -ne 7 ]; then
++    fail "the write of the loser gave the code $code and not 7"
++fi
++grep -qF "holds the write lock" "$work/loser.log" ||
++    fail "the write of the loser named no holder of the write lock"
++sevens=$((sevens + 1))
++
++# 4. The sheet mode takes no lock, and the four sheet rules of the build run
++# beside each other.
++start "$work/sheet.log" --stdout --default --force
++wait_exit "$last" 5 "the sheet run"
++if [ "$code" -ne 0 ]; then
++    fail "the sheet run gave the code $code behind a holder"
++fi
++
++# 5. The holder keeps the code of its own body, and so does the write after
++# it. A build host holds no installed asset, so that code is 0 or 1.
++rm -f "$hold"
++wait_exit "$holder" 10 "the holder"
++if [ "$code" -eq 7 ]; then
++    fail "the holder gave the code 7 for a lock that it held"
++fi
++start "$work/after.log" --write --force
++wait_exit "$last" 5 "the write after the holder"
++if [ "$code" -eq 7 ]; then
++    fail "the write after the holder gave the code 7"
++fi
++
++# 6. A pass of the watch mode that meets the deadline gives the code 7, prints
++# one line and stays alive. The watcher starts the debounce again, so the edit
++# reaches the sheet after the holder.
++start "$work/watch3.log" --watch --force
++daemon=$last
++sleep 2
++running "$daemon" || fail "the watch mode stopped at the second start"
++: > "$hold"
++holdvar=$hold
++start "$work/hold2.log" --write --force
++holder=$last
++holdvar=
++wait_line 15 "$work/hold2.log" "the test hold starts" \
++    "the second holder took no write lock"
++printf 'appearance=soft\n' >> "$qtc/stylerc"
++wait_line 15 "$work/watch3.log" "the write failed with the code 7" \
++    "the watch mode gave no line of the code 7 behind a holder"
++running "$daemon" || fail "the watch mode stopped at the busy write lock"
++sevens=$((sevens + 1))
++rm -f "$hold"
++wait_exit "$holder" 10 "the second holder"
++kill "$daemon" 2>/dev/null || true
++wait_exit "$daemon" 10 "the watch mode"
++
++echo "assert-lock: the daemon lock held one watch instance, and the write" \
++     "lock gave the code 7 to the $sevens passes of the deadline"
++echo "assert-lock: the sheet run took no lock, and the holder and the run" \
++     "after it gave a code other than 7"
+diff --git a/gtk4/writer/lock.cpp b/gtk4/writer/lock.cpp
+new file mode 100644
+index 00000000..d365ac14
+--- /dev/null
++++ b/gtk4/writer/lock.cpp
+@@ -0,0 +1,200 @@
++/*****************************************************************************
++ *   Copyright 2026 QtCurve authors                                          *
++ *                                                                           *
++ *   This program is free software; you can redistribute it and/or modify    *
++ *   it under the terms of the GNU Lesser General Public License as          *
++ *   published by the Free Software Foundation; either version 2.1 of the    *
++ *   License, or (at your option) version 3, or any later version accepted   *
++ *   by the membership of KDE e.V. (or its successor approved by the         *
++ *   membership of KDE e.V.), which shall act as a proxy defined in          *
++ *   Section 6 of version 3 of the license.                                  *
++ *                                                                           *
++ *   This program is distributed in the hope that it will be useful,         *
++ *   but WITHOUT ANY WARRANTY; without even the implied warranty of          *
++ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU       *
++ *   Lesser General Public License for more details.                         *
++ *                                                                           *
++ *   You should have received a copy of the GNU Lesser General Public        *
++ *   License along with this library. If not,                                *
++ *   see <http://www.gnu.org/licenses/>.                                     *
++ *****************************************************************************/
++
++#include "lock.h"
++
++#include <qtcurve-utils/dirs.h>
++
++#include <QDir>
++
++#include <fcntl.h>
++#include <limits.h>
++#include <stdio.h>
++#include <stdlib.h>
++#include <sys/file.h>
++#include <sys/stat.h>
++#include <unistd.h>
++
++namespace QtCurve {
++namespace Gtk {
++
++const char *const daemonLockName = "qtcurve-gtk-writer.lock";
++const char *const writeLockName = "qtcurve-gtk-writer-write.lock";
++
++namespace {
++
++/** The name of the variable that carries the lock descriptor over an exec. */
++const char *const lockFdEnv = "QTC_GTK_WRITER_LOCK_FD";
++
++/**
++ * The step of the poll of the write lock, in milliseconds. The step is short
++ * against the deadline of the callers, so a loser waits for the holder and
++ * not for the next step.
++ */
++const int stepMs = 50;
++
++/** The mode of a lock file, which one user reads and writes. */
++const mode_t lockMode = 0600;
++
++/** Opens the lock file of path, and returns -1 when the open fails. */
++int
++openLock(const QString &path)
++{
++    return open(path.toLocal8Bit().constData(),
++                O_CREAT | O_RDWR | O_CLOEXEC, lockMode);
++}
++
++/** Writes the process identifier of the caller into the lock file fd. */
++void
++writePid(int fd)
++{
++    char text[32];
++    const int len = snprintf(text, sizeof(text), "%d\n", (int)getpid());
++    if (len <= 0 || ftruncate(fd, 0) != 0) {
++        return;
++    }
++    if (pwrite(fd, text, (size_t)len, 0) != len) {
++        return;
++    }
++}
++
++/** Returns the process identifier that the lock file fd holds, or 0. */
++pid_t
++readPid(int fd)
++{
++    char text[32];
++    const ssize_t got = pread(fd, text, sizeof(text) - 1, 0);
++    if (got <= 0) {
++        return 0;
++    }
++    text[got] = '\0';
++    return (pid_t)strtol(text, nullptr, 10);
++}
++
++}
++
++QString
++lockPath(const char *name)
++{
++    const QString dir = QString::fromLocal8Bit(getXDGConfigHome());
++    QDir().mkpath(dir);
++    return dir + QString::fromLatin1(name);
++}
++
++int
++acquireDaemonLock(pid_t *holder)
++{
++    const int fd = openLock(lockPath(daemonLockName));
++    if (fd < 0) {
++        return -1;
++    }
++    if (flock(fd, LOCK_EX | LOCK_NB) == 0) {
++        writePid(fd);
++        return fd;
++    }
++    if (holder) {
++        *holder = readPid(fd);
++    }
++    close(fd);
++    return -1;
++}
++
++int
++acquireWriteLock(int deadlineMs, pid_t *holder)
++{
++    const int fd = openLock(lockPath(writeLockName));
++    if (fd < 0) {
++        return -1;
++    }
++    for (int waited = 0;;waited += stepMs) {
++        if (flock(fd, LOCK_EX | LOCK_NB) == 0) {
++            writePid(fd);
++            return fd;
++        }
++        if (waited >= deadlineMs) {
++            break;
++        }
++        usleep((useconds_t)stepMs * 1000);
++    }
++    if (holder) {
++        *holder = readPid(fd);
++    }
++    close(fd);
++    return -1;
++}
++
++void
++releaseLock(int fd)
++{
++    close(fd);
++}
++
++int
++adoptLockFd(const QString &path)
++{
++    const char *const env = getenv(lockFdEnv);
++    if (!env || !*env) {
++        return -1;
++    }
++    char *end = nullptr;
++    const long value = strtol(env, &end, 10);
++    unsetenv(lockFdEnv);
++    if (!end || *end != '\0' || value <= STDERR_FILENO || value > INT_MAX) {
++        return -1;
++    }
++    const int fd = (int)value;
++    struct stat held;
++    struct stat want;
++    if (fstat(fd, &held) != 0 ||
++        stat(path.toLocal8Bit().constData(), &want) != 0 ||
++        held.st_dev != want.st_dev || held.st_ino != want.st_ino ||
++        flock(fd, LOCK_EX | LOCK_NB) != 0) {
++        close(fd);
++        return -1;
++    }
++    writePid(fd);
++    return fd;
++}
++
++void
++prepareLockFdForExec(int fd)
++{
++    const int flags = fcntl(fd, F_GETFD);
++    if (flags >= 0) {
++        fcntl(fd, F_SETFD, flags & ~FD_CLOEXEC);
++    }
++    char text[32];
++    snprintf(text, sizeof(text), "%d", fd);
++    setenv(lockFdEnv, text, 1);
++}
++
++void
++restoreLockFdAfterExecFailure(int fd)
++{
++    const int flags = fcntl(fd, F_GETFD);
++    if (flags >= 0) {
++        fcntl(fd, F_SETFD, flags | FD_CLOEXEC);
++    }
++    unsetenv(lockFdEnv);
++}
++
++}
++}
+diff --git a/gtk4/writer/lock.h b/gtk4/writer/lock.h
+new file mode 100644
+index 00000000..fb9d1611
+--- /dev/null
++++ b/gtk4/writer/lock.h
+@@ -0,0 +1,111 @@
++/*****************************************************************************
++ *   Copyright 2026 QtCurve authors                                          *
++ *                                                                           *
++ *   This program is free software; you can redistribute it and/or modify    *
++ *   it under the terms of the GNU Lesser General Public License as          *
++ *   published by the Free Software Foundation; either version 2.1 of the    *
++ *   License, or (at your option) version 3, or any later version accepted   *
++ *   by the membership of KDE e.V. (or its successor approved by the         *
++ *   membership of KDE e.V.), which shall act as a proxy defined in          *
++ *   Section 6 of version 3 of the license.                                  *
++ *                                                                           *
++ *   This program is distributed in the hope that it will be useful,         *
++ *   but WITHOUT ANY WARRANTY; without even the implied warranty of          *
++ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU       *
++ *   Lesser General Public License for more details.                         *
++ *                                                                           *
++ *   You should have received a copy of the GNU Lesser General Public        *
++ *   License along with this library. If not,                                *
++ *   see <http://www.gnu.org/licenses/>.                                     *
++ *****************************************************************************/
++
++#ifndef QTC_GTK4_LOCK_H
++#define QTC_GTK4_LOCK_H
++
++#include <QString>
++
++#include <sys/types.h>
++
++namespace QtCurve {
++namespace Gtk {
++
++/** The exit code of a mode that does not get the write lock. */
++const int lockBusyCode = 7;
++
++/** The file name of the lock of the one watch instance. */
++extern const char *const daemonLockName;
++
++/** The file name of the lock of the shared state of the user. */
++extern const char *const writeLockName;
++
++/**
++ * Returns the path of the lock file name in the configuration home of the
++ * user, and makes that directory. The two lock files stay for ever, because
++ * no mode deletes a file that another process can hold at that moment.
++ *
++ * \param name the file name of a lock, with no directory part.
++ * \return the absolute path of that lock file.
++ */
++QString lockPath(const char *name);
++
++/**
++ * Takes the lock of the one watch instance and writes the process identifier
++ * of the caller into the file. The kernel gives a lock of flock(2) up at
++ * every death of the holder, so no stale state can stay. flock(2) over NFS is
++ * an emulation over the record locks of POSIX since Linux 2.6.37.
++ *
++ * \param holder takes the process identifier that the file holds when another
++ *     process holds the lock, and 0 when the file holds no number. The number
++ *     is for a reader alone, and no contract binds on it.
++ * \return the open file descriptor of the lock, or -1 when another process
++ *     holds the lock or the file does not open.
++ */
++int acquireDaemonLock(pid_t *holder);
++
++/**
++ * Takes the lock of the shared state of the user under a deadline, and writes
++ * the process identifier of the caller into the file. The wait is a poll of
++ * steps of 50 ms.
++ *
++ * \param deadlineMs the longest wait for the lock, in milliseconds.
++ * \param holder takes the process identifier that the file holds at the
++ *     deadline, and 0 when the file holds no number.
++ * \return the open file descriptor of the lock, or -1 at the deadline or
++ *     when the file does not open.
++ */
++int acquireWriteLock(int deadlineMs, pid_t *holder);
++
++/** Gives the lock of the descriptor fd up, and closes that descriptor. */
++void releaseLock(int fd);
++
++/**
++ * Takes the lock descriptor that QTC_GTK_WRITER_LOCK_FD names over from the
++ * image before an execv(2), and writes the new process identifier into the
++ * file. The function drops the variable in every path.
++ *
++ * \param path the lock file that the descriptor must name. The check reads
++ *     st_dev and st_ino of the descriptor and of the path.
++ * \return the open file descriptor of the lock, or -1 for a failure. The
++ *     variable can be absent, or it can name a standard stream, a bad number
++ *     or another file. The call also fails when another process holds that
++ *     lock.
++ */
++int adoptLockFd(const QString &path);
++
++/**
++ * Clears FD_CLOEXEC of the lock descriptor fd and names fd in
++ * QTC_GTK_WRITER_LOCK_FD, for the image after an execv(2). The descriptor
++ * holds FD_CLOEXEC at every other moment, so no child of the writer gets it.
++ */
++void prepareLockFdForExec(int fd);
++
++/**
++ * Sets FD_CLOEXEC of the lock descriptor fd again and drops
++ * QTC_GTK_WRITER_LOCK_FD, after an execv(2) that failed.
++ */
++void restoreLockFdAfterExecFailure(int fd);
++
++}
++}
++
++#endif
+diff --git a/gtk4/writer/main.cpp b/gtk4/writer/main.cpp
+index 3b78d8f6..f39d7731 100644
+--- a/gtk4/writer/main.cpp
++++ b/gtk4/writer/main.cpp
+@@ -20,6 +20,7 @@
+  *****************************************************************************/
+ 
+ #include "dialect.h"
++#include "lock.h"
+ #include "userfile.h"
+ #include "watch.h"
+ 
+@@ -34,6 +35,10 @@
+ #include <QFile>
+ #include <QTextStream>
+ 
++#include <unistd.h>
++
++#include <functional>
++
+ using namespace QtCurve;
+ using namespace QtCurve::Gtk;
+ 
+@@ -139,6 +144,71 @@ testFault()
+     return !env.isEmpty() && QFile::exists(QString::fromLocal8Bit(env));
+ }
+ 
++/**
++ * The longest wait for the write lock, in milliseconds. The deadline bounds
++ * the wait of a mode that meets a holder, and it leaves a pass that runs
++ * enough time to finish.
++ */
++const int writeLockDeadlineMs = 2000;
++
++/** The step of the wait of a test hold, in milliseconds. */
++const int testHoldStepMs = 100;
++
++/**
++ * The count of the steps of a test hold. The cap of 30 s stops a hold that
++ * outlives the check script that started it.
++ */
++const int testHoldSteps = 300;
++
++/**
++ * Holds the write lock while the file that QTC_GTK_TEST_HOLD names exists,
++ * for 30 s at most. The build time checks set the variable, and a run of a
++ * user leaves it unset.
++ */
++void
++testHold()
++{
++    const QByteArray env = qgetenv("QTC_GTK_TEST_HOLD");
++    if (env.isEmpty()) {
++        return;
++    }
++    const QString path = QString::fromLocal8Bit(env);
++    if (!QFile::exists(path)) {
++        return;
++    }
++    printf("qtcurve-gtk-writer: the test hold starts\n");
++    fflush(stdout);
++    for (int step = 0;step < testHoldSteps && QFile::exists(path);++step) {
++        usleep((useconds_t)testHoldStepMs * 1000);
++    }
++}
++
++/**
++ * Runs the body of one mode inside the write lock, and returns the exit code
++ * of that body. The lock holds every mode that rewrites the shared files of
++ * the user apart from each other.
++ *
++ * \param body the body of the mode, which runs one time on success.
++ * \return the exit code of body, or lockBusyCode when the lock stays with
++ *     another process up to the deadline. The body does not run in that case,
++ *     and one line on standard error names the holder.
++ */
++int
++lockedRun(const std::function<int()> &body)
++{
++    pid_t holder = 0;
++    const int fd = acquireWriteLock(writeLockDeadlineMs, &holder);
++    if (fd < 0) {
++        fprintf(stderr, "qtcurve-gtk-writer: the pid %d holds the write lock"
++                " after 2 s, and this pass stops\n", (int)holder);
++        return lockBusyCode;
++    }
++    testHold();
++    const int code = body();
++    releaseLock(fd);
++    return code;
++}
++
+ /** Prints the path of one file or one directory that the writer deleted. */
+ void
+ printGone(const QString &path)
+@@ -385,20 +455,34 @@ main(int argc, char **argv)
+         return runStdout(args);
+     }
+     if (args.mode == QLatin1String("--remove-gtk")) {
+-        return removeBoth();
++        return lockedRun(removeBoth);
+     }
+     if (args.mode == QLatin1String("--remove-qt")) {
+-        removeSettings();
+         args.useDefaults = true;
+-        return runWrite(args);
++        return lockedRun([&args] {
++                removeSettings();
++                return runWrite(args);
++            });
+     }
+     if (args.mode == QLatin1String("--purge-settings")) {
+-        removeSettings();
+-        return removeBoth();
++        return lockedRun([] {
++                removeSettings();
++                return removeBoth();
++            });
+     }
+     if (args.mode == QLatin1String("--watch")) {
+-        const int first = runWrite(args);
+-        if (first > 1) {
++        int dfd = adoptLockFd(lockPath(daemonLockName));
++        if (dfd < 0) {
++            pid_t holder = 0;
++            dfd = acquireDaemonLock(&holder);
++            if (dfd < 0) {
++                printf("qtcurve-gtk-writer: a watch instance runs with the"
++                       " pid %d, and this instance stops\n", (int)holder);
++                return 0;
++            }
++        }
++        const int first = lockedRun([&args] { return runWrite(args); });
++        if (first > 1 && first != lockBusyCode) {
+             return first;
+         }
+         QStringList paths;
+@@ -407,8 +491,13 @@ main(int argc, char **argv)
+             paths << userDir(dialect) + QStringLiteral("/settings.ini");
+             paths << userDir(dialect) + QStringLiteral("/gtk.css");
+         }
+-        Watcher watcher([&args] { return runWrite(args); }, paths);
++        Watcher watcher([&args] {
++                return lockedRun([&args] { return runWrite(args); });
++            }, paths);
++        if (first == lockBusyCode) {
++            watcher.kick();
++        }
+         return QCoreApplication::exec();
+     }
+-    return runWrite(args);
++    return lockedRun([&args] { return runWrite(args); });
+ }
+diff --git a/gtk4/writer/watch.cpp b/gtk4/writer/watch.cpp
+index 22224251..58c762ab 100644
+--- a/gtk4/writer/watch.cpp
++++ b/gtk4/writer/watch.cpp
+@@ -21,6 +21,8 @@
+ 
+ #include "watch.h"
+ 
++#include "lock.h"
++
+ #include <KConfigGroup>
+ #include <KConfigWatcher>
+ #include <KSharedConfig>
+@@ -92,13 +94,35 @@ Watcher::schedule()
+     m_timer.start();
+ }
+ 
++void
++Watcher::kick()
++{
++    schedule();
++}
++
++/** Prints the one line that names the exit code of a pass that failed. */
++static void
++printFailure(int code)
++{
++    fprintf(stderr, "qtcurve-gtk-writer: the write failed with the code %d\n",
++            code);
++}
++
+ void
+ Watcher::fire()
+ {
+     const int code = m_write();
++    if (code == lockBusyCode) {
++        if (!m_lockLogged) {
++            printFailure(code);
++            m_lockLogged = true;
++        }
++        m_timer.start();
++        return;
++    }
++    m_lockLogged = false;
+     if (code != 0) {
+-        fprintf(stderr, "qtcurve-gtk-writer: the write failed with the code"
+-                " %d\n", code);
++        printFailure(code);
+     }
+ }
+ 
+diff --git a/gtk4/writer/watch.h b/gtk4/writer/watch.h
+index c355d3e3..f4cc26f4 100644
+--- a/gtk4/writer/watch.h
++++ b/gtk4/writer/watch.h
+@@ -50,12 +50,18 @@ public:
+     Watcher(const std::function<int()> &write, const QStringList &paths,
+             QObject *parent = nullptr);
+ 
++    /** Starts the debounce timer, as if a watched path changed. */
++    void kick();
++
+ private Q_SLOTS:
+     /** Starts the debounce timer and adds every lost watch path again. */
+     void schedule();
+     /**
+      * Runs the write function once, after the debounce. A pass that gives a
+      * value other than 0 prints one line with that value on standard error.
++     * The code of a busy write lock is the one code that the watcher retries.
++     * It starts the debounce again, and it prints one line for each run of
++     * that code.
+      */
+     void fire();
+ 
+@@ -71,6 +77,11 @@ private:
+     QFileSystemWatcher *m_files;
+     KConfigWatcher::Ptr m_config;
+     QTimer m_timer;
++    /**
++     * True after a line of the busy write lock, until a pass of another code.
++     * The flag caps the journal at one line for each run of that code.
++     */
++    bool m_lockLogged = false;
+ };
+ 
+ }

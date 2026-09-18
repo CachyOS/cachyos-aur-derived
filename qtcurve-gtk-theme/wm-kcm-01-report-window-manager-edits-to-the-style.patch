@@ -1,0 +1,67 @@
+Report window manager edits to the style dialog
+
+The window manager page emits changed() for each of its 22 rows. The dialog
+routed that signal to updateChanged(), which raises changed(true) only when
+the widgets differ from the Options structure of the preset in use. The page
+stores its settings in kwinqtcurverc and owns no field of that structure, so
+the host of the dialog never learned of an edit. The Apply button stayed grey
+until the user also changed a style option.
+
+The new slot kwinSettingsChanged() raises changed(true) for every report of
+the page. The constructor connects the slot after it loads the settings of
+the page and of the presets. A load therefore raises no change. The dialog
+opens clean.
+
+The page keeps every string, every row and every key of its file.
+
+The change sits on the branch work/wm-kcm of the local tree, as commit 1 of 4.
+A new merge request on system/qtcurve takes that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/qt6/config/qtcurveconfig.cpp b/qt6/config/qtcurveconfig.cpp
+index ad2193b9..351cc609 100644
+--- a/qt6/config/qtcurveconfig.cpp
++++ b/qt6/config/qtcurveconfig.cpp
+@@ -1257,6 +1257,9 @@ QtCurveConfig::QtCurveConfig(QWidget *parent)
+         setupPreview();
+         readyForPreview = true;
+         updatePreview();
++        // The connect must stay after the loads above. An earlier connect makes
++        // a load of the page report a change.
++        connect(qtcSlot(kwin, changed), qtcSlot(this, kwinSettingsChanged));
+     } else {
+         stack->setCurrentIndex(kwinPage);
+         titleLabel->setVisible(false);
+@@ -1755,7 +1758,6 @@ void QtCurveConfig::setupStack()
+         kwin->setNote(i18n("<p><b>NOTE:</b><i>The settings here affect the borders drawn around application windows and dialogs - and "
+                            "not internal (or MDI) windows. Therefore, these settings will <b>not</b> be reflected in the Preview "
+                            "page.</i></p>"));
+-        connect(qtcSlot(kwin, changed), qtcSlot(this, updateChanged));
+     }
+     stack->insertWidget(i, kwin);
+     new CStackItem(stackList, i18n("Window Manager"), i++);
+@@ -2703,6 +2705,11 @@ void QtCurveConfig::updateEnableStates()
+     }
+ }
+ 
++void QtCurveConfig::kwinSettingsChanged()
++{
++    emit changed(true);
++}
++
+ void QtCurveConfig::gtkButtonOrderChanged()
+ {
+     if(gtkButtonOrder->isChecked())
+diff --git a/qt6/config/qtcurveconfig.h b/qt6/config/qtcurveconfig.h
+index ca356625..b6fefe28 100644
+--- a/qt6/config/qtcurveconfig.h
++++ b/qt6/config/qtcurveconfig.h
+@@ -180,6 +180,7 @@ private:
+     void gtkButtonOrderChanged();
+     void importPreset();
+     void itemChanged(QTreeWidgetItem *i, int col);
++    void kwinSettingsChanged();
+     void menubarHidingChanged();
+     void menubarTitlebarBlend();
+     void menuBgndAppearanceChanged();

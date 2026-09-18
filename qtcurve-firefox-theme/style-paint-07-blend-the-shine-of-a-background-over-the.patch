@@ -1,0 +1,38 @@
+Blend the shine of a background over the window
+
+The window background paints in the replacing composition mode of the
+caller. The shine highlight of a gradient border takes the same mode, so
+the white pixmap of the shine replaces the background below it. The
+pixmap also carries its own alpha into the window. The outer stop of the
+shine holds the alpha zero, so a black rim stands where the highlight
+ends. The whole region ignores the background opacity as well, because
+the alpha of the pixmap replaces the alpha of the window.
+
+The shine now blends over the painted background in the mode that keeps
+the alpha of the destination. The highlight therefore lightens the
+background, and it follows the opacity of the window. A gradient border
+without a shine reaches no line of this path.
+
+The change sits on the branch work/style-paint of the local tree, as commit 7 of 21.
+A new merge request on system/qtcurve takes that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/qt6/style/qtcurve.cpp b/qt6/style/qtcurve.cpp
+index 1390dab5..a64f9a2e 100644
+--- a/qt6/style/qtcurve.cpp
++++ b/qt6/style/qtcurve.cpp
+@@ -2290,7 +2290,13 @@ Style::drawBackground(QPainter *p, const QColor &bgnd, const QRect &r,
+                     QPixmapCache::insert(key, pix);
+                 }
+             }
++            // The shine blends over the background above. The mode keeps the
++            // alpha of that background, so the shine follows the opacity of
++            // the window.
++            p->save();
++            p->setCompositionMode(QPainter::CompositionMode_SourceAtop);
+             p->drawPixmap(r.x() + ((r.width() - pix.width()) / 2), r.y(), pix);
++            p->restore();
+         }
+     } else {
+         QColor col(bgnd);

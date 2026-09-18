@@ -1,0 +1,31 @@
+Pair the background image label with its combo box
+
+The popup menu page holds the label of the background image in form
+row 8, beside the combo box for the gradient orientation. The image
+combo box sits in row 9, and row 9 carries no label. QFormLayout pairs
+the label role and the field role of one row, so the page names the
+wrong control. The tooltip of that combo box states the gradient
+orientation, and the label beside it contradicts the tooltip.
+
+Move the label to row 9. The background page already holds the wanted
+shape. Its gradient combo box takes a row of its own, and the image
+label stands beside the image combo box.
+
+The change sits on the branch work/dialog-state of the local tree, as commit 11 of 12.
+A new merge request on system/qtcurve takes that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/qt6/config/qtcurveconfigbase.ui b/qt6/config/qtcurveconfigbase.ui
+index 5d818332..04b623d1 100644
+--- a/qt6/config/qtcurveconfigbase.ui
++++ b/qt6/config/qtcurveconfigbase.ui
+@@ -3283,7 +3283,7 @@
+          </property>
+         </widget>
+        </item>
+-       <item row="8" column="0">
++       <item row="9" column="0">
+         <widget class="QLabel" name="label_xx">
+          <property name="text">
+           <string>Background image:</string>

@@ -1,0 +1,397 @@
+Recolour the icons of the browser from the colour scheme
+
+The chrome of the browser paints its own icons through fill properties.
+A toolbar button reads one such property, and the badge of that button
+reads a second one. The sheet set the first property alone.
+tokens-platform.css of omni.ja gives the badge the accent colour of the
+desktop, and toolbar.css gives it a fixed blue under a theme add-on. The
+badge of a user of QtCurve therefore took no colour of the scheme.
+
+The map now binds the two attention properties to the selection rows.
+One row moves the sheet and the manifest alike, and the static arm
+already held the icons_attention key of that row.
+
+Three further properties hold the text colour of the element that reads
+them, which the map gives each surface. tokens-shared.css declares the
+two button properties on the root, and menu.css declares the menu
+property on the popup. A rule of the root cannot reach a property of the
+popup, so the sheet carries a second block. A custom property crosses a
+shadow boundary, so the button property reaches the icon of the tab
+audio button inside its shadow tree.
+
+No rule names context-fill, context-stroke or the preference that gates
+them. The browser allows the context paint of a chrome image alone, so a
+glyph of an inline image of the sheet paints black. The theme asks a
+user for no preference beside the one of the sheets.
+
+assert-ff-icons.sh reads the sheet of a true gate and the profile of a
+false gate. It reads the three pinned properties, the two attention
+values against their rows, and every keyword above. Five doctored copies
+must fail it.
+
+The change sits on the branch work/firefox-theme of the local tree, as
+commit 8 of 10. The branch holds those ten commits above the head of
+work/gtk4-theme, which merge request !15 on system/qtcurve holds. The fork
+wyn/qtcurve holds work/firefox-theme. Merge request !29 on system/qtcurve
+holds that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/firefox/CMakeLists.txt b/firefox/CMakeLists.txt
+index e9f80582..b7c94c5e 100644
+--- a/firefox/CMakeLists.txt
++++ b/firefox/CMakeLists.txt
+@@ -151,7 +151,7 @@ add_custom_target(qtcurve-firefox-theme ALL DEPENDS ${qtc_ff_depends}
+ # no fault, so the run states the count that it must read. check/mkfloors.sh
+ # prints this line from one build, and no floor comes from a hand count. The
+ # sheet holds the shadow name under either setting, so the floor counts it.
+-set(qtc_ff_names 31)
++set(qtc_ff_names 36)
+ 
+ # The two sheets of the shipped schemes, which the checks below read. A run of
+ # a user writes the same text into a profile.
+@@ -220,6 +220,8 @@ add_custom_command(TARGET qtcurve-firefox-theme POST_BUILD
+           "${qtc_ff_run}/shadow"
+   COMMAND sh "${qtc_ff_check}/assert-ff-toolbox.sh" "${qtc_ff_command}"
+           "${qtc_ff_run}/toolbox"
++  COMMAND sh "${qtc_ff_check}/assert-ff-icons.sh" "${qtc_ff_command}"
++          "${qtc_ff_run}/icons"
+   # The two runs below are the lock and the re-exec checks of the GTK writer,
+   # over the binary and the lock names of this one.
+   COMMAND sh "${qtc_gtk_check}/assert-lock.sh" "${qtc_ff_command}"
+diff --git a/firefox/check/assert-ff-icons.sh b/firefox/check/assert-ff-icons.sh
+new file mode 100644
+index 00000000..c1c25292
+--- /dev/null
++++ b/firefox/check/assert-ff-icons.sh
+@@ -0,0 +1,216 @@
++#!/bin/sh
++# assert-ff-icons.sh WRITER WORKDIR: the sheet must recolour the icons of the
++# browser from the colour scheme. It must reach them through the fill
++# properties of the chrome alone. The attention pair must hold the selection
++# colours of the map. The three pinned properties must hold the text colour of
++# the element that reads them. No rule may name a context paint keyword or the
++# preference that gates one. The browser paints a context glyph of an inline
++# image black. A false gate must take the sheet away. HOME,
++# XDG_CONFIG_HOME and QTCURVE_CONFIG_DIR point into WORKDIR, because the
++# writer rewrites the files of the caller.
++set -eu
++ulimit -c 0
++usage='usage: assert-ff-icons.sh WRITER WORKDIR'
++writer=${1:?$usage}
++work=${2:?$usage}
++
++# A relative path leaves XDG_CONFIG_HOME outside the root of the file system.
++# The library of the writer then reads the configuration home of the caller.
++case $work in
++    /*) ;;
++    *) work=$PWD/$work;;
++esac
++
++owned=chrome/qtcurve-userChrome.css
++home=$work/home
++root=$home/.config/mozilla/firefox
++dir=$root/icons.default
++qtc=$home/qtcurve
++sheet=$dir/$owned
++status=0
++
++# The three properties that the sheet pins at the text colour of the element.
++# tokens-shared.css of omni.ja declares the two button properties on the root
++# at line 126 and line 127. menu.css declares the menu property on the popup
++# at line 44. Each shipped value is currentColor.
++pin_root='  --button-icon-fill: currentColor !important;
++  --button-icon-stroke: currentColor !important;'
++pin_menu='  --menuitem-icon-fill: currentColor !important;'
++
++# The two properties of the attention state. tokens-platform.css of omni.ja
++# declares them on the root at line 91 and line 92. The shipped value is the
++# accent colour of the desktop and no colour of the scheme.
++fill_attention='--toolbarbutton-icon-fill-attention'
++text_attention='--toolbarbutton-icon-fill-attention-text'
++
++# The two properties of the same rows of the map. assert-ff-agree.sh reads the
++# rows, and the arm below reads one value of each row against the pair above.
++fill_row='--urlbarview-background-color-selected'
++text_row='--urlbarview-text-color-selected'
++
++# The keywords of the context paint of an image, and the preference that gates
++# them. SVGContextPaint.cpp of the browser blocks the keywords for an inline
++# image, so a sheet that names one paints a black glyph.
++banned='context-fill
++context-stroke
++-moz-context-properties
++svg.context-properties.content.enabled'
++
++fail() {
++    echo "assert-ff-icons: $1" >&2
++    status=1
++}
++
++rm -rf "$work"
++mkdir -p "$dir/chrome" "$qtc"
++printf '[Profile0]\nName=icons\nIsRelative=1\nPath=icons.default\n' \
++    > "$root/profiles.ini"
++
++# settings VALUE: writes the settings file of the user with the gate at VALUE.
++settings() {
++    printf '[Settings]\nfirefoxTheme=%s\n' "$1" > "$qtc/stylerc"
++}
++
++# run NAME: runs one write pass over the private home, and holds the exit code
++# in the variable code.
++run() {
++    r_name=$1
++    code=0
++    HOME=$home XDG_CONFIG_HOME=$home/.config QTCURVE_CONFIG_DIR=$qtc \
++        "$writer" --write > "$work/$r_name.log" 2>&1 || code=$?
++}
++
++# value FILE NAME: prints the value of the custom property NAME of the sheet
++# FILE, and prints nothing when the sheet does not set it.
++value() {
++    sed -n "s/^  $2: \\(.*\\) !important;\$/\\1/p" "$1"
++}
++
++# body FILE SELECTOR: prints the body of the block of SELECTOR, with no brace
++# line. A block ends at the first line that holds one closing brace.
++body() {
++    b_esc=$(printf '%s' "$2" | sed 's/[.[\*^$]/\\&/g')
++    sed -n "/^$b_esc {\$/,/^}\$/p" "$1" | sed -e '1d' -e '$d'
++}
++
++# holds FILE SELECTOR WANTED: gives 0 while the block of SELECTOR holds every
++# line of WANTED.
++holds() {
++    printf '%s\n' "$3" > "$work/want"
++    body "$1" "$2" > "$work/got"
++    h_miss=0
++    # A property name opens with two dashes, so the pattern below stands after
++    # the end of the options of grep.
++    while IFS= read -r h_line; do
++        grep -qF -- "$h_line" "$work/got" || h_miss=$((h_miss + 1))
++    done < "$work/want"
++    [ "$h_miss" -eq 0 ]
++}
++
++# check SHEET: gives 0 while every contract of the icon rules holds. It names
++# the first contract that fails on the standard error.
++check() {
++    c_sheet=$1
++    for c_one in $banned; do
++        if grep -qF -- "$c_one" "$c_sheet"; then
++            echo "assert-ff-icons: $c_sheet names $c_one" >&2
++            return 1
++        fi
++    done
++    if ! holds "$c_sheet" ':root' "$pin_root"; then
++        echo "assert-ff-icons: $c_sheet drops a button icon property" >&2
++        return 1
++    fi
++    if ! holds "$c_sheet" 'menupopup' "$pin_menu"; then
++        echo "assert-ff-icons: $c_sheet drops the menu icon property" >&2
++        return 1
++    fi
++    c_fill=$(value "$c_sheet" "$fill_attention")
++    c_text=$(value "$c_sheet" "$text_attention")
++    c_row=$(value "$c_sheet" "$fill_row")
++    c_trow=$(value "$c_sheet" "$text_row")
++    if [ -z "$c_fill" ] || [ -z "$c_text" ]; then
++        echo "assert-ff-icons: $c_sheet sets no attention colour" >&2
++        return 1
++    fi
++    case $c_fill in
++        '#'*) ;;
++        *) echo "assert-ff-icons: the attention fill $c_fill is no colour" >&2
++           return 1;;
++    esac
++    if [ "$c_fill" != "$c_row" ] || [ "$c_text" != "$c_trow" ]; then
++        echo "assert-ff-icons: the attention pair holds $c_fill and $c_text," \
++             "and the rows hold $c_row and $c_trow" >&2
++        return 1
++    fi
++    return 0
++}
++
++# 1. A true gate writes the sheet, and that sheet carries the icon rules.
++settings true
++run true
++[ "$code" -eq 0 ] || fail "the true gate gave the code $code"
++[ -s "$sheet" ] || fail "the true gate wrote no sheet"
++check "$sheet" || fail "the true gate dropped the icon rules"
++cp "$sheet" "$work/on.css"
++
++# 2. A false gate takes the sheet away, so no icon rule reaches a profile.
++settings false
++run false
++[ "$code" -eq 0 ] || fail "the false gate gave the code $code"
++if [ -e "$sheet" ]; then
++    fail "the false gate left the sheet of the profile behind"
++fi
++
++# The controls below. Each one doctors a copy of the sheet of the true gate,
++# and the check must fail over that copy.
++broken=0
++
++# control NAME COPY: the check must fail over the copy that the caller gives.
++control() {
++    c_name=$1
++    if check "$2" 2> "$work/control.log"; then
++        echo "assert-ff-icons: the check passed the control copy of" \
++             "$c_name" >&2
++        exit 1
++    fi
++    broken=$((broken + 1))
++}
++
++# A sheet that reaches the icons through the context paint of the browser. An
++# inline image of that route paints a black glyph, and the sheet holds inline
++# images alone.
++sed '/^:root {$/a\
++  --qtc-icon: context-fill !important;' "$work/on.css" > "$work/paint.css"
++control paint "$work/paint.css"
++
++# A sheet that names the preference of the context paint. The theme must ask
++# a user for no preference beside the one of the sheets.
++sed '1a\
++/* svg.context-properties.content.enabled */' "$work/on.css" \
++    > "$work/pref.css"
++control pref "$work/pref.css"
++
++# A sheet that lost the pinned properties of the root, which leaves the icons
++# of a shadow tree to a layer of the browser.
++sed '/^  --button-icon-fill: /d' "$work/on.css" > "$work/root.css"
++control root "$work/root.css"
++
++# A sheet that lost the block of the popup. A rule of the root cannot reach
++# the menu property, because the browser declares it on the popup.
++sed '/^menupopup {$/,/^}$/d' "$work/on.css" > "$work/menu.css"
++control menu "$work/menu.css"
++
++# A sheet whose attention colour left its row of the map, which paints the
++# badge of a button in a colour of no scheme.
++sed "s/^  $fill_attention: .*\$/  $fill_attention: #010203 !important;/" \
++    "$work/on.css" > "$work/loose.css"
++control loose "$work/loose.css"
++
++if [ $status -eq 0 ]; then
++    echo "assert-ff-icons: the sheet pins the three icon properties, binds" \
++         "the attention pair to the rows of the map, names no context paint" \
++         "keyword and no preference, the false gate took the sheet away, and" \
++         "the check rejects each of the $broken control copies"
++fi
++exit $status
+diff --git a/firefox/check/ff-varnames.txt b/firefox/check/ff-varnames.txt
+index 579c6f1e..c42afb3d 100644
+--- a/firefox/check/ff-varnames.txt
++++ b/firefox/check/ff-varnames.txt
+@@ -4,9 +4,9 @@
+ # Derivation: every name below stands in a token file of the chrome of Firefox
+ # 155.0, which omni.ja and browser/omni.ja hold. The files are
+ # tokens-shared.css, tokens-platform.css, browser-colors.css, toolbar.css,
+-# tab.tokens.css, toolbarbuttons.css, common-shared.css, browser.css and
+-# urlbar/urlbarview.tokens.css. A refresh of the pin reads the same files of
+-# the next major.
++# tab.tokens.css, toolbarbuttons.css, common-shared.css, browser.css, menu.css
++# and urlbar/urlbarview.tokens.css. A refresh of the pin reads the same files
++# of the next major.
+ --toolbox-background-color
+ --toolbox-text-color
+ --toolbox-background-color-inactive
+@@ -26,7 +26,9 @@
+ --chrome-content-separator-color
+ --focus-outline-color
+ --urlbarview-background-color-selected
++--toolbarbutton-icon-fill-attention
+ --urlbarview-text-color-selected
++--toolbarbutton-icon-fill-attention-text
+ --panel-background-color
+ --panel-text-color
+ --panel-border-color
+@@ -35,6 +37,9 @@
+ --toolbarbutton-background-color-hover
+ --tab-background-color-hover
+ --toolbarbutton-background-color-active
++--button-icon-fill
++--button-icon-stroke
++--menuitem-icon-fill
+ --titlebar-button-size
+ --titlebar-button-spacing
+ --titlebar-button-end-spacing
+diff --git a/firefox/writer/ffmap.cpp b/firefox/writer/ffmap.cpp
+index d97059f8..cc59a7a3 100644
+--- a/firefox/writer/ffmap.cpp
++++ b/firefox/writer/ffmap.cpp
+@@ -104,14 +104,16 @@ const char *const varsFocus[] = { "--focus-outline-color" };
+ const char *const keysFocus[] = { "toolbar_field_border_focus" };
+ 
+ const char *const varsSelected[] = {
+-    "--urlbarview-background-color-selected"
++    "--urlbarview-background-color-selected",
++    "--toolbarbutton-icon-fill-attention"
+ };
+ const char *const keysSelected[] = { "popup_highlight", "sidebar_highlight",
+                                      "toolbar_field_highlight", "tab_line",
+                                      "tab_loading", "icons_attention" };
+ 
+ const char *const varsSelectedText[] = {
+-    "--urlbarview-text-color-selected"
++    "--urlbarview-text-color-selected",
++    "--toolbarbutton-icon-fill-attention-text"
+ };
+ const char *const keysSelectedText[] = { "popup_highlight_text",
+                                          "sidebar_highlight_text",
+diff --git a/firefox/writer/sheet.cpp b/firefox/writer/sheet.cpp
+index c9a947c4..ca51fcec 100644
+--- a/firefox/writer/sheet.cpp
++++ b/firefox/writer/sheet.cpp
+@@ -83,6 +83,26 @@ toolboxImages(const Options &opts, const Palette &pal)
+     return out;
+ }
+ 
++/**
++ * Returns the icon rules of the chrome. Each property holds the text colour
++ * of the element that reads it, and the map gives that colour to every
++ * surface of the sheet. The menu property stands on the popup of the chrome
++ * and never on the root, so a rule of the root cannot reach it. The button
++ * property reaches a shadow tree through the root, because a custom property
++ * crosses a shadow boundary.
++ */
++QString
++iconFills()
++{
++    return QStringLiteral("\n:root {\n"
++                          "  --button-icon-fill: currentColor !important;\n"
++                          "  --button-icon-stroke: currentColor !important;\n"
++                          "}\n"
++                          "\nmenupopup {\n"
++                          "  --menuitem-icon-fill: currentColor !important;\n"
++                          "}\n");
++}
++
+ /**
+  * The colour of the drop shadow of a popup, as one channel from 0 to 255. c1
+  * of qtcX11ShadowInit() in lib/utils/x11helpers.cpp holds 0.4 of the range,
+@@ -161,6 +181,7 @@ buildSheet(const Options &opts, const Palette &pal)
+     }
+     out += QStringLiteral("}\n");
+     out += toolboxImages(opts, pal);
++    out += iconFills();
+     out += popupShadow(opts);
+     out += buildCaption(opts, pal);
+     return out;
+diff --git a/firefox/writer/sheet.h b/firefox/writer/sheet.h
+index 41f4ed2f..0c2dfc4f 100644
+--- a/firefox/writer/sheet.h
++++ b/firefox/writer/sheet.h
+@@ -33,8 +33,8 @@ namespace Firefox {
+  * Returns the text of the sheet that the writer owns in a profile. The sheet
+  * holds one header line, then one :root block of every custom property of
+  * the map. A titlebar gradient adds one rule of the tool box for each state
+- * of the window. The popup rule of the shadow setting and the caption rules
+- * end the sheet.
++ * of the window. The icon rules, the popup rule of the shadow setting and
++ * the caption rules end the sheet.
+  *
+  * \param opts  the QtCurve settings, which give the appearance and the ladders.
+  * \param pal   the colours of the live scheme or of a colour file.

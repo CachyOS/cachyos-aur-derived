@@ -1,0 +1,29 @@
+Pad the left edge of a centred tab label
+
+The rectangle of a tab label loses the tab pad at its right edge under
+every alignment. The centred alignment adds the pad at the left edge
+only while a button stands there. A centred label therefore sits three
+pixels left of the centre of the tab, which is half of the pad.
+
+The rectangle now takes the pad at the left edge while no button stands
+there. The label sits at the centre of the tab. A tab with a left button
+keeps the rectangle of before, and the left alignment does not move.
+
+The change sits on the branch work/style-paint of the local tree, as commit 17 of 21.
+A new merge request on system/qtcurve takes that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/qt6/style/qtcurve_api.cpp b/qt6/style/qtcurve_api.cpp
+index bc1de6fe..2f401ddc 100644
+--- a/qt6/style/qtcurve_api.cpp
++++ b/qt6/style/qtcurve_api.cpp
+@@ -6543,6 +6543,8 @@ QRect Style::subElementRect(SubElement element, const QStyleOption *option, cons
+                     rect.setLeft(rect.left() + constTabPad +
+                                  (verticalTabs ? tab.leftButtonSize.height() :
+                                   tab.leftButtonSize.width()));
++                else
++                    rect.setLeft(rect.left() + constTabPad);
+                 if (!tab.rightButtonSize.isEmpty()) // right widget
+                     rect.setRight(rect.right() - constTabPad -
+                                   (verticalTabs ? tab.rightButtonSize.height() :

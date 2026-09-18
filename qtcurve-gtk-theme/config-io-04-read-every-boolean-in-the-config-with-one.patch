@@ -1,0 +1,68 @@
+Read every boolean in the config with one token set
+
+readBoolEntry accepts the exact token true and reads every other value
+as false. toLvLines reads every value except the literal false as true.
+The one file therefore holds two boolean grammars, and both disagree
+with KConfig, the writer of the file.
+
+A hand edited value such as 1, on or TRUE switches an option off, and
+any hostile token switches the list view lines on.
+
+Add toBool with the token set of KConfig, and route both readers through
+it. The parser reads true, yes, on and 1 as true, and false, no, off and
+0 as false, in any letter case. An unknown token now gives the default
+of the key, which no reader gave before. The writer emits only true and
+false, so no written file changes its meaning.
+
+A reader oracle reads 1, yes, on and TRUE as true on two boolean keys.
+It reads 0, no, off and zzqq on lvLines as false, where the old reader
+read all four as true.
+
+The change sits on the branch work/config-io of the local tree, as commit 4 of 18.
+A new merge request on system/qtcurve takes that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/qt6/common/config_file.cpp b/qt6/common/config_file.cpp
+index 1073777e..0f18e278 100644
+--- a/qt6/common/config_file.cpp
++++ b/qt6/common/config_file.cpp
+@@ -392,6 +392,20 @@ static EGradType toGradType(const char *str, EGradType def)
+     return def;
+ }
+ 
++// Read one boolean value with the token set of KConfig, the writer of the
++// file. An empty value and an unknown token give def.
++static bool toBool(const char *str, bool def)
++{
++    if(str && 0!=str[0])
++    {
++        if(QtCurve::oneOf<QtCurve::CaseCmp>(str, "true", "yes", "on", "1"))
++            return true;
++        if(QtCurve::oneOf<QtCurve::CaseCmp>(str, "false", "no", "off", "0"))
++            return false;
++    }
++    return def;
++}
++
+ static bool toLvLines(const char *str, bool def)
+ {
+     if(str && 0!=str[0])
+@@ -404,7 +418,7 @@ static bool toLvLines(const char *str, bool def)
+         if(0==strncmp(str, "false", 5) || 0==strncmp(str, "none", 4))
+             return LV_NONE;
+ #else
+-        return 0!=strncmp(str, "false", 5);
++        return toBool(str, def);
+ #endif
+     }
+     return def;
+@@ -718,7 +732,7 @@ static bool readBoolEntry(QtCConfig &cfg, const QString &key, bool def)
+ {
+     const QString &val(readStringEntry(cfg, key));
+ 
+-    return val.isEmpty() ? def : (val==QLatin1String("true") ? true : false);
++    return toBool(TO_LATIN1(val), def);
+ }
+ 
+ static void readDoubleList(QtCConfig &cfg, const char *key, double *list, int count)
