@@ -35,73 +35,73 @@ holds that branch.
 Drop this patch when upstream merges the change.
 
 diff --git a/gtk4/CMakeLists.txt b/gtk4/CMakeLists.txt
-index dcb71967..79c5b860 100644
+index d5ab7d01..f5196904 100644
 --- a/gtk4/CMakeLists.txt
 +++ b/gtk4/CMakeLists.txt
 @@ -97,13 +97,13 @@ set(qtc_check "${CMAKE_CURRENT_SOURCE_DIR}/check")
  set(qtc_names3 26)
  set(qtc_names4 206)
  set(qtc_names4_dark 29)
--set(qtc_rules3 175)
-+set(qtc_rules3 180)
- set(qtc_rules4 185)
+-set(qtc_rules3 176)
++set(qtc_rules3 181)
+ set(qtc_rules4 186)
  # The option arm adds the three rules of a list row that takes the alternate
  # background. The shading arm drops every rule that a shade step grounds.
--set(qtc_rules_opt3 178)
-+set(qtc_rules_opt3 183)
- set(qtc_rules_opt4 188)
--set(qtc_rules_shade3 151)
-+set(qtc_rules_shade3 156)
- set(qtc_rules_shade4 161)
+-set(qtc_rules_opt3 179)
++set(qtc_rules_opt3 184)
+ set(qtc_rules_opt4 189)
+-set(qtc_rules_shade3 152)
++set(qtc_rules_shade3 157)
+ set(qtc_rules_shade4 162)
  # The gradient layers of a sheet, which assert-layers.sh counts. A layer of
  # the emitter reads one seed, so two names in one layer mark a lost seed.
 @@ -164,11 +164,11 @@ add_custom_command(TARGET qtcurve-gtk-theme POST_BUILD
  # a box of its own moves the widget under the pointer. The run therefore reads
  # every state of every sheet. The dark GTK 4 sheet holds the :root block
  # alone, and assert-import.sh binds that block to the light sheet.
--set(qtc_boxes3 160)
-+set(qtc_boxes3 162)
- set(qtc_boxes4 165)
+-set(qtc_boxes3 162)
++set(qtc_boxes3 164)
+ set(qtc_boxes4 167)
  # The shading arm drops every rule that a shade step grounds, so an arm sheet
  # holds fewer states than a shipped one.
--set(qtc_boxes_arm3 130)
-+set(qtc_boxes_arm3 132)
- set(qtc_boxes_arm4 135)
+-set(qtc_boxes_arm3 132)
++set(qtc_boxes_arm3 134)
+ set(qtc_boxes_arm4 137)
  add_custom_command(TARGET qtcurve-gtk-theme POST_BUILD
    COMMAND sh "${qtc_check}/assert-boxes.sh" -k "${qtc_check}/boxes-keep.txt"
 @@ -204,9 +204,9 @@ set(qtc_avals3_shade 44)
  set(qtc_avals4_shade 67)
  # The row and value floors of the shade factor table, which binds every stop
  # of every gradient and every step of every shade ladder.
--set(qtc_shades3 105)
-+set(qtc_shades3 108)
- set(qtc_shades4 183)
--set(qtc_svals3 105)
-+set(qtc_svals3 108)
- set(qtc_svals4 183)
+-set(qtc_shades3 108)
++set(qtc_shades3 111)
+ set(qtc_shades4 186)
+-set(qtc_svals3 108)
++set(qtc_svals3 111)
+ set(qtc_svals4 186)
  set(qtc_svals4_dark 72)
  # The row floors of assert-paths.sh. A table that reads no row exits 0, so
 @@ -238,19 +238,19 @@ set(qtc_names_shade 205)
  # floor reads the :root block alone, because a rule of that dialect repeats
  # the name in the fallback of its var(). Each arm holds its own pair, because
  # a pair of the smallest arm leaves the others free to stop following.
--set(qtc_follow3 375)
-+set(qtc_follow3 379)
+-set(qtc_follow3 379)
++set(qtc_follow3 383)
  set(qtc_follow4 180)
--set(qtc_follow_cover3 380)
-+set(qtc_follow_cover3 384)
+-set(qtc_follow_cover3 384)
++set(qtc_follow_cover3 388)
  set(qtc_follow_cover4 185)
--set(qtc_follow_grad3 442)
-+set(qtc_follow_grad3 446)
+-set(qtc_follow_grad3 446)
++set(qtc_follow_grad3 450)
  set(qtc_follow_grad4 231)
--set(qtc_follow_flat3 290)
-+set(qtc_follow_flat3 294)
+-set(qtc_follow_flat3 292)
++set(qtc_follow_flat3 296)
  set(qtc_follow_flat4 115)
--set(qtc_follow_opt3 372)
-+set(qtc_follow_opt3 376)
+-set(qtc_follow_opt3 376)
++set(qtc_follow_opt3 380)
  set(qtc_follow_opt4 177)
--set(qtc_follow_distinct3 375)
-+set(qtc_follow_distinct3 379)
+-set(qtc_follow_distinct3 379)
++set(qtc_follow_distinct3 383)
  set(qtc_follow_distinct4 180)
 -set(qtc_follow_shade3 86)
 +set(qtc_follow_shade3 87)
@@ -112,18 +112,18 @@ index dcb71967..79c5b860 100644
  # Each arm above takes an appearance of its own, so its shade factors need a
  # table of its own. The flat arm paints no gradient and the option arm moves
  # the ground of a menu bar and of a tool bar.
--set(qtc_shades_cover3 106)
-+set(qtc_shades_cover3 109)
- set(qtc_shades_cover4 186)
--set(qtc_shades_grad3 110)
-+set(qtc_shades_grad3 113)
- set(qtc_shades_grad4 194)
--set(qtc_shades_flat3 66)
-+set(qtc_shades_flat3 69)
- set(qtc_shades_flat4 112)
--set(qtc_shades_opt3 103)
-+set(qtc_shades_opt3 106)
- set(qtc_shades_opt4 179)
+-set(qtc_shades_cover3 109)
++set(qtc_shades_cover3 112)
+ set(qtc_shades_cover4 189)
+-set(qtc_shades_grad3 113)
++set(qtc_shades_grad3 116)
+ set(qtc_shades_grad4 197)
+-set(qtc_shades_flat3 68)
++set(qtc_shades_flat3 71)
+ set(qtc_shades_flat4 114)
+-set(qtc_shades_opt3 106)
++set(qtc_shades_opt3 109)
+ set(qtc_shades_opt4 182)
  add_custom_command(TARGET qtcurve-gtk-theme POST_BUILD
    COMMAND sh "${qtc_check}/assert-alphas.sh" -s -a -d gtk4
 @@ -642,6 +642,15 @@ add_custom_command(TARGET qtcurve-gtk-theme POST_BUILD
@@ -465,13 +465,13 @@ index 00000000..f7f2fe66
 +     "on the ground, the trough and the rest row, and the check rejects each" \
 +     "of the $broken control copies"
 diff --git a/gtk4/check/shades-cover.txt b/gtk4/check/shades-cover.txt
-index baf1ac64..2a091ce4 100644
+index b1f3da80..219e717f 100644
 --- a/gtk4/check/shades-cover.txt
 +++ b/gtk4/check/shades-cover.txt
-@@ -128,6 +128,9 @@ scrollbar > range > trough > slider | border | 0.750 |  |
- scrollbar > range > trough > slider:hover | background-image | 1.040 1.030 0.980 1.030 |  |
- scrollbar > range > trough > slider:hover | background-color | 1.030 |  |
- scrollbar > range > trough > slider:hover | border | 0.750 |  |
+@@ -131,6 +131,9 @@ scrollbar > range > trough > slider:hover | border | 0.750 |  |
+ scrollbar > range > trough > slider:active | background-image | 1.040 1.030 0.980 1.030 |  |
+ scrollbar > range > trough > slider:active | background-color | 1.030 |  |
+ scrollbar > range > trough > slider:active | border | 0.750 |  |
 +#MozillaGtkWidget scrollbar | background-color | 0.900 | gtk3 |
 +#MozillaGtkWidget scrollbar slider:hover | background-color | 1.030 | gtk3 |
 +#MozillaGtkWidget scrollbar slider:active | background-color | 1.030 | gtk3 |
@@ -479,13 +479,13 @@ index baf1ac64..2a091ce4 100644
  switch | background-color | 0.900 |  |
  switch | border | 0.750 |  |
 diff --git a/gtk4/check/shades-flat.txt b/gtk4/check/shades-flat.txt
-index 561f2034..d7f560e8 100644
+index 49894038..890f5d40 100644
 --- a/gtk4/check/shades-flat.txt
 +++ b/gtk4/check/shades-flat.txt
-@@ -95,6 +95,9 @@ scrollbar > range > trough | border | 0.750 |  |
- scrollbar > range > trough > slider | border | 0.750 |  |
- scrollbar > range > trough > slider:hover | background-color | 1.030 |  |
+@@ -97,6 +97,9 @@ scrollbar > range > trough > slider:hover | background-color | 1.030 |  |
  scrollbar > range > trough > slider:hover | border | 0.750 |  |
+ scrollbar > range > trough > slider:active | background-color | 1.030 |  |
+ scrollbar > range > trough > slider:active | border | 0.750 |  |
 +#MozillaGtkWidget scrollbar | background-color | 0.900 | gtk3 |
 +#MozillaGtkWidget scrollbar slider:hover | background-color | 1.030 | gtk3 |
 +#MozillaGtkWidget scrollbar slider:active | background-color | 1.030 | gtk3 |
@@ -493,13 +493,13 @@ index 561f2034..d7f560e8 100644
  switch | border | 0.750 |  |
  switch:checked | border | 0.750 |  |
 diff --git a/gtk4/check/shades-grad.txt b/gtk4/check/shades-grad.txt
-index ae4d3f90..edaa73fa 100644
+index 18b85ced..52728a5f 100644
 --- a/gtk4/check/shades-grad.txt
 +++ b/gtk4/check/shades-grad.txt
-@@ -132,6 +132,9 @@ scrollbar > range > trough > slider | border | 0.750 |  |
- scrollbar > range > trough > slider:hover | background-image | 1.040 1.030 0.980 1.030 |  |
- scrollbar > range > trough > slider:hover | background-color | 1.030 |  |
- scrollbar > range > trough > slider:hover | border | 0.750 |  |
+@@ -135,6 +135,9 @@ scrollbar > range > trough > slider:hover | border | 0.750 |  |
+ scrollbar > range > trough > slider:active | background-image | 1.040 1.030 0.980 1.030 |  |
+ scrollbar > range > trough > slider:active | background-color | 1.030 |  |
+ scrollbar > range > trough > slider:active | border | 0.750 |  |
 +#MozillaGtkWidget scrollbar | background-color | 0.900 | gtk3 |
 +#MozillaGtkWidget scrollbar slider:hover | background-color | 1.030 | gtk3 |
 +#MozillaGtkWidget scrollbar slider:active | background-color | 1.030 | gtk3 |
@@ -507,13 +507,13 @@ index ae4d3f90..edaa73fa 100644
  switch | background-color | 0.900 |  |
  switch | border | 0.750 |  |
 diff --git a/gtk4/check/shades-opt.txt b/gtk4/check/shades-opt.txt
-index 7a5f75b9..7951bf05 100644
+index ff10e88c..a91cbe94 100644
 --- a/gtk4/check/shades-opt.txt
 +++ b/gtk4/check/shades-opt.txt
-@@ -154,6 +154,9 @@ scrollbar > range > trough > slider | border | 0.750 |  |
- scrollbar > range > trough > slider:hover | background-image | 1.040 1.030 0.980 1.030 |  |
- scrollbar > range > trough > slider:hover | background-color | 1.030 |  |
- scrollbar > range > trough > slider:hover | border | 0.750 |  |
+@@ -157,6 +157,9 @@ scrollbar > range > trough > slider:hover | border | 0.750 |  |
+ scrollbar > range > trough > slider:active | background-image | 1.040 1.030 0.980 1.030 |  |
+ scrollbar > range > trough > slider:active | background-color | 1.030 |  |
+ scrollbar > range > trough > slider:active | border | 0.750 |  |
 +#MozillaGtkWidget scrollbar | background-color | 0.900 | gtk3 |
 +#MozillaGtkWidget scrollbar slider:hover | background-color | 1.030 | gtk3 |
 +#MozillaGtkWidget scrollbar slider:active | background-color | 1.030 | gtk3 |
@@ -521,13 +521,13 @@ index 7a5f75b9..7951bf05 100644
  switch | background-color | 0.900 |  |
  switch | border | 0.750 |  |
 diff --git a/gtk4/check/shades.txt b/gtk4/check/shades.txt
-index cd22db38..ab5aad58 100644
+index dfe71ad8..2dde55e1 100644
 --- a/gtk4/check/shades.txt
 +++ b/gtk4/check/shades.txt
-@@ -130,6 +130,9 @@ scrollbar > range > trough > slider | border | 0.750 |  |
- scrollbar > range > trough > slider:hover | background-image | 1.040 1.030 0.980 1.030 |  |
- scrollbar > range > trough > slider:hover | background-color | 1.030 |  |
- scrollbar > range > trough > slider:hover | border | 0.750 |  |
+@@ -133,6 +133,9 @@ scrollbar > range > trough > slider:hover | border | 0.750 |  |
+ scrollbar > range > trough > slider:active | background-image | 1.040 1.030 0.980 1.030 |  |
+ scrollbar > range > trough > slider:active | background-color | 1.030 |  |
+ scrollbar > range > trough > slider:active | border | 0.750 |  |
 +#MozillaGtkWidget scrollbar | background-color | 0.900 | gtk3 |
 +#MozillaGtkWidget scrollbar slider:hover | background-color | 1.030 | gtk3 |
 +#MozillaGtkWidget scrollbar slider:active | background-color | 1.030 | gtk3 |
@@ -572,7 +572,7 @@ index b11b956b..39dfc842 100644
      bool windowHandle;
      /**
 diff --git a/gtk4/writer/widgets.cpp b/gtk4/writer/widgets.cpp
-index 14b5d7f1..2de07a57 100644
+index ca2890ee..4823d2eb 100644
 --- a/gtk4/writer/widgets.cpp
 +++ b/gtk4/writer/widgets.cpp
 @@ -234,6 +234,24 @@ ranked(const QString &selector, Rank rank)
@@ -608,8 +608,8 @@ index 14b5d7f1..2de07a57 100644
      void toggleSwitch();
      void separator();
      void toolBar();
-@@ -1678,6 +1697,33 @@ Writer::scrollBar()
-                        "scrollbar slider:hover"), hover);
+@@ -1684,6 +1703,33 @@ Writer::scrollBar()
+                        "scrollbar slider:active"), hover);
  }
  
 +void
@@ -642,7 +642,7 @@ index 14b5d7f1..2de07a57 100644
  void
  Writer::toggleSwitch()
  {
-@@ -2438,6 +2484,7 @@ Writer::run()
+@@ -2444,6 +2490,7 @@ Writer::run()
      progressBar();
      levelBar();
      scrollBar();

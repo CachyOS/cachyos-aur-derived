@@ -141,6 +141,8 @@ source=(
 	firefox-icons.patch
 	gtk4-writer-popup-shadow.patch
 	gtk4-writer-scrollbar-parity.patch
+	gtk4-writer-groove-border.patch
+	gtk4-writer-pressed-thumb.patch
 	gtk4-writer-browser-scrollbar.patch
 	firefox-sidebar-scrollbar.patch
 )
@@ -247,7 +249,9 @@ sha256sums=('e01dbf05c24c11a3660e6185a9a7607d0838d4560ab717d44b449e9520476f6e'
             '439405712c23dc20ccc1c68ad82523c00832ca58ae522040b535b521fc8857e3'
             '9b6e1905a2518684555afad6674301d5b41df5463eae583c8e6b1b5ee83abe80'
             '297f9366557406bf61cf3e53e4e840e98426b02d8a1368ad9e08c7df7ee3f271'
-            'ed09ec03a802beac1a77501421082a631a015e5f45180034ac34288cc5b626b1'
+            'a1e2b2ba985927ea60c555693a0e02ddb3ff315022179850e212a294fbe02f86'
+            '79c093038ed1c9cdafeab7546a24887c42a009f21604a0428da8038bcf28d57b'
+            '7734044d716b795ce2d6868735a9e45d0cb4181d14b2b5cb543106ce5b1f8f2c'
             '8319c09ca2902e17b2aab3176b217dbc9249e85916a1ae6015d688741a509b0a')
 
 pkgver() {
@@ -386,6 +390,10 @@ prepare() {
 	# settings. The patch adds a check, so it takes the three way merge of git.
 	git -C "$_srcname" add -A
 	git -C "$_srcname" apply --3way "$srcdir/gtk4-writer-scrollbar-parity.patch"
+	# The patch keeps the groove border of the scroll bar under the thin key.
+	patch -Np1 -d "$_srcname" -i "$srcdir/gtk4-writer-groove-border.patch"
+	# The patch states the pressed scroll bar thumb as the hovered thumb.
+	patch -Np1 -d "$_srcname" -i "$srcdir/gtk4-writer-pressed-thumb.patch"
 	# The patch colours the scroll bars of the browser from QtCurve. The
 	# patch adds a check, so it takes the three way merge of git.
 	git -C "$_srcname" add -A
