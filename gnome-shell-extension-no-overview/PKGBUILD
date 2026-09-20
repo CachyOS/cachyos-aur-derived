@@ -1,8 +1,8 @@
 # Maintainer: EvaristeGalois11 <turbo dot backslid four zero zero at passinbox dot com>
 
 pkgname=gnome-shell-extension-no-overview
-pkgver=50
-pkgrel=2
+pkgver=51
+pkgrel=1
 epoch=1
 pkgdesc='Disable the start up overview in Gnome 40+'
 arch=('any')
