@@ -1,0 +1,37 @@
+# Maintainer: witchlliee <witchlliee@tuta.io>
+
+pkgname=fluxer
+pkgver=2026.922.193957
+pkgrel=1
+pkgdesc="A free and open source group chat, video, and voice calling app"
+arch=('x86_64')
+options=(!strip)
+url="https://fluxer.app/"
+license=('AGPL-3.0-only')
+depends=('gtk3' 'nss' 'alsa-lib' 'libxss' 'libnotify' 'nspr')
+source=(
+  "fluxer-${pkgver}-x64.tar.gz::https://pkgs.fluxer.com/desktop/stable/linux/x64/${pkgver}/tar_gz"
+  "fluxer.desktop"
+)
+sha256sums=('a01e5b3e171b19c4160ec97a50848617fce4a47018eb2122829b8fc3c76497ba'
+            'd126b3c15f4884517f9b0472506045991cf3b6fdcfa36b389e665394a0b96ed1')
+
+package() {
+    _srcdir="Fluxer-${pkgver}-linux-x64"
+
+    cd "${_srcdir}"
+
+    # Move everything to /usr/lib
+    install -d "${pkgdir}/usr/lib/${pkgname}"
+    cp -r . "${pkgdir}/usr/lib/${pkgname}"
+
+    install -d "${pkgdir}/usr/bin"
+    ln -s "/usr/lib/${pkgname}/fluxer" "${pkgdir}/usr/bin/"
+
+    # Desktop & icons
+    install -d "${pkgdir}/usr/share/icons/hicolor/256x256/apps"
+    install -d "${pkgdir}/usr/share/icons/hicolor/512x512/apps"
+    install -Dm644 "${srcdir}/fluxer.desktop" "${pkgdir}/usr/share/applications/fluxer.desktop"
+    ln -srv "${pkgdir}/usr/lib/${pkgname}/resources/icons/256x256.png" "${pkgdir}/usr/share/icons/hicolor/256x256/apps/fluxer.png"
+    ln -srv "${pkgdir}/usr/lib/${pkgname}/resources/icons/512x512.png" "${pkgdir}/usr/share/icons/hicolor/512x512/apps/fluxer.png"
+}
