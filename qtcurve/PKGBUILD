@@ -5,7 +5,7 @@ _commit=68a3b41753b66a2f00cf98667a68458961f5cb25
 _srcname=qtcurve
 pkgname=qtcurve
 pkgver=20260909
-pkgrel=11
+pkgrel=12
 pkgdesc="A configurable set of widget styles for Qt5, Qt6, KDE Frameworks 6, GTK 2, GTK 3 and GTK 4; the GTK theme data is in qtcurve-gtk-theme"
 arch=(x86_64)
 url="https://invent.kde.org/system/qtcurve"
@@ -180,6 +180,7 @@ source=(
 	gtk4-writer-pressed-thumb.patch
 	gtk4-writer-browser-scrollbar.patch
 	firefox-sidebar-scrollbar.patch
+	section-reset-01-add-a-reset-section-button.patch
 )
 sha256sums=('e01dbf05c24c11a3660e6185a9a7607d0838d4560ab717d44b449e9520476f6e'
             '60d6c52289f3b6e7c0645bb9acaa96a769801f66e77f50cd5551b7e613611152'
@@ -287,7 +288,8 @@ sha256sums=('e01dbf05c24c11a3660e6185a9a7607d0838d4560ab717d44b449e9520476f6e'
             'a1e2b2ba985927ea60c555693a0e02ddb3ff315022179850e212a294fbe02f86'
             '79c093038ed1c9cdafeab7546a24887c42a009f21604a0428da8038bcf28d57b'
             '7734044d716b795ce2d6868735a9e45d0cb4181d14b2b5cb543106ce5b1f8f2c'
-            '8319c09ca2902e17b2aab3176b217dbc9249e85916a1ae6015d688741a509b0a')
+            '8319c09ca2902e17b2aab3176b217dbc9249e85916a1ae6015d688741a509b0a'
+            '288b29896e83991bef201b9b57f1e009c1acac59280e70f654e2a6b093d35fdd')
 
 pkgver() {
 	git -C "$_srcname" log -1 --format=%cd --date=format:%Y%m%d
@@ -437,6 +439,10 @@ prepare() {
 	# The patch adds a check, so it takes the three way merge of git.
 	git -C "$_srcname" add -A
 	git -C "$_srcname" apply --3way "$srcdir/firefox-sidebar-scrollbar.patch"
+	# The patch adds a Reset Section button to the configure dialog. The patch
+	# adds a header file, so it takes the three way merge of git.
+	git -C "$_srcname" add -A
+	git -C "$_srcname" apply --3way "$srcdir/section-reset-01-add-a-reset-section-button.patch"
 }
 
 build() {
