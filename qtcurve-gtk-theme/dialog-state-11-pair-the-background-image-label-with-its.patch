@@ -11,8 +11,9 @@ Move the label to row 9. The background page already holds the wanted
 shape. Its gradient combo box takes a row of its own, and the image
 label stands beside the image combo box.
 
-The change sits on the branch work/dialog-state of the local tree, as commit 11 of 12.
-A new merge request on system/qtcurve takes that branch.
+The change sits on the branch work/dialog-state of the local tree, as
+commit 11 of 13. The fork wyn/qtcurve holds that branch. Merge request !26
+on system/qtcurve holds that branch.
 
 Drop this patch when upstream merges the change.
 

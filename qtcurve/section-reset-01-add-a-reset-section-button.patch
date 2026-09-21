@@ -2,7 +2,7 @@ Add a Reset Section button to the configure dialog
 
 The button sits under the section list and resets only the
 section that the stack shows. It reads the same defaults source
-as the Restore Defaults path, the (Default) preset, and applies
+as the Restore Defaults path, the (Default) preset. It applies
 only the fields of the shown section over the live widget state.
 The write reuses the setPreset() tail: one setWidgetOptions()
 call over the merged options, the preview test, the changed(true)
@@ -17,7 +17,7 @@ tree, so the copied default cannot move that spin box.
 The section field map lives once, in sectionmap.h.
 
 The change sits on the branch work/section-reset of the local tree, as
-commit 1 of 3. The fork wyn/qtcurve holds that branch. Merge request !30
+commit 1 of 4. The fork wyn/qtcurve holds that branch. Merge request !30
 on system/qtcurve holds that branch.
 
 Drop this patch when upstream merges the change.

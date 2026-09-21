@@ -14,8 +14,9 @@ The setup functions now give each box three decimals. They also give the
 first box of each group a minimum of 0.001. The group check box stays
 the one way to switch a group off, and the file format does not change.
 
-The change sits on the branch work/dialog-state of the local tree, as commit 5 of 12.
-A new merge request on system/qtcurve takes that branch.
+The change sits on the branch work/dialog-state of the local tree, as
+commit 5 of 13. The fork wyn/qtcurve holds that branch. Merge request !26
+on system/qtcurve holds that branch.
 
 Drop this patch when upstream merges the change.
 

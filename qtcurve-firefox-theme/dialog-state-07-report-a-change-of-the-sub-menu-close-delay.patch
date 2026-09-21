@@ -9,8 +9,9 @@ the Apply button asleep.
 The close delay now joins its sibling, the sub-menu delay, in the
 comparison.
 
-The change sits on the branch work/dialog-state of the local tree, as commit 7 of 12.
-A new merge request on system/qtcurve takes that branch.
+The change sits on the branch work/dialog-state of the local tree, as
+commit 7 of 13. The fork wyn/qtcurve holds that branch. Merge request !26
+on system/qtcurve holds that branch.
 
 Drop this patch when upstream merges the change.
 

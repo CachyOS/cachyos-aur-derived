@@ -20,8 +20,9 @@ populateInternShades() now fills the boxes through qtcShadeGetIntern(),
 which is the function that the style itself calls. The routine combo and
 the darker borders box refill the boxes while the group is off.
 
-The change sits on the branch work/dialog-state of the local tree, as commit 6 of 12.
-A new merge request on system/qtcurve takes that branch.
+The change sits on the branch work/dialog-state of the local tree, as
+commit 6 of 13. The fork wyn/qtcurve holds that branch. Merge request !26
+on system/qtcurve holds that branch.
 
 Drop this patch when upstream merges the change.
 

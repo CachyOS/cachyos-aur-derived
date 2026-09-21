@@ -21,8 +21,9 @@ so the list now follows the entry. The preview draws the stops of the
 dialog, while the writer saves the result of fix(). The two now use
 one stop set.
 
-The change sits on the branch work/dialog-state of the local tree, as commit 4 of 12.
-A new merge request on system/qtcurve takes that branch.
+The change sits on the branch work/dialog-state of the local tree, as
+commit 4 of 13. The fork wyn/qtcurve holds that branch. Merge request !26
+on system/qtcurve holds that branch.
 
 Drop this patch when upstream merges the change.
 

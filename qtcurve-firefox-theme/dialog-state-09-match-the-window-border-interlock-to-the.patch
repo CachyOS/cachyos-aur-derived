@@ -17,8 +17,9 @@ windowBorder_blendChanged() already holds that pair in the other
 direction, so each combination that the page writes now survives a
 load and an Apply.
 
-The change sits on the branch work/dialog-state of the local tree, as commit 9 of 12.
-A new merge request on system/qtcurve takes that branch.
+The change sits on the branch work/dialog-state of the local tree, as
+commit 9 of 13. The fork wyn/qtcurve holds that branch. Merge request !26
+on system/qtcurve holds that branch.
 
 Drop this patch when upstream merges the change.
 

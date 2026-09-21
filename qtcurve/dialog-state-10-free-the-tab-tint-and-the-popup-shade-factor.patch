@@ -22,8 +22,9 @@ The gate was the only work of shadePopupMenuChanged(), so the slot now
 calls updateChanged(), and the box reports its change like each
 neighbouring box.
 
-The change sits on the branch work/dialog-state of the local tree, as commit 10 of 12.
-A new merge request on system/qtcurve takes that branch.
+The change sits on the branch work/dialog-state of the local tree, as
+commit 10 of 13. The fork wyn/qtcurve holds that branch. Merge request !26
+on system/qtcurve holds that branch.
 
 Drop this patch when upstream merges the change.
 
