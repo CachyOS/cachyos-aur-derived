@@ -1,0 +1,810 @@
+firefox: follow the add-on state of each profile
+
+A profile that holds the QtCurve theme add-on in a not active
+state now takes no sheet from a write pass. The pass removes the
+owned sheet and the import line of such a profile, and it prints
+one line with the restart truth. A profile with no QtCurve add-on
+keeps the firefoxTheme key as its one switch, so the writer-only
+flow holds.
+
+The pass reads the add-on state from the extensions.json file of
+the profile. The reader matches the add-on identifier, narrows on
+the type theme, prefers a visible record on a duplicate, and takes
+a missing active field as not active. An absent file means write;
+a file that does not parse keeps the files of that profile in
+place for one pass. The writer still writes no state file of
+Firefox.
+
+The watch mode now watches the extensions.json file of each
+profile, so a theme switch inside Firefox reaches the writer
+through the same debounce as every other change. --force keeps
+the whole old behaviour for the build time runs and the checks.
+
+assert-ff-state.sh proves the predicate over fixture state files,
+and assert-ff-matrix.sh proves the cells of the key, force and
+add-on matrix.
+
+The change sits on the branch work/firefox-theme of the local tree, as
+commit 11 of 12. The branch holds those twelve commits above the head of
+work/gtk4-theme, which merge request !15 on system/qtcurve holds. The fork
+wyn/qtcurve holds work/firefox-theme. Merge request !29 on system/qtcurve
+holds that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/firefox/CMakeLists.txt b/firefox/CMakeLists.txt
+index 64a88ac5..31087bfb 100644
+--- a/firefox/CMakeLists.txt
++++ b/firefox/CMakeLists.txt
+@@ -39,6 +39,7 @@ set(qtcurve_firefox_writer_SRCS
+   writer/manifest.cpp
+   writer/profiles.cpp
+   writer/sheet.cpp
++  writer/state.cpp
+   "${qtc_gtk_writer_dir}/palette.cpp"
+   "${qtc_gtk_writer_dir}/emit.cpp"
+   "${qtc_gtk_writer_dir}/userfile.cpp"
+@@ -223,6 +224,10 @@ add_custom_command(TARGET qtcurve-firefox-theme POST_BUILD
+           "${qtc_ff_run}/gate"
+   COMMAND sh "${qtc_ff_check}/assert-ff-notice.sh" "${qtc_ff_command}"
+           "${qtc_ff_run}/notice"
++  COMMAND sh "${qtc_ff_check}/assert-ff-state.sh" "${qtc_ff_command}"
++          "${qtc_ff_run}/state" "${QTC_FIREFOX_ID}"
++  COMMAND sh "${qtc_ff_check}/assert-ff-matrix.sh" "${qtc_ff_command}"
++          "${qtc_ff_run}/matrix" "${QTC_FIREFOX_ID}"
+   COMMAND sh "${qtc_ff_check}/assert-ff-keep.sh" "${qtc_ff_command}"
+           "${qtc_ff_run}/keep"
+   COMMAND sh "${qtc_ff_check}/assert-ff-shadow.sh" "${qtc_ff_command}"
+diff --git a/firefox/check/assert-ff-matrix.sh b/firefox/check/assert-ff-matrix.sh
+new file mode 100644
+index 00000000..b9ac61fc
+--- /dev/null
++++ b/firefox/check/assert-ff-matrix.sh
+@@ -0,0 +1,164 @@
++#!/bin/sh
++# assert-ff-matrix.sh WRITER WORKDIR ID: the key of the gate, the switch
++# --force and the add-on state must hold one matrix of twelve cells. The run
++# holds three profiles under one root. One holds the identifier ID as the
++# active theme, one holds the same identifier in a not active state, and one
++# holds no state file. Five passes read the cells, and the last pass proves
++# that a sheet of an earlier pass leaves a not active profile. HOME,
++# XDG_CONFIG_HOME and QTCURVE_CONFIG_DIR point into WORKDIR, because the
++# writer rewrites the files of the caller.
++set -eu
++ulimit -c 0
++usage='usage: assert-ff-matrix.sh WRITER WORKDIR ID'
++writer=${1:?$usage}
++work=${2:?$usage}
++id=${3:?$usage}
++
++# A relative path leaves XDG_CONFIG_HOME outside the root of the file system.
++# The library of the writer then reads the configuration home of the caller.
++# The run therefore takes an absolute path of its own.
++case $work in
++    /*) ;;
++    *) work=$PWD/$work;;
++esac
++
++owned=chrome/qtcurve-userChrome.css
++state=extensions.json
++home=$work/home
++root=$home/.config/mozilla/firefox
++qtc=$home/qtcurve
++status=0
++
++# The three profiles of the matrix, in the order of the profiles.ini file. The
++# profile absent holds no state file.
++cells='active inactive absent'
++
++fail() {
++    echo "assert-ff-matrix: $1" >&2
++    status=1
++}
++
++# gate VALUE: writes the settings file of the user with the key of the gate at
++# VALUE. The two files differ in that one row.
++gate() {
++    printf '[Settings]\nappearance=gradient\nfirefoxTheme=%s\n' "$1" \
++        > "$qtc/stylerc"
++}
++
++# write_state NAME ACTIVE: writes the state file of the profile NAME, with the
++# theme record of the identifier ID at the active value ACTIVE.
++write_state() {
++    printf '{"schemaVersion":37,"addons":[{"id":"%s","type":"theme",' "$id" \
++        > "$root/$1/$state"
++    printf '"active":%s,"visible":true}]}\n' "$2" >> "$root/$1/$state"
++}
++
++# run NAME ARGS...: runs the writer over the private home, and holds the exit
++# code in the variable code.
++run() {
++    r_name=$1
++    shift
++    code=0
++    HOME=$home XDG_CONFIG_HOME=$home/.config QTCURVE_CONFIG_DIR=$qtc \
++        "$writer" "$@" > "$work/$r_name.log" 2>&1 || code=$?
++    [ "$code" -eq 0 ] || fail "the pass $r_name gave the code $code"
++}
++
++# has PASS NAME WANT: reads the owned sheet of the profile NAME after the pass
++# PASS against WANT, which is yes or no.
++has() {
++    if [ "$3" = yes ]; then
++        [ -s "$root/$2/$owned" ] ||
++            fail "the pass $1 wrote no owned sheet of the profile $2"
++    elif [ -e "$root/$2/$owned" ]; then
++        fail "the pass $1 kept the owned sheet of the profile $2"
++    fi
++}
++
++# same_states PASS: the writer reads the state files and never writes them, so
++# each one must hold the bytes of its copy after the pass PASS.
++same_states() {
++    for cell in active inactive; do
++        cmp -s "$root/$cell/$state" "$work/$cell.want" ||
++            fail "the pass $1 moved a byte of the state file of $cell"
++    done
++    if [ -e "$root/absent/$state" ]; then
++        fail "the pass $1 made a state file in the profile absent"
++    fi
++}
++
++rm -rf "$work"
++mkdir -p "$qtc"
++for cell in $cells; do
++    mkdir -p "$root/$cell/chrome"
++done
++{
++    printf '[Profile0]\nName=active\nIsRelative=1\nPath=active\n\n'
++    printf '[Profile1]\nName=inactive\nIsRelative=1\nPath=inactive\n\n'
++    printf '[Profile2]\nName=absent\nIsRelative=1\nPath=absent\n'
++} > "$root/profiles.ini"
++write_state active true
++write_state inactive false
++cp "$root/active/$state" "$work/active.want"
++cp "$root/inactive/$state" "$work/inactive.want"
++
++# Pass A, the key true and no --force: each profile follows its add-on state.
++gate true
++run a --write
++has a active yes
++has a inactive no
++has a absent yes
++same_states a
++
++# Pass B, the key false and no --force: the remove pass runs over every
++# profile, because the one key stops the sheet everywhere.
++gate false
++run b --write
++has b active no
++has b inactive no
++has b absent no
++same_states b
++
++# Pass C, the key true and --force: the pass writes every profile, because
++# --force takes the state read out of the pass.
++gate true
++run c --write --force
++has c active yes
++has c inactive yes
++has c absent yes
++same_states c
++
++# Pass D, the key false and --force: the switch takes the gate out as well, so
++# every profile keeps the sheet.
++gate false
++run d --write --force
++has d active yes
++has d inactive yes
++has d absent yes
++same_states d
++
++# Pass E, the key true and no --force, over the sheets of pass D. The not
++# active profile must lose its sheet here. A pass that skips such a profile and
++# removes nothing leaves the sheet of pass D, which is the defect itself.
++gate true
++run e --write
++has e active yes
++has e inactive no
++has e absent yes
++same_states e
++
++# The control below makes the record of the not active profile active, and one
++# plain pass must bring the sheet back. A remove that latches fails here.
++write_state inactive true
++cp "$root/inactive/$state" "$work/inactive.want"
++run flipped --write
++has flipped inactive yes
++same_states flipped
++
++if [ $status -eq 0 ]; then
++    echo "assert-ff-matrix: the 12 cells of the key, --force and the add-on" \
++         "state held over 5 passes, the pass E took the sheet of the pass D" \
++         "from the not active profile, the 2 state files kept their bytes," \
++         "and the flip brought that sheet back"
++fi
++exit $status
+diff --git a/firefox/check/assert-ff-state.sh b/firefox/check/assert-ff-state.sh
+new file mode 100644
+index 00000000..42efc498
+--- /dev/null
++++ b/firefox/check/assert-ff-state.sh
+@@ -0,0 +1,246 @@
++#!/bin/sh
++# assert-ff-state.sh WRITER WORKDIR ID: the writer must follow the add-on state
++# of each profile. The run holds nine profiles under one root, and eight of
++# them carry a state file of their own shape. A profile that holds the
++# identifier ID in a not active state loses the sheet, and every other shape
++# keeps the add-on free flow. The state files keep their bytes, because the
++# writer reads them and never writes them. HOME, XDG_CONFIG_HOME and
++# QTCURVE_CONFIG_DIR point into WORKDIR, because the writer rewrites the files
++# of the caller.
++set -eu
++ulimit -c 0
++usage='usage: assert-ff-state.sh WRITER WORKDIR ID'
++writer=${1:?$usage}
++work=${2:?$usage}
++id=${3:?$usage}
++
++# A relative path leaves XDG_CONFIG_HOME outside the root of the file system.
++# The library of the writer then reads the configuration home of the caller.
++# The run therefore takes an absolute path of its own.
++case $work in
++    /*) ;;
++    *) work=$PWD/$work;;
++esac
++
++owned=chrome/qtcurve-userChrome.css
++shared=chrome/userChrome.css
++state=extensions.json
++pref=toolkit.legacyUserProfileCustomizations.stylesheets
++home=$work/home
++root=$home/.config/mozilla/firefox
++qtc=$home/qtcurve
++status=0
++
++# The nine arms of the predicate, in the order of the profiles.ini file. The
++# arm absent holds no state file, and the other eight hold one each.
++arms='active inactive absent unparseable-held unparseable-bare unknown-schema
++      missing-array other-id array-shape'
++
++# The seed of a held sheet. The writer emits no such line, so a byte compare
++# tells a keep from a rewrite.
++seed='/* the seed of assert-ff-state.sh, which the writer never writes */'
++
++fail() {
++    echo "assert-ff-state: $1" >&2
++    status=1
++}
++
++# gate VALUE: writes the settings file of the user with the key of the gate at
++# VALUE. The two files differ in that one row.
++gate() {
++    printf '[Settings]\nappearance=gradient\nfirefoxTheme=%s\n' "$1" \
++        > "$qtc/stylerc"
++}
++
++# record ID ACTIVE DISABLED: prints one theme record of a state file. Firefox
++# writes the same fields, and the reader takes the field active alone.
++record() {
++    printf '{"id":"%s","type":"theme","active":%s,"userDisabled":%s,' \
++        "$1" "$2" "$3"
++    printf '"visible":true,"location":"app-system-share"}'
++}
++
++# write_state NAME SCHEMA BODY: writes the state file of the profile NAME, with
++# the schema version SCHEMA and the array body BODY.
++write_state() {
++    printf '{"schemaVersion":%s,"addons":[%s]}\n' "$2" "$3" \
++        > "$root/$1/$state"
++}
++
++# seed_sheet NAME: writes the seed into the owned sheet of the profile NAME.
++seed_sheet() {
++    printf '%s\n' "$seed" > "$root/$1/$owned"
++}
++
++# run NAME ARGS...: runs the writer over the private home, and holds the exit
++# code in the variable code.
++run() {
++    r_name=$1
++    shift
++    code=0
++    HOME=$home XDG_CONFIG_HOME=$home/.config QTCURVE_CONFIG_DIR=$qtc \
++        "$writer" "$@" > "$work/$r_name.log" 2>&1 || code=$?
++    [ "$code" -eq 0 ] || fail "the pass $r_name gave the code $code"
++}
++
++# count PATTERN LOG: prints the count of the lines of LOG that hold PATTERN.
++count() {
++    n=$(grep -cF "$1" "$2") || n=0
++    printf '%s\n' "$n"
++}
++
++# has NAME WANT: reads the owned sheet of the profile NAME against WANT, which
++# is yes or no.
++has() {
++    if [ "$2" = yes ]; then
++        [ -s "$root/$1/$owned" ] || fail "the profile $1 holds no owned sheet"
++    elif [ -e "$root/$1/$owned" ]; then
++        fail "the profile $1 keeps an owned sheet"
++    fi
++}
++
++# save_states: copies every state file, for the byte compare after a pass.
++save_states() {
++    for arm in $arms; do
++        if [ -f "$root/$arm/$state" ]; then
++            cp "$root/$arm/$state" "$work/$arm.want"
++        fi
++    done
++}
++
++# same_states PASS: the writer reads the state files and never writes them, so
++# each one must hold the bytes of its copy after the pass PASS.
++same_states() {
++    for arm in $arms; do
++        if [ -f "$work/$arm.want" ]; then
++            cmp -s "$root/$arm/$state" "$work/$arm.want" ||
++                fail "the pass $1 moved a byte of the state file of $arm"
++        fi
++    done
++    if [ -e "$root/absent/$state" ]; then
++        fail "the pass $1 made a state file in the profile absent"
++    fi
++}
++
++rm -rf "$work"
++mkdir -p "$qtc"
++for arm in $arms; do
++    mkdir -p "$root/$arm/chrome"
++done
++{
++    i=0
++    for arm in $arms; do
++        printf '[Profile%s]\nName=%s\nIsRelative=1\nPath=%s\n\n' \
++            "$i" "$arm" "$arm"
++        i=$((i + 1))
++    done
++} > "$root/profiles.ini"
++
++# The nine fixtures. The arm active holds the theme as the active theme, and
++# the arms inactive and unknown-schema hold it in a not active state.
++write_state active 37 "$(record "$id" true false)"
++write_state inactive 37 "$(record "$id" false true)"
++write_state unknown-schema 99 "$(record "$id" false true)"
++write_state other-id 37 "$(record other-theme@example.invalid false true)"
++printf '{"schemaVersion":37}\n' > "$root/missing-array/$state"
++printf '{"schemaVersion":37,"addons":[{"id":' \
++    > "$root/unparseable-held/$state"
++cp "$root/unparseable-held/$state" "$root/unparseable-bare/$state"
++
++# The arm array-shape holds a top level JSON array, which parses and is no
++# object. The array carries the not active record, so a reader that takes a
++# record out of any shape removes the sheet and fails this arm.
++printf '[%s]\n' "$(record "$id" false true)" > "$root/array-shape/$state"
++
++# The arm inactive starts with the whole state of a written profile. The pass
++# below must take the sheet and the import line, and it must keep the foreign
++# line.
++seed_sheet inactive
++seed_sheet unparseable-held
++seed_sheet unknown-schema
++printf '@import "qtcurve-userChrome.css";\n#nav-bar { min-height: 40px; }\n' \
++    > "$root/inactive/$shared"
++cp "$root/unparseable-held/$owned" "$work/held.want"
++save_states
++
++# 1. One pass over the nine arms, with the key of the gate true.
++gate true
++run first --write
++has active yes
++grep -qF 'qtcurve-userChrome.css' "$root/active/$shared" ||
++    fail "the arm active merged no import line"
++has inactive no
++if grep -qF 'qtcurve-userChrome.css' "$root/inactive/$shared"; then
++    fail "the arm inactive kept the import line"
++fi
++grep -qF '#nav-bar' "$root/inactive/$shared" ||
++    fail "the arm inactive dropped the foreign line"
++has absent yes
++cmp -s "$root/unparseable-held/$owned" "$work/held.want" ||
++    fail "the arm unparseable-held lost the bytes of its sheet"
++has unparseable-bare no
++has unknown-schema no
++has missing-array yes
++has other-id yes
++has array-shape yes
++grep -qF 'qtcurve-userChrome.css' "$root/array-shape/$shared" ||
++    fail "the arm array-shape merged no import line"
++
++# The arm inactive takes one transition line and no notice of about:config,
++# because the pass removes that profile and never writes it.
++n=$(count "the profile $root/inactive holds the QtCurve add-on not active" \
++    "$work/first.log")
++[ "$n" -eq 1 ] || fail "the arm inactive took $n transition lines, and not 1"
++n=$(count "the profile $root/inactive needs $pref" "$work/first.log")
++[ "$n" -eq 0 ] || fail "the arm inactive took $n notices of about:config"
++
++# The sheet of a profile that holds the add-on and the sheet of a profile with
++# no add-on hold the same bytes. One pass writes one sheet body.
++cmp -s "$root/active/$owned" "$root/absent/$owned" ||
++    fail "the sheets of the arms active and absent differ"
++same_states first
++
++# 2. The same pass again. The transition line fires on the transition alone,
++# and a second pass removes nothing more.
++run second --write
++n=$(count 'holds the QtCurve add-on not active' "$work/second.log")
++[ "$n" -eq 0 ] || fail "the second pass printed $n transition lines, and not 0"
++n=$(count ': removed ' "$work/second.log")
++[ "$n" -eq 0 ] || fail "the second pass removed $n files, and not 0"
++has active yes
++has inactive no
++has absent yes
++has unknown-schema no
++# The arm array-shape holds the sheet of the first pass. That is the other
++# direction of the arm: a pass writes a bare profile, and a pass keeps a held
++# profile.
++has array-shape yes
++cmp -s "$root/unparseable-held/$owned" "$work/held.want" ||
++    fail "the second pass moved a byte of the sheet of unparseable-held"
++same_states second
++
++# The control below runs the same fixtures with --force, which takes the state
++# read out of the pass. The two held profiles must take the sheet, so a writer
++# that reads the state under --force fails here.
++run forced --write --force
++has inactive yes
++has unknown-schema yes
++same_states forced
++
++# The control below makes the record of the arm inactive active, and one plain
++# pass must bring the sheet back. A reader that latches the remove fails here,
++# and so does a reader that holds the state of an earlier pass.
++rm -f "$root/inactive/$owned"
++write_state inactive 37 "$(record "$id" true false)"
++cp "$root/inactive/$state" "$work/inactive.want"
++run flipped --write
++has inactive yes
++same_states flipped
++
++if [ $status -eq 0 ]; then
++    echo "assert-ff-state: the 9 arms of the predicate held, the 8 state" \
++         "files kept their bytes over 4 passes, the not active arm took 1" \
++         "transition line and 0 notices, --force wrote the 2 held profiles," \
++         "and the flip brought the sheet back"
++fi
++exit $status
+diff --git a/firefox/writer/main.cpp b/firefox/writer/main.cpp
+index 264267c8..e69edb3f 100644
+--- a/firefox/writer/main.cpp
++++ b/firefox/writer/main.cpp
+@@ -23,6 +23,7 @@
+ #include "manifest.h"
+ #include "profiles.h"
+ #include "sheet.h"
++#include "state.h"
+ 
+ #include <emit.h>
+ #include <lock.h>
+@@ -39,6 +40,7 @@
+ #include <QFile>
+ #include <QTextStream>
+ 
++#include <stdio.h>
+ #include <unistd.h>
+ 
+ #include <functional>
+@@ -320,10 +322,11 @@ writeProfile(const QByteArray &content, const QString &dir)
+  * deletes. A file that is absent is no error.
+  *
+  * \param dir the profile directory, which the call never removes.
++ * \param gone the call sets it to true when it deletes the owned sheet.
+  * \return 0 on success, and 6 when the shared sheet does not open.
+  */
+ int
+-removeProfile(const QString &dir)
++removeProfile(const QString &dir, bool *gone = nullptr)
+ {
+     const QString chrome = chromeOf(dir);
+     const QString shared = chrome + QLatin1Char('/') +
+@@ -340,6 +343,9 @@ removeProfile(const QString &dir)
+     const QString owned = chrome + QLatin1Char('/') +
+         QString::fromLatin1(ownedName);
+     if (removeOwned(owned)) {
++        if (gone) {
++            *gone = true;
++        }
+         printGone(owned);
+     }
+     return 0;
+@@ -364,8 +370,9 @@ removeAll()
+ 
+ /**
+  * Runs one write pass over every profile, and returns the first exit code
+- * that is not 0. A false gate and no --force run the remove pass. The files
+- * of the writer then leave a profile of a user who does not want them.
++ * that is not 0. A false gate and no --force run the remove pass over every
++ * profile. With a true gate, each profile follows its own add-on state, and
++ * --force writes every profile.
+  */
+ int
+ runWrite(const Args &args)
+@@ -396,7 +403,32 @@ runWrite(const Args &args)
+     }
+     int status = 0;
+     for (const QString &dir : profiles(true)) {
+-        const int code = writeProfile(content, dir);
++        int code = 0;
++        if (args.force) {
++            code = writeProfile(content, dir);
++        } else {
++            switch (addonState(dir)) {
++            case AddonState::Inactive: {
++                bool gone = false;
++                code = removeProfile(dir, &gone);
++                if (gone) {
++                    printf("%s: the profile %s holds the QtCurve add-on not"
++                           " active; the writer removed the sheet, and Firefox"
++                           " shows the change after a restart\n", writerName,
++                           dir.toLocal8Bit().constData());
++                }
++                break;
++            }
++            case AddonState::Unknown:
++                // The keep arm: this pass writes no file and removes no file
++                // of the profile.
++                break;
++            case AddonState::NoAddon:
++            case AddonState::Active:
++                code = writeProfile(content, dir);
++                break;
++            }
++        }
+         if (code != 0 && status == 0) {
+             status = code;
+         }
+@@ -480,8 +512,9 @@ runManifest(const Args &args)
+ /**
+  * Returns the paths that the watch mode reads. The set holds the settings of
+  * QtCurve, the colour file of KDE and the profile list of each root. It also
+- * holds the shared sheet of each profile that the roots hold at this moment.
+- * A profile that arrives later reaches the watcher through the profile list.
++ * holds the shared sheet and the extensions.json file of each profile that the
++ * roots hold at this moment. A profile that arrives later reaches the watcher
++ * through the profile list.
+  */
+ QStringList
+ watchPaths()
+@@ -496,6 +529,7 @@ watchPaths()
+     for (const QString &dir : profiles(false)) {
+         paths << chromeOf(dir) + QLatin1Char('/') +
+             QString::fromLatin1(sharedName);
++        paths << dir + QLatin1Char('/') + QString::fromLatin1(stateName);
+     }
+     return paths;
+ }
+@@ -579,6 +613,11 @@ runWatch(const Args &args, const QString &exePath,
+ int
+ main(int argc, char **argv)
+ {
++    // Standard output goes line by line, because the watch mode writes to a
++    // log file or to a journal socket. A SIGTERM then takes no notice line
++    // away.
++    setlinebuf(stdout);
++
+     // The raw arguments of this run, for the exec of a new image. The copy
+     // comes first, because the constructor of QCoreApplication takes the
+     // arguments of Qt out of argv.
+diff --git a/firefox/writer/state.cpp b/firefox/writer/state.cpp
+new file mode 100644
+index 00000000..f4d8fec3
+--- /dev/null
++++ b/firefox/writer/state.cpp
+@@ -0,0 +1,133 @@
++/*****************************************************************************
++ *   Copyright 2026 QtCurve authors                                          *
++ *                                                                           *
++ *   This program is free software; you can redistribute it and/or modify    *
++ *   it under the terms of the GNU Lesser General Public License as          *
++ *   published by the Free Software Foundation; either version 2.1 of the    *
++ *   License, or (at your option) version 3, or any later version accepted   *
++ *   by the membership of KDE e.V. (or its successor approved by the         *
++ *   membership of KDE e.V.), which shall act as a proxy defined in          *
++ *   Section 6 of version 3 of the license.                                  *
++ *                                                                           *
++ *   This program is distributed in the hope that it will be useful,         *
++ *   but WITHOUT ANY WARRANTY; without even the implied warranty of          *
++ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU       *
++ *   Lesser General Public License for more details.                         *
++ *                                                                           *
++ *   You should have received a copy of the GNU Lesser General Public        *
++ *   License along with this library. If not,                                *
++ *   see <http://www.gnu.org/licenses/>.                                     *
++ *****************************************************************************/
++
++#include "state.h"
++
++#include "manifest.h"
++
++#include <QFile>
++#include <QJsonArray>
++#include <QJsonDocument>
++#include <QJsonObject>
++#include <QJsonParseError>
++#include <QJsonValue>
++
++namespace QtCurve {
++namespace Firefox {
++
++const char *const stateName = "extensions.json";
++
++namespace {
++
++/** The key of the array of the state file that holds one record per add-on. */
++const char *const addonsKey = "addons";
++
++/** The key of a record that holds the identifier of the add-on. */
++const char *const idKey = "id";
++
++/** The key of a record that holds the kind of the add-on. */
++const char *const typeKey = "type";
++
++/** The value of the type key of a theme. */
++const char *const themeType = "theme";
++
++/**
++ * The key of a record that Firefox sets while the add-on takes effect. A
++ * record without the key counts as not active, because the writer of Firefox
++ * drops a field that holds no value.
++ */
++const char *const activeKey = "active";
++
++/** The key of a record that about:addons shows to the user. */
++const char *const visibleKey = "visible";
++
++/**
++ * Returns true while the record names the static theme. A record without a
++ * type field matches, because the identifier is the strong key.
++ */
++bool
++matches(const QJsonObject &record)
++{
++    if (record.value(QLatin1String(idKey)).toString() !=
++        QLatin1String(geckoId)) {
++        return false;
++    }
++    const QJsonValue type = record.value(QLatin1String(typeKey));
++    return type.isUndefined() || type.toString() == QLatin1String(themeType);
++}
++
++}
++
++AddonState
++addonState(const QString &dir)
++{
++    const QString path = dir + QLatin1Char('/') +
++        QString::fromLatin1(stateName);
++    QFile file(path);
++    if (!file.open(QIODevice::ReadOnly)) {
++        // A file that is not there is the add-on free flow, and a file that
++        // the reader cannot open takes the keep arm.
++        return QFile::exists(path) ? AddonState::Unknown : AddonState::NoAddon;
++    }
++    QJsonParseError error;
++    const QJsonDocument doc = QJsonDocument::fromJson(file.readAll(), &error);
++    if (error.error != QJsonParseError::NoError) {
++        return AddonState::Unknown;
++    }
++    if (!doc.isObject()) {
++        // A file that parses and holds no object is a format change, and a
++        // format change takes the add-on free flow.
++        return AddonState::NoAddon;
++    }
++    const QJsonValue addons = doc.object().value(QLatin1String(addonsKey));
++    if (!addons.isArray()) {
++        return AddonState::NoAddon;
++    }
++    const QJsonArray records = addons.toArray();
++    bool found = false;
++    bool active = false;
++    for (qsizetype i = 0;i < records.size();++i) {
++        const QJsonValue entry = records.at(i);
++        if (!entry.isObject()) {
++            continue;
++        }
++        const QJsonObject record = entry.toObject();
++        if (!matches(record)) {
++            continue;
++        }
++        const bool visible = record.value(QLatin1String(visibleKey)).toBool();
++        if (found && !visible) {
++            continue;
++        }
++        found = true;
++        active = record.value(QLatin1String(activeKey)).toBool();
++        if (visible) {
++            break;
++        }
++    }
++    if (!found) {
++        return AddonState::NoAddon;
++    }
++    return active ? AddonState::Active : AddonState::Inactive;
++}
++
++}
++}
+diff --git a/firefox/writer/state.h b/firefox/writer/state.h
+new file mode 100644
+index 00000000..956c47ac
+--- /dev/null
++++ b/firefox/writer/state.h
+@@ -0,0 +1,65 @@
++/*****************************************************************************
++ *   Copyright 2026 QtCurve authors                                          *
++ *                                                                           *
++ *   This program is free software; you can redistribute it and/or modify    *
++ *   it under the terms of the GNU Lesser General Public License as          *
++ *   published by the Free Software Foundation; either version 2.1 of the    *
++ *   License, or (at your option) version 3, or any later version accepted   *
++ *   by the membership of KDE e.V. (or its successor approved by the         *
++ *   membership of KDE e.V.), which shall act as a proxy defined in          *
++ *   Section 6 of version 3 of the license.                                  *
++ *                                                                           *
++ *   This program is distributed in the hope that it will be useful,         *
++ *   but WITHOUT ANY WARRANTY; without even the implied warranty of          *
++ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU       *
++ *   Lesser General Public License for more details.                         *
++ *                                                                           *
++ *   You should have received a copy of the GNU Lesser General Public        *
++ *   License along with this library. If not,                                *
++ *   see <http://www.gnu.org/licenses/>.                                     *
++ *****************************************************************************/
++
++#ifndef QTC_FIREFOX_STATE_H
++#define QTC_FIREFOX_STATE_H
++
++#include <QString>
++
++namespace QtCurve {
++namespace Firefox {
++
++/**
++ * The name of the file of a profile that holds the add-on records. The watch
++ * mode holds the same name in its path set, and state.cpp is the one reader.
++ */
++extern const char *const stateName;
++
++/** The add-on state of one profile, which one write pass reads. */
++enum class AddonState {
++    /** The profile holds no record of the static theme. */
++    NoAddon,
++    /** The profile holds the static theme as the active theme. */
++    Active,
++    /** The profile holds the static theme in a not active state. */
++    Inactive,
++    /**
++     * The state file does not open, or the bytes do not parse as JSON, and
++     * the pass keeps the files of the profile.
++     */
++    Unknown,
++};
++
++/**
++ * Reads the extensions.json file of the profile dir and returns the add-on
++ * state of the static theme. The reader never writes the file.
++ *
++ * \param dir the profile directory.
++ * \return the state of the record with the identifier of the static theme. A
++ *     present file that does not open or parse gives Unknown, and every other
++ *     file with no record gives NoAddon.
++ */
++AddonState addonState(const QString &dir);
++
++}
++}
++
++#endif

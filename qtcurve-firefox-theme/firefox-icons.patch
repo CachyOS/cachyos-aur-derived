@@ -30,7 +30,7 @@ values against their rows, and every keyword above. Five doctored copies
 must fail it.
 
 The change sits on the branch work/firefox-theme of the local tree, as
-commit 8 of 10. The branch holds those ten commits above the head of
+commit 8 of 12. The branch holds those twelve commits above the head of
 work/gtk4-theme, which merge request !15 on system/qtcurve holds. The fork
 wyn/qtcurve holds work/firefox-theme. Merge request !29 on system/qtcurve
 holds that branch.

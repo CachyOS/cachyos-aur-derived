@@ -1,14 +1,17 @@
 _notice() {
 	cat <<'EOF'
 Firefox holds an add-on of the system directory disabled. Open about:addons
-one time and enable QtCurve there.
+one time and make QtCurve the active theme there. While this add-on is not
+active, the writer of the qtcurve package removes its style sheets from the
+profile. The QtCurve look then follows your theme choice in Firefox.
 
-The writer of the qtcurve package carries the whole look into each Firefox
-profile. Turn on "Apply the settings to Firefox" in the QtCurve settings
-dialogue, and set toolkit.legacyUserProfileCustomizations.stylesheets to true
-in about:config.
+The writer of the qtcurve package carries the whole look, and the scroll bars
+of web pages, into your Firefox profiles. Turn on "Apply the settings to
+Firefox" in the QtCurve settings dialogue, and set
+toolkit.legacyUserProfileCustomizations.stylesheets to true in about:config.
 
-Firefox takes a change of the theme or of the sheet after a restart.
+A theme switch shows at once. Firefox shows a change of a sheet, and the
+removal of a sheet, after a restart.
 EOF
 }
 
@@ -22,7 +25,7 @@ post_upgrade() {
 
 post_remove() {
 	cat <<'EOF'
-The writer of the qtcurve package writes a style sheet into each Firefox
+The writer of the qtcurve package writes two style sheets into each Firefox
 profile of a user. Run qtcurve-firefox-writer --remove to delete those files.
 pacman deletes no file under a home directory.
 EOF
