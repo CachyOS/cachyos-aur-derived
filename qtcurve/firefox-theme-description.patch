@@ -1,0 +1,83 @@
+firefox: hold the description of the theme to one line
+
+The card of about:addons shows the description under the name of the
+theme. The sheet of the page holds a closed card to one line: it sets
+white-space to nowrap and text-overflow to ellipsis. A card cuts a
+longer description at the width of the list.
+
+Every theme that Firefox ships holds one short sentence there. The
+light theme holds 34 characters and the dark theme holds 33
+characters. The longest of the shipped lines holds 68 characters. The
+description of this theme held 242 characters over three sentences, and
+the card cut it.
+
+The change sits on the branch work/firefox-theme of the local tree, as
+commit 13 of 13. The branch holds those thirteen commits above the head of
+work/gtk4-theme, which merge request !15 on system/qtcurve holds. The fork
+wyn/qtcurve holds work/firefox-theme. Merge request !29 on system/qtcurve
+holds that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/firefox/check/assert-ff-manifest.cmake b/firefox/check/assert-ff-manifest.cmake
+index 957f0879..66142298 100644
+--- a/firefox/check/assert-ff-manifest.cmake
++++ b/firefox/check/assert-ff-manifest.cmake
+@@ -4,7 +4,7 @@
+ # know without a word, so a name outside the list paints nothing.
+ #
+ # The manifest must also hold a description and an author, which the card of
+-# about:addons shows under the name of the theme. The run then doctors five
++# about:addons shows under the name of the theme. The run then doctors six
+ # copies of the manifest, and it fails if the check passes a copy. cmake -P
+ # takes the four names as -D definitions, and the usage message below names
+ # them.
+@@ -69,6 +69,18 @@ function(qtc_check text fault)
+       return()
+     endif()
+   endforeach()
++  # The card of a closed add-on holds one line: aboutaddons.css of Firefox
++  # sets white-space to nowrap over the contents and text-overflow to
++  # ellipsis over the description. A longer line takes a cut. The bound of 68
++  # characters is the longest description that Firefox ships, which the
++  # default theme holds.
++  string(JSON line GET "${text}" description)
++  string(LENGTH "${line}" wide)
++  if(wide GREATER 68)
++    set("${fault}" "the description holds ${wide} characters, over 68"
++      PARENT_SCOPE)
++    return()
++  endif()
+   foreach(half theme dark_theme)
+     if(half STREQUAL "theme")
+       set(scheme light)
+@@ -150,6 +162,12 @@ string(REPLACE "\"description\":" "\"qtc_no_description\":" qtc_line_copy
+   "${qtc_text}")
+ qtc_control(description "${qtc_line_copy}")
+ 
++# The control below pads the description past the bound of the card.
++string(REGEX REPLACE "\"description\": \"[^\"]*\""
++  "\"description\": \"A theme that paints the window, the tabs and the address bar in the colours of QtCurve.\""
++  qtc_long_copy "${qtc_text}")
++qtc_control(length "${qtc_long_copy}")
++
+ string(REPLACE "\"author\":" "\"qtc_no_author\":" qtc_who_copy "${qtc_text}")
+ qtc_control(author "${qtc_who_copy}")
+ 
+diff --git a/firefox/writer/manifest.cpp b/firefox/writer/manifest.cpp
+index f215376e..3ce9e9f5 100644
+--- a/firefox/writer/manifest.cpp
++++ b/firefox/writer/manifest.cpp
+@@ -43,11 +43,7 @@ const char *const themeName = "QtCurve";
+  * The line under the name on the card of about:addons. The card of a theme
+  * holds the name, this line and the preview image, and it holds no icon.
+  */
+-const char *const themeDescription =
+-    "This theme paints the Firefox window, the tabs and the address bar in"
+-    " the colours of QtCurve. On its own it uses the default QtCurve colours,"
+-    " light or dark to match your system. With QtCurve on Linux, the colours"
+-    " can follow your own settings.";
++const char *const themeDescription = "A theme with the colours of QtCurve.";
+ 
+ /** The author of the add-on, which the open card of about:addons shows. */
+ const char *const themeAuthor = "Wyn Sun";
