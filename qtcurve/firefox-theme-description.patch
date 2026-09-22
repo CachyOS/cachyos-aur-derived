@@ -12,7 +12,7 @@ description of this theme held 242 characters over three sentences, and
 the card cut it.
 
 The change sits on the branch work/firefox-theme of the local tree, as
-commit 13 of 13. The branch holds those thirteen commits above the head of
+commit 13 of 14. The branch holds those fourteen commits above the head of
 work/gtk4-theme, which merge request !15 on system/qtcurve holds. The fork
 wyn/qtcurve holds work/firefox-theme. Merge request !29 on system/qtcurve
 holds that branch.
