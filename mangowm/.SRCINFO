@@ -1,6 +1,6 @@
 pkgbase = mangowm
 	pkgdesc = A Wayland compositor with smooth animation
-	pkgver = 0.17.2
+	pkgver = 0.17.3
 	pkgrel = 1
 	url = https://github.com/DreamMaoMao/mangowc
 	arch = x86_64
@@ -22,7 +22,7 @@ pkgbase = mangowm
 	provides = wayland-compositor
 	provides = mangowc
 	replaces = mangowc
-	source = mango-0.17.2.tar.gz::https://github.com/mangowm/mango/archive/refs/tags/0.17.2.tar.gz
-	md5sums = d79ad8b86946b7243eec22212bfc967f
+	source = mango-0.17.3.tar.gz::https://github.com/mangowm/mango/archive/refs/tags/0.17.3.tar.gz
+	md5sums = 913bc69fd0f88bc721adece7a864b44d
 
 pkgname = mangowm
