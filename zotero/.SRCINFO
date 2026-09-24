@@ -24,7 +24,7 @@ pkgbase = zotero
 	depends = nss
 	depends = libxt
 	source = zotero.desktop
-	source = zotero-client::git+https://github.com/zotero/zotero.git#tag=d3f1ccf3380fde351854d849977c55467f4609a6
+	source = zotero-client::git+https://github.com/zotero/zotero.git#tag=10.0.4
 	source = zotero-translators::git+https://github.com/zotero/translators.git
 	source = zotero-styles::git+https://github.com/zotero/bundled-styles.git
 	source = zotero-document-worker::git+https://github.com/zotero/document-worker.git
@@ -41,7 +41,7 @@ pkgbase = zotero
 	source = zotero-structured-document-text::git+https://github.com/zotero/structured-document-text.git
 	source = disable-updater.patch
 	sha256sums = eab76db7a56a4d9aaa17baaf240b82fcf57944a4ddf8ef1b58cc64182426cedc
-	sha256sums = c27b78ea4f6fef7a2f46ae64759ba6c2316aac95cca4324079f90ad4b6ae2d6c
+	sha256sums = 20e199794f15b9122eb1bbb9be41e41b4633797a7866f2202b4676d7b40cf92a
 	sha256sums = SKIP
 	sha256sums = SKIP
 	sha256sums = SKIP
