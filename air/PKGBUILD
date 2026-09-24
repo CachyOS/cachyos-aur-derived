@@ -25,7 +25,7 @@ prepare() {
   export CGO_CFLAGS="${CFLAGS}"
   export CGO_CXXFLAGS="${CXXFLAGS}"
   export CGO_LDFLAGS="${LDFLAGS}"
-  export CGO_ENABLED=0
+  export CGO_ENABLED=1
 
   cd ${pkgname}
   # create directory for build output
@@ -41,7 +41,7 @@ build() {
     -buildmode=pie \
     -mod=readonly \
     -modcacherw \
-    -ldflags "-linkmode external -extldflags ${LDFLAGS} \
+    -ldflags "-linkmode external -extldflags \"${LDFLAGS}\" \
     -X main.airVersion=$pkgver \
     -X main.goVersion=$(go env GOVERSION | sed 's/^go//')" \
     -o build \
