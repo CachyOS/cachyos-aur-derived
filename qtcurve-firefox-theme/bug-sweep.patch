@@ -1,0 +1,1062 @@
+Replay the scrollbar slider only into the current drawable
+
+The GTK 2 engine paints the scrollbar slider a second time when it
+paints the last stepper of the same scrollbar. The second paint uses
+the drawable that the engine stored at the first slider paint. The
+stored pointer holds no reference. A host that paints each scrollbar
+part into its own drawable can free that drawable before the stepper
+paint. The type check at the start of gtkDrawSlider then reads freed
+memory. Pale Moon crashes there.
+
+The stepper paint now compares its own drawable with the stored one.
+The engine replays the slider only when the two are the same, and it
+clears the stored record in both cases. GTK paints the slider and the
+steppers of one scrollbar into one window, so the replay stays as it
+was for every GTK application.
+
+A reference on the stored drawable keeps the old pixmap alive, and
+the replay still paints into that old pixmap. A weak pointer removes
+the crash but keeps that wrong paint. The compare removes both.
+
+BUG: 411019
+
+Accept a NULL constraint rectangle in Rect::constrain
+
+GTK 2 passes a NULL area to gtk_paint_box when the caller sets no
+clip. The engine passes that area to Rect::constrain for the plain
+progress stripes. Rect::constrain forwards it to Rect::intersect,
+which reads the rectangle. The engine reads address zero and the
+application stops with SIGSEGV. QGtkStyle paints a QProgressBar
+this way. The Application Style page of System Settings therefore
+crashed when the GTK 2 theme was QtCurve with plain stripes.
+
+The helper that Rect::constrain replaced returned without a change
+when the constraint was NULL. Rect::constrain now does the same,
+and its doc comment states the contract. A NULL area means no clip
+in GTK 2, so the stripe rectangles keep their full size. The result
+is the same as with an area that covers the whole widget. A
+rectangle with a constraint gets the same result as before. The
+entry progress bar shares the function and gets the same protection.
+
+BUG: 427950
+
+Remove the early window when a widget becomes a child
+
+With a background, dialog or menu opacity below 100, prePolish calls
+addAlphaChannel on every top-level widget before Qt creates its native
+window. addAlphaChannel makes the QWidgetWindow early, so the alpha
+format request reaches the platform window. Qt adopts that window when
+it creates a window or a native child. Qt does not adopt it when the
+widget became a child before creation: the child keeps the window.
+
+Qt 6 ignores the unused window. On Qt 5 the child keeps a
+pointer to freed memory after the parent widget loses its own
+window. QWidgetPrivate::show_sys crashes on the next show. A floating
+dock widget and a widget made without a parent and then put into a
+layout reach this state.
+
+The event callback now calls removeAlphaWindow on every ParentChange
+event of a widget without a native window. The function deletes the
+early window when the widget is not a window and has no WA_NativeWindow
+attribute. It uses the private QWidgetPrivate interface that made
+the window. A widget that becomes a top-level again gets a new early
+window from prePolish at the same event.
+
+The early creation stays. Qt sends no event between its own creation
+of the QWidgetWindow and the creation of the platform window. The
+alpha format can reach the platform window only through a window that
+exists before QWidget::create. A skip of Qt::Tool widgets would keep
+the fault for every parentless widget of type Qt::Window.
+
+BUG: 429201
+
+Do not overwrite the blur region that Konsole sets
+
+Konsole sets the blur region of its main window when it applies a
+profile. The blur helper of the style claimed that window as one of
+its own translucent windows. On each show and resize it replaced the
+region with the window rectangle less the opaque terminal widget.
+The terminal then lost its blur until the next profile switch.
+
+The helper now lists Konsole::MainWindow with the windows that it
+must not touch, beside Plasma::Dialog. The old clause that named
+the class as a transparent window is gone. That removal alone is
+not enough. The style sets WA_StyledBackground on every main window
+when the window background is translucent. That flag matched
+the Konsole window as well. The exclusion list is the place the
+helper already uses for a window whose application owns the blur
+region.
+
+Windows of every other class keep the old behaviour.
+
+BUG: 401869
+
+Use the icon theme for message box and file dialog icons
+
+A build without KDE support returned the compiled-in images for the
+message box icons and never asked the icon theme. The icons then did
+not match the icon theme of the desktop. A build with KDE support
+asked the theme for "go-edn" and "go-end". The freedesktop names are
+"go-first" and "go-last". No theme has the two wrong names. The start
+icon in a right-to-left layout and the end icon in a left-to-right
+layout were null.
+
+Ask the theme for "dialog-information", "dialog-warning" and
+"dialog-error" in the build without KDE support. Keep the compiled-in
+image as the fallback, so a session without an icon theme shows the
+same icons as before. Correct the two wrong names to "go-last".
+
+The two-argument QIcon::fromTheme takes the fallback only when the
+theme has no such icon, so one call covers both cases. The question
+icon keeps the information icon, as the build with KDE support and
+the GTK 2 icon map already do.
+
+BUG: 337151
+
+Paint a popup menu from the palette of the menu
+
+The style fills a popup menu from a cache of menu shades. The cache
+follows the palette that Qt gives to polish(QPalette&). That is the
+base palette of the platform theme. QApplication::setPalette() sets a
+palette that Qt resolves over the base palette, and polish(QPalette&)
+sees the base palette alone. The menu text takes its colour from the
+palette of the menu, and that palette follows setPalette(). After an
+application applies a dark palette over a light theme, the menu keeps
+the light fill and gets light text.
+
+polish(QWidget*) also writes the cached colour into the Window role of
+each menu. Qt keeps a role that a widget sets, so a later palette
+change does not reach a menu that already exists.
+
+popupMenuCols(option) now builds the menu shades from the window
+colour of the option palette when that colour differs from the cached
+window colour. It applies the lighter factor of the cache. A widget
+whose palette already holds the cached menu colour keeps the cache.
+The menu panel, the menu scroller and the combo box container take
+their fill through the option. polish(QWidget*) no longer writes the
+cached colour into a menu. The write stays for a menu that takes the
+menu bar colour, because the palette does not hold that colour.
+
+Buttons, menu bars and window backgrounds already follow this rule: a
+widget whose palette differs from the application palette gets shades
+of its own colour.
+
+BUG: 446937
+
+Do not stroke a square outline on a rounded tooltip
+
+With square tooltips off and a flat tooltip appearance, the Qt
+styles fill a rounded path. They then stroke a square outline on
+the full rectangle. The window mask of an opaque tooltip cuts the
+corners of the window. The outline then stops before each corner,
+and the window below shows in the gap. A tooltip window with an
+alpha channel gets no mask, so the square corners of the outline
+stand outside the rounded fill. The antialiasing of the rounded
+fill also puts the outline on two half pixels, and only one half
+is inside the window.
+
+The Qt styles now stroke the outline only when the tooltip is
+square, as the GTK 2 engine does in drawToolTip(). A rounded
+tooltip keeps its fill path and its window mask. A square tooltip
+keeps its full outline. The default configuration has square
+tooltips and does not change.
+
+BUG: 336665
+
+Keep the combo popup mask when no compositor runs
+
+The rounded combo popup gets an alpha channel at polish time. The
+Resize and Show branches of the event filter then clear the window
+mask when the window format has an alpha channel. An X server
+without a compositor ignores the alpha channel. It shows the
+unpainted corner pixels of the popup as black.
+
+The two branches now clear the mask only when a compositor is
+active. Without one, they set the staircase mask that an opaque
+popup already gets, and the corners show the window below.
+
+The check is local to the two branches. The other callers of
+hasAlphaChannel paint the window content with the alpha channel,
+and a change there has a wider effect. The window format does not
+change, so a compositor that starts later gets the antialiased
+corners at the next show. The staircase mask does not change: a
+window shape has no partial pixel.
+
+BUG: 336664
+
+Fit the round paths to the box and the pixel grid
+
+The split path of a bevel takes the radius of the widget. For a
+radio button, a dial, a round title bar button and a round slider
+that radius is half the widget width. Under the round max option a
+scroll bar slider takes half of its short side, up to a cap. The
+path box is one pixel smaller than the widget. The four quarter
+arcs therefore came from four circles that were one pixel apart.
+The joins between the arcs made a bright knot at each axis end of
+the coloured hover ring and of the etch ring.
+
+The two hover arcs of the plain radio button sat on integer
+coordinates. A one pixel pen on an integer coordinate covers two
+pixel rows at half strength. The ring was a soft band with a dent
+at each axis end.
+
+Limit the arc diameter of the split path to the smaller side of
+its box. The Qt styles and the cairo path helpers of the GTK 2
+style get the same limit. The four arcs then lie on one circle
+for a square box, as the whole path of the border in the Qt
+styles already does. Move the two hover arcs of the plain radio
+button to the half pixel grid. Their centre stays and their radius
+shrinks by half a pixel. The pen then covers whole pixels on the
+axes.
+
+A rounded rectangle keeps its path when its diameter fits the
+path box. In the GTK 2 style the fill clip of a radio button takes
+the same limit, so that button also changes at rest.
+
+BUG: 336660
+
+Paint the tab hover glow under the tab border
+
+The mouse-over glow of an inactive tab was a one pixel ring
+painted after the border, one pixel outside it. At the rounded
+corners the two antialiased strokes share pixels. The glow pass
+scaled the dark border coverage of those pixels by its own
+alpha, so the outline looked pale and frayed in the corners.
+
+A pen of width one also gives less coverage on an arc than the
+area of the stroke. That loss is the same in every style, and
+this change does not touch it.
+
+The four tab shapes now paint the glow before the border. The
+glow is a two pixel ring on the integer grid that covers the
+border pixel and the pixel outside it. The opaque border hides
+the inner pixel of the ring, so the straight edges do not change.
+Where the border stroke is partial, it blends with glow and not
+with background, as an exact render of the two rings does. The
+wider pen keeps its coverage on the arc, so the glow ring itself
+does not fade at the corners.
+
+The glow of buttons and other widgets keeps its painter.
+
+BUG: 336662
+
+The changes sit on the branch work/bug-sweep of the local tree, as
+commits 1 to 10 of 10. The fork wyn/qtcurve holds that branch. Merge
+request !31 on system/qtcurve holds that branch. The tenth change
+follows the etchBottomCol block that the patch style-paint-01 adds.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/gtk2/style/drawing.cpp b/gtk2/style/drawing.cpp
+index f05c16ec..f86a3939 100644
+--- a/gtk2/style/drawing.cpp
++++ b/gtk2/style/drawing.cpp
+@@ -3451,13 +3451,13 @@ drawRadioButton(cairo_t *cr, GtkStateType state, GtkShadowType shadow,
+                               APPEARANCE_INVERTED, WIDGET_TROUGH);
+             cairo_restore(cr);
+             if (!mnu && coloredMouseOver && !glow) {
+-                double radius = (opts.crSize - 2) / 2.0;
++                double radius = (opts.crSize - 3) / 2.0;
+                 Cairo::setColor(cr, &colors[CR_MO_FILL]);
+-                cairo_arc(cr, x + radius + 1, y+radius + 1,
++                cairo_arc(cr, x + radius + 1.5, y + radius + 1.5,
+                           radius, 0, 2 * M_PI);
+                 cairo_stroke(cr);
+                 radius--;
+-                cairo_arc(cr, x + radius + 2, y + radius + 2,
++                cairo_arc(cr, x + radius + 2.5, y + radius + 2.5,
+                           radius, 0, 2 * M_PI);
+                 cairo_stroke(cr);
+             }
+diff --git a/gtk2/style/qtcurve.cpp b/gtk2/style/qtcurve.cpp
+index 0b987357..089341a1 100644
+--- a/gtk2/style/qtcurve.cpp
++++ b/gtk2/style/qtcurve.cpp
+@@ -96,6 +96,9 @@ typedef struct {
+ #if GTK_CHECK_VERSION(2, 90, 0)
+     cairo_t *cr;
+ #else
++    /* The record holds no reference; the host can free this drawable at
++       any time. Use it only as a compare key against the drawable of the
++       current paint. */
+     GdkWindow *window;
+ #endif
+     GtkStateType state;
+@@ -1278,8 +1281,9 @@ drawBox(GtkStyle *style, GdkWindow *window, GtkStateType state,
+                 gtkDrawSlider(lastSlider.style, lastSlider.cr, lastSlider.state, lastSlider.shadow, lastSlider.widget,
+                                 lastSlider.detail, lastSlider.x, lastSlider.y, lastSlider.width, lastSlider.height, lastSlider.orientation);
+ #else
+-                gtkDrawSlider(lastSlider.style, lastSlider.window, lastSlider.state, lastSlider.shadow, nullptr, lastSlider.widget,
+-                                lastSlider.detail, lastSlider.x, lastSlider.y, lastSlider.width, lastSlider.height, lastSlider.orientation);
++                if (window == lastSlider.window)
++                    gtkDrawSlider(lastSlider.style, window, lastSlider.state, lastSlider.shadow, nullptr, lastSlider.widget,
++                                  lastSlider.detail, lastSlider.x, lastSlider.y, lastSlider.width, lastSlider.height, lastSlider.orientation);
+ #endif
+                 lastSlider.widget=nullptr;
+             }
+diff --git a/lib/cairo/utils.cpp b/lib/cairo/utils.cpp
+index 1fbe8b0d..2507eff0 100644
+--- a/lib/cairo/utils.cpp
++++ b/lib/cairo/utils.cpp
+@@ -131,6 +131,7 @@ QTC_EXPORT void
+ pathTopLeft(cairo_t *cr, double xd, double yd, double width,
+             double height, double radius, ECornerBits round)
+ {
++    radius = qtcMin(radius, qtcMin(width, height) / 2);
+     bool rounded = radius > 0.0;
+ 
+     if (rounded && round & CORNER_BL) {
+@@ -156,6 +157,7 @@ QTC_EXPORT void
+ pathBottomRight(cairo_t *cr, double xd, double yd, double width,
+                 double height, double radius, ECornerBits round)
+ {
++    radius = qtcMin(radius, qtcMin(width, height) / 2);
+     bool rounded = radius > 0.0;
+ 
+     if (rounded && round & CORNER_TR) {
+@@ -181,6 +183,7 @@ QTC_EXPORT void
+ pathWhole(cairo_t *cr, double xd, double yd, double width,
+           double height, double radius, ECornerBits round)
+ {
++    radius = qtcMin(radius, qtcMin(width, height) / 2);
+     bool rounded = radius > 0.0;
+ 
+     if (rounded && round & CORNER_TL) {
+diff --git a/lib/cairo/utils.h b/lib/cairo/utils.h
+index 6e07281c..580e1c32 100644
+--- a/lib/cairo/utils.h
++++ b/lib/cairo/utils.h
+@@ -91,7 +91,7 @@ bool intersect(const QtcRect *src1, const QtcRect *src2, QtcRect *dest);
+ 
+ /**
+  * \param rect a QtcRect
+- * \param con a QtcRect
++ * \param con a QtcRect, or NULL for no constraint
+  *
+  * Constrain \param to be the part within \param con.
+  * \sa qtcRectIntersect
+@@ -99,7 +99,9 @@ bool intersect(const QtcRect *src1, const QtcRect *src2, QtcRect *dest);
+ QTC_ALWAYS_INLINE static inline void
+ constrain(QtcRect *_rect, const QtcRect *con)
+ {
+-    intersect(_rect, con, _rect);
++    if (con) {
++        intersect(_rect, con, _rect);
++    }
+ }
+ 
+ }
+diff --git a/qt5/style/argbhelper.cpp b/qt5/style/argbhelper.cpp
+index ccf17777..97c5638a 100644
+--- a/qt5/style/argbhelper.cpp
++++ b/qt5/style/argbhelper.cpp
+@@ -51,4 +51,18 @@ addAlphaChannel(QWidget *widget)
+     }
+ }
+ 
++// Qt adopts a window that exists before QWidget::create only on a window
++// or on a native child. On any other child the window stays unused.
++void
++removeAlphaWindow(QWidget *widget)
++{
++    if (widget->isWindow() || widget->testAttribute(Qt::WA_NativeWindow) ||
++        !widget->windowHandle()) {
++        return;
++    }
++    QWidgetPrivate *widgetPrivate =
++        static_cast<QWidgetPrivate*>(QObjectPrivate::get(widget));
++    widgetPrivate->deleteTLSysExtra();
++}
++
+ }
+diff --git a/qt5/style/argbhelper.h b/qt5/style/argbhelper.h
+index 4c7e6c99..0c53ca74 100644
+--- a/qt5/style/argbhelper.h
++++ b/qt5/style/argbhelper.h
+@@ -27,6 +27,7 @@ class QWidget;
+ namespace QtCurve {
+ // TODO, turn this into a complete helper class.
+ void addAlphaChannel(QWidget *widget);
++void removeAlphaWindow(QWidget *widget);
+ }
+ 
+ #endif
+diff --git a/qt5/style/blurhelper.h b/qt5/style/blurhelper.h
+index 00b6090c..758849a4 100644
+--- a/qt5/style/blurhelper.h
++++ b/qt5/style/blurhelper.h
+@@ -172,17 +172,16 @@ BlurHelper::isTransparent(const QWidget *widget) const
+     return (widget->isWindow() &&
+             // widgets using qgraphicsview
+             !(widget->graphicsProxyWidget() ||
+-              widget->inherits("Plasma::Dialog")) &&
++              widget->inherits("Plasma::Dialog") ||
++              // Konsole sets its own blur region
++              widget->inherits("Konsole::MainWindow")) &&
+             // flags and special widgets
+             (widget->testAttribute(Qt::WA_StyledBackground) ||
+              qobject_cast<const QMenu*>(widget) ||
+              // TODO temporary solution only
+              widget->inherits("QComboBoxPrivateContainer") ||
+              qobject_cast<const QDockWidget*>(widget) ||
+-             qobject_cast<const QToolBar*>(widget) ||
+-             // konsole (thought that should be handled
+-             // internally by the application
+-             widget->inherits("Konsole::MainWindow")) &&
++             qobject_cast<const QToolBar*>(widget)) &&
+             Utils::hasAlphaChannel(widget));
+ }
+ 
+diff --git a/qt5/style/qtcurve.cpp b/qt5/style/qtcurve.cpp
+index 46ae4188..176e1dda 100644
+--- a/qt5/style/qtcurve.cpp
++++ b/qt5/style/qtcurve.cpp
+@@ -981,15 +981,15 @@ QIcon Style::standardIcon(StandardPixmap pix, const QStyleOption *option,
+     case SP_MessageBoxQuestion:
+     case SP_MessageBoxInformation: {
+         static QIcon icn(QPixmap::fromImage(qtc_dialog_information));
+-        return icn;
++        return QIcon::fromTheme(QStringLiteral("dialog-information"), icn);
+     }
+     case SP_MessageBoxWarning: {
+         static QIcon icn(QPixmap::fromImage(qtc_dialog_warning));
+-        return icn;
++        return QIcon::fromTheme(QStringLiteral("dialog-warning"), icn);
+     }
+     case SP_MessageBoxCritical: {
+         static QIcon icn(QPixmap::fromImage(qtc_dialog_error));
+-        return icn;
++        return QIcon::fromTheme(QStringLiteral("dialog-error"), icn);
+     }
+ /*
+   case SP_DialogYesButton:
+@@ -1060,10 +1060,10 @@ QIcon Style::standardIcon(StandardPixmap pix, const QStyleOption *option,
+     // case SP_FileLinkIcon:
+     case SP_FileDialogStart:
+         return QIcon::fromTheme(QApplication::layoutDirection() == Qt::RightToLeft ?
+-                     QStringLiteral("go-edn") : QStringLiteral("go-first"));
++                     QStringLiteral("go-last") : QStringLiteral("go-first"));
+     case SP_FileDialogEnd:
+         return QIcon::fromTheme(QApplication::layoutDirection() == Qt::RightToLeft ?
+-                     QStringLiteral("go-first") : QStringLiteral("go-end"));
++                     QStringLiteral("go-first") : QStringLiteral("go-last"));
+     case SP_FileDialogToParent:
+         return QIcon::fromTheme(QStringLiteral("go-up"));
+     case SP_FileDialogNewFolder:
+@@ -2060,6 +2060,20 @@ void Style::drawGlow(QPainter *p, const QRect &r, EWidget w, const QColor *cols)
+     QPAINTER_RENDERHINT_AA_MAYBE_OFF(p);
+ }
+ 
++// The ring covers the outer pixel of the border rect r and the pixel
++// outside it. The caller paints the border after the ring.
++void Style::drawGlowUnderBorder(QPainter *p, const QRect &r, EWidget w, int round) const
++{
++    QColor col(m_mouseOverCols[GLOW_MO]);
++
++    col.setAlphaF(GLOW_ALPHA(false));
++    p->setBrush(Qt::NoBrush);
++    p->setRenderHint(QPainter::Antialiasing, true);
++    setPainterPen(p, col, 2.0);
++    p->drawPath(buildPath(QRectF(r), w, round, qtcGetRadius(&opts, r.width(), r.height(), w, RADIUS_EXTERNAL) + 0.5));
++    QPAINTER_RENDERHINT_AA_MAYBE_OFF(p);
++}
++
+ void Style::drawEtch(QPainter *p, const QRect &r, const QWidget *widget,  EWidget w, bool raised, int round) const
+ {
+     QPainterPath tl,
+@@ -2453,8 +2467,10 @@ Style::drawBackground(QPainter *p, const QWidget *widget,
+         }
+     }
+ 
++    QStyleOption opt;
++    opt.initFrom(widget);
+     drawBackground(p, (isWindow ? window->palette().window().color() :
+-                       popupMenuCols()[ORIGINAL_SHADE]), bgndRect, opacity,
++                       popupMenuCols(&opt)[ORIGINAL_SHADE]), bgndRect, opacity,
+                    type, (type != BGND_MENU ? opts.bgndAppearance :
+                           opts.menuBgndAppearance));
+     // FIXME, workaround only, the non transparent part of the image will have
+@@ -2531,10 +2547,10 @@ Style::buildSplitPath(const QRect &r, int round, double radius,
+ {
+     double xd = r.x() + 0.5;
+     double yd = r.y() + 0.5;
+-    double diameter = radius * 2;
+-    bool rounded = diameter > 0.0;
+     int width = r.width() - 1;
+     int height = r.height() - 1;
++    double diameter = qMin(radius * 2, double(qMin(width, height)));
++    bool rounded = diameter > 0.0;
+ 
+     if (rounded && round & CORNER_TR) {
+         tl.arcMoveTo(xd + width - diameter, yd, diameter, diameter, 45);
+@@ -3697,8 +3713,21 @@ QColor Style::titlebarIconColor(const QStyleOption *option) const
+ 
+ const QColor * Style::popupMenuCols(const QStyleOption *option) const
+ {
+-    return (opts.lighterPopupMenuBgnd || opts.shadePopupMenu || !option ?
+-            m_popupMenuCols : backgroundColors(option));
++    if (!option || opts.shadePopupMenu) {
++        return m_popupMenuCols;
++    }
++    const QColor *base = backgroundColors(option);
++    if (!opts.lighterPopupMenuBgnd) {
++        return base;
++    }
++    if (base == m_backgroundCols ||
++        base[ORIGINAL_SHADE] == m_popupMenuCols[ORIGINAL_SHADE]) {
++        return m_popupMenuCols;
++    }
++    shadeColors(shade(base[ORIGINAL_SHADE],
++                      TO_FACTOR(opts.lighterPopupMenuBgnd)),
++                m_coloredPopupMenuCols);
++    return m_coloredPopupMenuCols;
+ }
+ 
+ const QColor*
+diff --git a/qt5/style/qtcurve.h b/qt5/style/qtcurve.h
+index 00072d4e..e3fbe0c5 100644
+--- a/qt5/style/qtcurve.h
++++ b/qt5/style/qtcurve.h
+@@ -251,6 +251,8 @@ private:
+                             bool onToolbar) const;
+     void drawGlow(QPainter *p, const QRect &r, EWidget w,
+                   const QColor *cols=0L) const;
++    void drawGlowUnderBorder(QPainter *p, const QRect &r, EWidget w,
++                             int round) const;
+     void drawEtch(QPainter *p, const QRect &r, const QWidget *widget,
+                   EWidget w, bool raised=false, int round=ROUNDED_ALL) const;
+     void drawBgndRing(QPainter &painter, int x, int y, int size,
+@@ -559,6 +561,9 @@ private:
+     mutable QColor m_coloredButtonCols[TOTAL_SHADES + 1];
+     mutable QColor m_coloredBackgroundCols[TOTAL_SHADES + 1];
+     mutable QColor m_coloredHighlightCols[TOTAL_SHADES + 1];
++    // The shades of a menu whose window colour differs from the cached one.
++    // The next call of popupMenuCols() with another palette overwrites them.
++    mutable QColor m_coloredPopupMenuCols[TOTAL_SHADES + 1];
+     mutable QCache<QtcKey, QPixmap> m_pixmapCache;
+     mutable bool m_active;
+     mutable const QWidget *m_sbWidget;
+diff --git a/qt5/style/qtcurve_api.cpp b/qt5/style/qtcurve_api.cpp
+index 06576e3c..5cb70685 100644
+--- a/qt5/style/qtcurve_api.cpp
++++ b/qt5/style/qtcurve_api.cpp
+@@ -731,14 +731,12 @@ void Style::polish(QWidget *widget)
+         }
+ 
+     if (qobject_cast<QMenu*>(widget)) {
+-        if (opts.lighterPopupMenuBgnd || opts.shadePopupMenu) {
++        if (opts.shadePopupMenu) {
+             QPalette pal(widget->palette());
+             pal.setBrush(QPalette::Active, QPalette::Window,
+                          popupMenuCols()[ORIGINAL_SHADE]);
+             widget->setPalette(pal);
+-            if (opts.shadePopupMenu) {
+-                setMenuTextColors(widget, false);
+-            }
++            setMenuTextColors(widget, false);
+         }
+         if (opts.menuBgndOpacity != 100 ||
+             !(opts.square & SQUARE_POPUP_MENUS)) {
+@@ -1155,7 +1153,8 @@ bool Style::eventFilter(QObject *object, QEvent *event)
+         if(!(opts.square & SQUARE_POPUP_MENUS) &&
+            object->inherits("QComboBoxPrivateContainer")) {
+             QWidget *widget = static_cast<QWidget*>(object);
+-            if (Utils::hasAlphaChannel(widget)) {
++            if (Utils::hasAlphaChannel(widget) &&
++                Utils::compositingActive()) {
+                 widget->clearMask();
+             } else {
+                 widget->setMask(windowMask(widget->rect(),
+@@ -1403,7 +1402,8 @@ bool Style::eventFilter(QObject *object, QEvent *event)
+         } else if (!(opts.square & SQUARE_POPUP_MENUS) &&
+                    object->inherits("QComboBoxPrivateContainer")) {
+             QWidget *widget = static_cast<QWidget*>(object);
+-            if (Utils::hasAlphaChannel(widget)) {
++            if (Utils::hasAlphaChannel(widget) &&
++                Utils::compositingActive()) {
+                 widget->clearMask();
+             } else {
+                 widget->setMask(windowMask(widget->rect(),
+@@ -2302,7 +2302,7 @@ Style::drawControl(ControlElement element, const QStyleOption *option,
+         break;
+     }
+     case CE_MenuScroller: {
+-        const QColor *use = popupMenuCols();
++        const QColor *use = popupMenuCols(option);
+         painter->fillRect(r, use[ORIGINAL_SHADE]);
+         painter->setPen(use[QTC_STD_BORDER]);
+         drawRect(painter, r);
+@@ -3828,10 +3828,10 @@ Style::drawControl(ControlElement element, const QStyleOption *option,
+                     painter->setClipRect(r2.adjusted(-1, 0, 1, -1));
+                 else
+                     painter->setClipping(false);
++                if(drawOuterGlow)
++                    drawGlowUnderBorder(painter, r.adjusted(sizeAdjust, 0, -sizeAdjust, 4), WIDGET_TAB_TOP, round);
+                 drawBorder(painter, r.adjusted(sizeAdjust, 0, -sizeAdjust, 4), option, round, glowMo ? m_mouseOverCols : 0L,
+                            WIDGET_TAB_TOP, borderProfile, false);
+-                if(drawOuterGlow)
+-                    drawGlow(painter, r.adjusted(0, -1, 0, 5), WIDGET_TAB_TOP);
+ 
+                 if(selected || thin)
+                     painter->setClipping(false);
+@@ -3919,12 +3919,12 @@ Style::drawControl(ControlElement element, const QStyleOption *option,
+                     painter->setClipRect(r2.adjusted(0, 1, 0, 0));
+                 else
+                     painter->setClipping(false);
++                if(drawOuterGlow)
++                    drawGlowUnderBorder(painter, r.adjusted(sizeAdjust, -4, -sizeAdjust, 0), WIDGET_TAB_BOT, round);
+                 drawBorder(painter, r.adjusted(sizeAdjust, -4, -sizeAdjust, 0), option, round, glowMo ? m_mouseOverCols : 0L,
+                            WIDGET_TAB_BOT, borderProfile, false);
+                 if(thin)
+                     painter->setClipping(false);
+-                if(drawOuterGlow)
+-                    drawGlow(painter, r.adjusted(0, -5, 0, 1), WIDGET_TAB_BOT);
+ 
+                 if(selected)
+                 {
+@@ -4004,12 +4004,12 @@ Style::drawControl(ControlElement element, const QStyleOption *option,
+                     painter->setClipRect(r2.adjusted(0, 0, -1, 0));
+                 else
+                     painter->setClipping(false);
++                if(drawOuterGlow)
++                    drawGlowUnderBorder(painter, r.adjusted(0, sizeAdjust, 4, -sizeAdjust), WIDGET_TAB_TOP, round);
+                 drawBorder(painter, r.adjusted(0, sizeAdjust, 4, -sizeAdjust), option, round, glowMo ? m_mouseOverCols : 0L,
+                            WIDGET_TAB_TOP, borderProfile, false);
+                 if(thin)
+                     painter->setClipping(false);
+-                if(drawOuterGlow)
+-                    drawGlow(painter, r.adjusted(-1, 0, 5, 0), WIDGET_TAB_TOP);
+ 
+                 if(selected)
+                 {
+@@ -4082,12 +4082,12 @@ Style::drawControl(ControlElement element, const QStyleOption *option,
+                     painter->setClipRect(r2.adjusted(1, 0, 0, 0));
+                 else
+                     painter->setClipping(false);
++                if(drawOuterGlow)
++                    drawGlowUnderBorder(painter, r.adjusted(-4, sizeAdjust, 0, -sizeAdjust), WIDGET_TAB_BOT, round);
+                 drawBorder(painter, r.adjusted(-4, sizeAdjust, 0, -sizeAdjust), option, round, glowMo ? m_mouseOverCols : 0L,
+                            WIDGET_TAB_BOT, borderProfile, false);
+                 if(thin)
+                     painter->setClipping(false);
+-                if(drawOuterGlow)
+-                    drawGlow(painter, r.adjusted(-5, 0, 1, 0), WIDGET_TAB_BOT);
+ 
+                 if(selected)
+                 {
+diff --git a/qt5/style/qtcurve_plugin.cpp b/qt5/style/qtcurve_plugin.cpp
+index 16e999f6..d6c13ca8 100644
+--- a/qt5/style/qtcurve_plugin.cpp
++++ b/qt5/style/qtcurve_plugin.cpp
+@@ -21,6 +21,7 @@
+ 
+ #include "qtcurve_plugin.h"
+ #include "qtcurve.h"
++#include "argbhelper.h"
+ 
+ #include "config-qt5.h"
+ 
+@@ -104,6 +105,9 @@ qtcEventCallback(void **cbdata)
+     QWidget *widget = qtcToWidget(receiver);
+     if (qtcUnlikely(widget && !qtcGetWid(widget))) {
+         if (Style *style = getStyle(widget)) {
++            if (event->type() == QEvent::ParentChange) {
++                removeAlphaWindow(widget);
++            }
+             style->prePolish(widget);
+         }
+     } else if (widget && event->type() == QEvent::UpdateRequest) {
+diff --git a/qt5/style/qtcurve_primitive.cpp b/qt5/style/qtcurve_primitive.cpp
+index 0f3b8ff2..ce84d2fa 100644
+--- a/qt5/style/qtcurve_primitive.cpp
++++ b/qt5/style/qtcurve_primitive.cpp
+@@ -739,7 +739,7 @@ Style::drawPrimitivePanelTipLabel(PrimitiveElement,
+     }
+     drawBevelGradient(col, painter, r, path, true, false,
+                       opts.tooltipAppearance, WIDGET_TOOLTIP, !haveAlpha);
+-    if (qtcIsFlat(opts.tooltipAppearance)) {
++    if (!rounded && qtcIsFlat(opts.tooltipAppearance)) {
+         painter->setPen(QPen(palette.toolTipText(), 0));
+         drawRect(painter, r);
+     }
+@@ -1314,7 +1314,7 @@ Style::drawPrimitivePanelMenu(PrimitiveElement, const QStyleOption *option,
+         bgCols = use = altCols;
+     } else {
+         use = popupMenuCols(option);
+-        bgCols = popupMenuCols();
++        bgCols = use;
+     }
+ 
+     painter->setClipRegion(r);
+@@ -1638,10 +1638,10 @@ Style::drawPrimitiveIndicatorRadioButton(PrimitiveElement,
+             if (coloredMo) {
+                 painter->setBrush(Qt::NoBrush);
+                 setPainterPen(painter, use[CR_MO_FILL], QPENWIDTH1);
+-                painter->drawArc(QRectF(x + 1, y + 1, opts.crSize - 2,
+-                                        opts.crSize - 2), 0, 360 * 16);
+-                painter->drawArc(QRectF(x + 2, y + 2, opts.crSize - 4,
+-                                        opts.crSize - 4), 0, 360 * 16);
++                painter->drawArc(QRectF(x + 1.5, y + 1.5, opts.crSize - 3,
++                                        opts.crSize - 3), 0, 360 * 16);
++                painter->drawArc(QRectF(x + 2.5, y + 2.5, opts.crSize - 5,
++                                        opts.crSize - 5), 0, 360 * 16);
+             }
+             painter->setBrush(Qt::NoBrush);
+             if (!doneShadow && doEtch &&
+diff --git a/qt6/style/argbhelper.cpp b/qt6/style/argbhelper.cpp
+index ccf17777..97c5638a 100644
+--- a/qt6/style/argbhelper.cpp
++++ b/qt6/style/argbhelper.cpp
+@@ -51,4 +51,18 @@ addAlphaChannel(QWidget *widget)
+     }
+ }
+ 
++// Qt adopts a window that exists before QWidget::create only on a window
++// or on a native child. On any other child the window stays unused.
++void
++removeAlphaWindow(QWidget *widget)
++{
++    if (widget->isWindow() || widget->testAttribute(Qt::WA_NativeWindow) ||
++        !widget->windowHandle()) {
++        return;
++    }
++    QWidgetPrivate *widgetPrivate =
++        static_cast<QWidgetPrivate*>(QObjectPrivate::get(widget));
++    widgetPrivate->deleteTLSysExtra();
++}
++
+ }
+diff --git a/qt6/style/argbhelper.h b/qt6/style/argbhelper.h
+index 4c7e6c99..0c53ca74 100644
+--- a/qt6/style/argbhelper.h
++++ b/qt6/style/argbhelper.h
+@@ -27,6 +27,7 @@ class QWidget;
+ namespace QtCurve {
+ // TODO, turn this into a complete helper class.
+ void addAlphaChannel(QWidget *widget);
++void removeAlphaWindow(QWidget *widget);
+ }
+ 
+ #endif
+diff --git a/qt6/style/blurhelper.h b/qt6/style/blurhelper.h
+index 00b6090c..758849a4 100644
+--- a/qt6/style/blurhelper.h
++++ b/qt6/style/blurhelper.h
+@@ -172,17 +172,16 @@ BlurHelper::isTransparent(const QWidget *widget) const
+     return (widget->isWindow() &&
+             // widgets using qgraphicsview
+             !(widget->graphicsProxyWidget() ||
+-              widget->inherits("Plasma::Dialog")) &&
++              widget->inherits("Plasma::Dialog") ||
++              // Konsole sets its own blur region
++              widget->inherits("Konsole::MainWindow")) &&
+             // flags and special widgets
+             (widget->testAttribute(Qt::WA_StyledBackground) ||
+              qobject_cast<const QMenu*>(widget) ||
+              // TODO temporary solution only
+              widget->inherits("QComboBoxPrivateContainer") ||
+              qobject_cast<const QDockWidget*>(widget) ||
+-             qobject_cast<const QToolBar*>(widget) ||
+-             // konsole (thought that should be handled
+-             // internally by the application
+-             widget->inherits("Konsole::MainWindow")) &&
++             qobject_cast<const QToolBar*>(widget)) &&
+             Utils::hasAlphaChannel(widget));
+ }
+ 
+diff --git a/qt6/style/qtcurve.cpp b/qt6/style/qtcurve.cpp
+index 2ae4d741..af95d448 100644
+--- a/qt6/style/qtcurve.cpp
++++ b/qt6/style/qtcurve.cpp
+@@ -986,15 +986,15 @@ QIcon Style::standardIcon(StandardPixmap pix, const QStyleOption *option,
+     case SP_MessageBoxQuestion:
+     case SP_MessageBoxInformation: {
+         static QIcon icn(QPixmap::fromImage(qtc_dialog_information));
+-        return icn;
++        return QIcon::fromTheme(QStringLiteral("dialog-information"), icn);
+     }
+     case SP_MessageBoxWarning: {
+         static QIcon icn(QPixmap::fromImage(qtc_dialog_warning));
+-        return icn;
++        return QIcon::fromTheme(QStringLiteral("dialog-warning"), icn);
+     }
+     case SP_MessageBoxCritical: {
+         static QIcon icn(QPixmap::fromImage(qtc_dialog_error));
+-        return icn;
++        return QIcon::fromTheme(QStringLiteral("dialog-error"), icn);
+     }
+ /*
+   case SP_DialogYesButton:
+@@ -1065,10 +1065,10 @@ QIcon Style::standardIcon(StandardPixmap pix, const QStyleOption *option,
+     // case SP_FileLinkIcon:
+     case SP_FileDialogStart:
+         return QIcon::fromTheme(QApplication::layoutDirection() == Qt::RightToLeft ?
+-                     QStringLiteral("go-edn") : QStringLiteral("go-first"));
++                     QStringLiteral("go-last") : QStringLiteral("go-first"));
+     case SP_FileDialogEnd:
+         return QIcon::fromTheme(QApplication::layoutDirection() == Qt::RightToLeft ?
+-                     QStringLiteral("go-first") : QStringLiteral("go-end"));
++                     QStringLiteral("go-first") : QStringLiteral("go-last"));
+     case SP_FileDialogToParent:
+         return QIcon::fromTheme(QStringLiteral("go-up"));
+     case SP_FileDialogNewFolder:
+@@ -2099,6 +2099,20 @@ QColor Style::etchBottomCol(const QWidget *widget, EWidget w) const
+     return getLowerEtchCol(widget);
+ }
+ 
++// The ring covers the outer pixel of the border rect r and the pixel
++// outside it. The caller paints the border after the ring.
++void Style::drawGlowUnderBorder(QPainter *p, const QRect &r, EWidget w, int round) const
++{
++    QColor col(m_mouseOverCols[GLOW_MO]);
++
++    col.setAlphaF(GLOW_ALPHA(false));
++    p->setBrush(Qt::NoBrush);
++    p->setRenderHint(QPainter::Antialiasing, true);
++    setPainterPen(p, col, 2.0);
++    p->drawPath(buildPath(QRectF(r), w, round, qtcGetRadius(&opts, r.width(), r.height(), w, RADIUS_EXTERNAL) + 0.5));
++    QPAINTER_RENDERHINT_AA_MAYBE_OFF(p);
++}
++
+ void Style::drawEtch(QPainter *p, const QRect &r, const QWidget *widget,  EWidget w, bool raised, int round) const
+ {
+     QPainterPath tl,
+@@ -2493,8 +2507,10 @@ Style::drawBackground(QPainter *p, const QWidget *widget,
+         }
+     }
+ 
++    QStyleOption opt;
++    opt.initFrom(widget);
+     drawBackground(p, (isWindow ? window->palette().window().color() :
+-                       popupMenuCols()[ORIGINAL_SHADE]), bgndRect, opacity,
++                       popupMenuCols(&opt)[ORIGINAL_SHADE]), bgndRect, opacity,
+                    type, (type != BGND_MENU ? opts.bgndAppearance :
+                           opts.menuBgndAppearance));
+     // FIXME, workaround only, the non transparent part of the image will have
+@@ -2571,10 +2587,10 @@ Style::buildSplitPath(const QRect &r, int round, double radius,
+ {
+     double xd = r.x() + 0.5;
+     double yd = r.y() + 0.5;
+-    double diameter = radius * 2;
+-    bool rounded = diameter > 0.0;
+     int width = r.width() - 1;
+     int height = r.height() - 1;
++    double diameter = qMin(radius * 2, double(qMin(width, height)));
++    bool rounded = diameter > 0.0;
+ 
+     if (rounded && round & CORNER_TR) {
+         tl.arcMoveTo(xd + width - diameter, yd, diameter, diameter, 45);
+@@ -3767,8 +3783,21 @@ QColor Style::titlebarIconColor(const QStyleOption *option) const
+ 
+ const QColor * Style::popupMenuCols(const QStyleOption *option) const
+ {
+-    return (opts.lighterPopupMenuBgnd || opts.shadePopupMenu || !option ?
+-            m_popupMenuCols : backgroundColors(option));
++    if (!option || opts.shadePopupMenu) {
++        return m_popupMenuCols;
++    }
++    const QColor *base = backgroundColors(option);
++    if (!opts.lighterPopupMenuBgnd) {
++        return base;
++    }
++    if (base == m_backgroundCols ||
++        base[ORIGINAL_SHADE] == m_popupMenuCols[ORIGINAL_SHADE]) {
++        return m_popupMenuCols;
++    }
++    shadeColors(shade(base[ORIGINAL_SHADE],
++                      TO_FACTOR(opts.lighterPopupMenuBgnd)),
++                m_coloredPopupMenuCols);
++    return m_coloredPopupMenuCols;
+ }
+ 
+ const QColor*
+diff --git a/qt6/style/qtcurve.h b/qt6/style/qtcurve.h
+index 61e3277e..0eb40dd9 100644
+--- a/qt6/style/qtcurve.h
++++ b/qt6/style/qtcurve.h
+@@ -271,6 +271,8 @@ private:
+         while the thin groove option is on. Every other case, and a null
+         widget, gives the result of getLowerEtchCol(). */
+     QColor etchBottomCol(const QWidget *widget, EWidget w) const;
++    void drawGlowUnderBorder(QPainter *p, const QRect &r, EWidget w,
++                             int round) const;
+     void drawEtch(QPainter *p, const QRect &r, const QWidget *widget,
+                   EWidget w, bool raised=false, int round=ROUNDED_ALL) const;
+     void drawBgndRing(QPainter &painter, int x, int y, int size,
+@@ -580,6 +582,9 @@ private:
+     mutable QColor m_coloredButtonCols[TOTAL_SHADES + 1];
+     mutable QColor m_coloredBackgroundCols[TOTAL_SHADES + 1];
+     mutable QColor m_coloredHighlightCols[TOTAL_SHADES + 1];
++    // The shades of a menu whose window colour differs from the cached one.
++    // The next call of popupMenuCols() with another palette overwrites them.
++    mutable QColor m_coloredPopupMenuCols[TOTAL_SHADES + 1];
+     mutable QCache<QtcKey, QPixmap> m_pixmapCache;
+     mutable bool m_active;
+     mutable const QWidget *m_sbWidget;
+diff --git a/qt6/style/qtcurve_api.cpp b/qt6/style/qtcurve_api.cpp
+index 928316e4..cc59e2df 100644
+--- a/qt6/style/qtcurve_api.cpp
++++ b/qt6/style/qtcurve_api.cpp
+@@ -728,14 +728,12 @@ void Style::polish(QWidget *widget)
+         }
+ 
+     if (qobject_cast<QMenu*>(widget)) {
+-        if (opts.lighterPopupMenuBgnd || opts.shadePopupMenu) {
++        if (opts.shadePopupMenu) {
+             QPalette pal(widget->palette());
+             pal.setBrush(QPalette::Active, QPalette::Window,
+                          popupMenuCols()[ORIGINAL_SHADE]);
+             widget->setPalette(pal);
+-            if (opts.shadePopupMenu) {
+-                setMenuTextColors(widget, false);
+-            }
++            setMenuTextColors(widget, false);
+         }
+         if (opts.menuBgndOpacity != 100 ||
+             !(opts.square & SQUARE_POPUP_MENUS)) {
+@@ -1153,7 +1151,8 @@ bool Style::eventFilter(QObject *object, QEvent *event)
+         if(!(opts.square & SQUARE_POPUP_MENUS) &&
+            object->inherits("QComboBoxPrivateContainer")) {
+             QWidget *widget = static_cast<QWidget*>(object);
+-            if (Utils::hasAlphaChannel(widget)) {
++            if (Utils::hasAlphaChannel(widget) &&
++                Utils::compositingActive()) {
+                 widget->clearMask();
+             } else {
+                 widget->setMask(windowMask(widget->rect(),
+@@ -1401,7 +1400,8 @@ bool Style::eventFilter(QObject *object, QEvent *event)
+         } else if (!(opts.square & SQUARE_POPUP_MENUS) &&
+                    object->inherits("QComboBoxPrivateContainer")) {
+             QWidget *widget = static_cast<QWidget*>(object);
+-            if (Utils::hasAlphaChannel(widget)) {
++            if (Utils::hasAlphaChannel(widget) &&
++                Utils::compositingActive()) {
+                 widget->clearMask();
+             } else {
+                 widget->setMask(windowMask(widget->rect(),
+@@ -2314,7 +2314,7 @@ Style::drawControl(ControlElement element, const QStyleOption *option,
+         break;
+     }
+     case CE_MenuScroller: {
+-        const QColor *use = popupMenuCols();
++        const QColor *use = popupMenuCols(option);
+         painter->fillRect(r, use[ORIGINAL_SHADE]);
+         painter->setPen(use[QTC_STD_BORDER]);
+         drawRect(painter, r);
+@@ -3844,10 +3844,10 @@ Style::drawControl(ControlElement element, const QStyleOption *option,
+                     painter->setClipRect(r2.adjusted(-1, 0, 1, -1));
+                 else
+                     painter->setClipping(false);
++                if(drawOuterGlow)
++                    drawGlowUnderBorder(painter, r.adjusted(sizeAdjust, 0, -sizeAdjust, 4), WIDGET_TAB_TOP, round);
+                 drawBorder(painter, r.adjusted(sizeAdjust, 0, -sizeAdjust, 4), option, round, glowMo ? m_mouseOverCols : 0L,
+                            WIDGET_TAB_TOP, borderProfile, false);
+-                if(drawOuterGlow)
+-                    drawGlow(painter, r.adjusted(0, -1, 0, 5), WIDGET_TAB_TOP);
+ 
+                 if(selected || thin)
+                     painter->setClipping(false);
+@@ -3936,12 +3936,12 @@ Style::drawControl(ControlElement element, const QStyleOption *option,
+                     painter->setClipRect(r2.adjusted(0, 1, 0, 0));
+                 else
+                     painter->setClipping(false);
++                if(drawOuterGlow)
++                    drawGlowUnderBorder(painter, r.adjusted(sizeAdjust, -4, -sizeAdjust, 0), WIDGET_TAB_BOT, round);
+                 drawBorder(painter, r.adjusted(sizeAdjust, -4, -sizeAdjust, 0), option, round, glowMo ? m_mouseOverCols : 0L,
+                            WIDGET_TAB_BOT, borderProfile, false);
+                 if(thin)
+                     painter->setClipping(false);
+-                if(drawOuterGlow)
+-                    drawGlow(painter, r.adjusted(0, -5, 0, 1), WIDGET_TAB_BOT);
+ 
+                 if(selected)
+                 {
+@@ -4022,12 +4022,12 @@ Style::drawControl(ControlElement element, const QStyleOption *option,
+                     painter->setClipRect(r2.adjusted(0, 0, -1, 0));
+                 else
+                     painter->setClipping(false);
++                if(drawOuterGlow)
++                    drawGlowUnderBorder(painter, r.adjusted(0, sizeAdjust, 4, -sizeAdjust), WIDGET_TAB_TOP, round);
+                 drawBorder(painter, r.adjusted(0, sizeAdjust, 4, -sizeAdjust), option, round, glowMo ? m_mouseOverCols : 0L,
+                            WIDGET_TAB_TOP, borderProfile, false);
+                 if(thin)
+                     painter->setClipping(false);
+-                if(drawOuterGlow)
+-                    drawGlow(painter, r.adjusted(-1, 0, 5, 0), WIDGET_TAB_TOP);
+ 
+                 if(selected)
+                 {
+@@ -4101,12 +4101,12 @@ Style::drawControl(ControlElement element, const QStyleOption *option,
+                     painter->setClipRect(r2.adjusted(1, 0, 0, 0));
+                 else
+                     painter->setClipping(false);
++                if(drawOuterGlow)
++                    drawGlowUnderBorder(painter, r.adjusted(-4, sizeAdjust, 0, -sizeAdjust), WIDGET_TAB_BOT, round);
+                 drawBorder(painter, r.adjusted(-4, sizeAdjust, 0, -sizeAdjust), option, round, glowMo ? m_mouseOverCols : 0L,
+                            WIDGET_TAB_BOT, borderProfile, false);
+                 if(thin)
+                     painter->setClipping(false);
+-                if(drawOuterGlow)
+-                    drawGlow(painter, r.adjusted(-5, 0, 1, 0), WIDGET_TAB_BOT);
+ 
+                 if(selected)
+                 {
+diff --git a/qt6/style/qtcurve_plugin.cpp b/qt6/style/qtcurve_plugin.cpp
+index f94fcc23..941d320e 100644
+--- a/qt6/style/qtcurve_plugin.cpp
++++ b/qt6/style/qtcurve_plugin.cpp
+@@ -21,6 +21,7 @@
+ 
+ #include "qtcurve_plugin.h"
+ #include "qtcurve.h"
++#include "argbhelper.h"
+ 
+ #include "config-qt6.h"
+ 
+@@ -104,6 +105,9 @@ qtcEventCallback(void **cbdata)
+     QWidget *widget = qtcToWidget(receiver);
+     if (qtcUnlikely(widget && !qtcGetWid(widget))) {
+         if (Style *style = getStyle(widget)) {
++            if (event->type() == QEvent::ParentChange) {
++                removeAlphaWindow(widget);
++            }
+             style->prePolish(widget);
+         }
+     } else if (widget && event->type() == QEvent::UpdateRequest) {
+diff --git a/qt6/style/qtcurve_primitive.cpp b/qt6/style/qtcurve_primitive.cpp
+index b6d6bd17..bad0c330 100644
+--- a/qt6/style/qtcurve_primitive.cpp
++++ b/qt6/style/qtcurve_primitive.cpp
+@@ -739,7 +739,7 @@ Style::drawPrimitivePanelTipLabel(PrimitiveElement,
+     }
+     drawBevelGradient(col, painter, r, path, true, false,
+                       opts.tooltipAppearance, WIDGET_TOOLTIP, !haveAlpha);
+-    if (qtcIsFlat(opts.tooltipAppearance)) {
++    if (!rounded && qtcIsFlat(opts.tooltipAppearance)) {
+         painter->setPen(QPen(palette.toolTipText(), 0));
+         drawRect(painter, r);
+     }
+@@ -1317,7 +1317,7 @@ Style::drawPrimitivePanelMenu(PrimitiveElement, const QStyleOption *option,
+         bgCols = use = altCols;
+     } else {
+         use = popupMenuCols(option);
+-        bgCols = popupMenuCols();
++        bgCols = use;
+     }
+ 
+     painter->setClipRegion(r);
+@@ -1643,10 +1643,10 @@ Style::drawPrimitiveIndicatorRadioButton(PrimitiveElement,
+             if (coloredMo) {
+                 painter->setBrush(Qt::NoBrush);
+                 setPainterPen(painter, use[CR_MO_FILL], QPENWIDTH1);
+-                painter->drawArc(QRectF(x + 1, y + 1, opts.crSize - 2,
+-                                        opts.crSize - 2), 0, 360 * 16);
+-                painter->drawArc(QRectF(x + 2, y + 2, opts.crSize - 4,
+-                                        opts.crSize - 4), 0, 360 * 16);
++                painter->drawArc(QRectF(x + 1.5, y + 1.5, opts.crSize - 3,
++                                        opts.crSize - 3), 0, 360 * 16);
++                painter->drawArc(QRectF(x + 2.5, y + 2.5, opts.crSize - 5,
++                                        opts.crSize - 5), 0, 360 * 16);
+             }
+             painter->setBrush(Qt::NoBrush);
+             if (!doneShadow && doEtch &&

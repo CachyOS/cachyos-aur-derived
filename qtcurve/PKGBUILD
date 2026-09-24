@@ -5,7 +5,7 @@ _commit=68a3b41753b66a2f00cf98667a68458961f5cb25
 _srcname=qtcurve
 pkgname=qtcurve
 pkgver=20260909
-pkgrel=16
+pkgrel=17
 pkgdesc="A configurable set of widget styles for Qt5, Qt6, KDE Frameworks 6, GTK 2, GTK 3 and GTK 4; the GTK theme data is in qtcurve-gtk-theme"
 arch=(x86_64)
 url="https://invent.kde.org/system/qtcurve"
@@ -184,6 +184,7 @@ source=(
 	firefox-content-scrollbar.patch
 	firefox-theme-description.patch
 	firefox-notice-transition.patch
+	bug-sweep.patch
 	section-reset-01-add-a-reset-section-button.patch
 	dialog-state-13-run-the-default-preset-load-once-per-restore.patch
 )
@@ -298,6 +299,7 @@ sha256sums=('e01dbf05c24c11a3660e6185a9a7607d0838d4560ab717d44b449e9520476f6e'
             '421e9969b125452e77d6f3e83200b80dcf263715c811b8a867b7a1ecd17720ac'
             'bbfbcfdd99f45c1d6c6365208279349f83b30f0891061e6dcb425e4cdedb15a6'
             '76bb238db584dde12364736fb002737f23826b06ea4fc3d43ad1ee826928cf6c'
+            '034914850a95185dbc77ba26dcd3fe43f32fbf0a4e63c76b129015e9677b8997'
             '775b1fe6bdb03233f3465618e359cc9804a15771ed400d22f627585ee29bbe01'
             'b6208b50aaba9a3ba8d1de17fcb0a4af69ca1db43d625a1a75fbf42e14e5e0f5')
 
@@ -461,6 +463,8 @@ prepare() {
 	patch -Np1 -d "$_srcname" -i "$srcdir/firefox-theme-description.patch"
 	# The patch prints the about:config notice on a transition, not on every pass.
 	patch -Np1 -d "$_srcname" -i "$srcdir/firefox-notice-transition.patch"
+	# The patch holds ten fixes of bugs.kde.org for the Qt and GTK 2 styles.
+	patch -Np1 -d "$_srcname" -i "$srcdir/bug-sweep.patch"
 	# The patch adds a Reset Section button to the configure dialog. The patch
 	# adds a header file, so it takes the three way merge of git.
 	git -C "$_srcname" add -A

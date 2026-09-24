@@ -132,6 +132,7 @@ pkgbase = qtcurve-gtk-theme
 	source = firefox-content-scrollbar.patch
 	source = firefox-theme-description.patch
 	source = firefox-notice-transition.patch
+	source = bug-sweep.patch
 	sha256sums = e01dbf05c24c11a3660e6185a9a7607d0838d4560ab717d44b449e9520476f6e
 	sha256sums = 60d6c52289f3b6e7c0645bb9acaa96a769801f66e77f50cd5551b7e613611152
 	sha256sums = e4219281d09f042bac722d7ab6a6784b9b56ea34129e8b877942c91770d9a912
@@ -243,5 +244,6 @@ pkgbase = qtcurve-gtk-theme
 	sha256sums = 421e9969b125452e77d6f3e83200b80dcf263715c811b8a867b7a1ecd17720ac
 	sha256sums = bbfbcfdd99f45c1d6c6365208279349f83b30f0891061e6dcb425e4cdedb15a6
 	sha256sums = 76bb238db584dde12364736fb002737f23826b06ea4fc3d43ad1ee826928cf6c
+	sha256sums = 034914850a95185dbc77ba26dcd3fe43f32fbf0a4e63c76b129015e9677b8997
 
 pkgname = qtcurve-gtk-theme
