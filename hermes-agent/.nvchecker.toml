@@ -1,7 +1,10 @@
 [hermes-agent]
 source = "github"
 github = "NousResearch/hermes-agent"
-use_latest_release = true
+use_max_release = true
 use_release_name = true
-from_pattern = '.*v(\d+\.\d+\.\d+) \(v([\d.]+)\).*'
+# Tags are date-only; the semver is only in the release title, e.g.
+# "Hermes Agent v0.21.5 (v2026.9.24)" or "... (2026.7.20) — The X Release".
+include_regex = 'Hermes Agent v\d+(\.\d+)+ \(v?\d+(\.\d+)+\).*'
+from_pattern = '^Hermes Agent v([\d.]+) \(v?([\d.]+)\).*$'
 to_pattern = '\1+\2'
