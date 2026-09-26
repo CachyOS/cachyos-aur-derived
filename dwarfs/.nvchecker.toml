@@ -1,0 +1,4 @@
+[dwarfs]
+source = "git"
+git = "https://github.com/mhx/dwarfs.git"
+prefix = "v"
