@@ -1,0 +1,28 @@
+# Maintainer: gfrank227 [at] gmail [dot] com
+
+pkgname=nordvpn-gui
+pkgver=5.3.0
+pkgrel=1
+arch=('x86_64')
+pkgdesc='GUI for NordVPN'
+url='https://nordvpn.com'
+license=('GPL-3.0-only')
+depends=('nordvpn' 'gtk3' 'hicolor-icon-theme')
+install=daemon_restart.install
+source=("https://repo.nordvpn.com/deb/nordvpn/debian/pool/main/n/nordvpn-gui/nordvpn-gui_${pkgver//_/-}_amd64.deb"
+		"daemon_restart.install")
+sha256sums=('e2e3a15cd3ebd27cdc21570b66f3435a9ad16af45ef29af8c5c399a8df185133'
+            'b3bc3b4519769cc9c78258b16eb44765ddd8168951997d8bafdc7b8fcb73d868')
+
+package() {
+    tar -xf ${srcdir}/data.tar.gz
+    cp -rf "${srcdir}/opt" "${pkgdir}/opt"
+
+    install -dm644 "${srcdir}/usr/share/icons/hicolor/scalable/apps"
+	install -dm755 "${srcdir}/usr/share/applications"
+	install -Dm644 "${srcdir}/usr/share/icons/hicolor/scalable/apps/nordvpn-gui.svg" "${pkgdir}/usr/share/icons/hicolor/scalable/apps/nordvpn-gui.svg"
+	install -Dm644 "${srcdir}/usr/share/applications/nordvpn-gui.desktop" -t "${pkgdir}/usr/share/applications"
+
+	install -dm755 "${pkgdir}/usr/bin"
+	ln -s "/opt/nordvpn-gui/nordvpn-gui" "${pkgdir}/usr/bin/nordvpn-gui"
+}
