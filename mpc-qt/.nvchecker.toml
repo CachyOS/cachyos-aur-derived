@@ -1,0 +1,4 @@
+[mpc-qt]
+source = "git"
+git = "https://github.com/mpc-qt/mpc-qt"
+prefix = "v"
