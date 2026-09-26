@@ -1,0 +1,7 @@
+[hermes-agent]
+source = "github"
+github = "NousResearch/hermes-agent"
+use_latest_release = true
+use_release_name = true
+from_pattern = '.*v(\d+\.\d+\.\d+) \(v([\d.]+)\).*'
+to_pattern = '\1+\2'
