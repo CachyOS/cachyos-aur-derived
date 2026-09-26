@@ -1,0 +1,129 @@
+# Maintainer: Youcef <youcef.nafa@gmail.com>
+# Co-maintainer: Evert <evorster at gmail dot com>
+# The Python environment is bundled because upstream pins a large, partly native
+# dependency set. uv's relocatable mode keeps the packaged environment usable
+# after makepkg moves it under /opt.
+pkgname=hermes-agent
+pkgver=0.21.5
+_tagver=2026.9.24
+pkgrel=1
+pkgdesc="Locally-run AI agent with tool use, web browsing, and automation"
+arch=('x86_64')
+url="https://github.com/NousResearch/hermes-agent"
+license=('MIT')
+depends=(
+    'python311'
+    'nodejs'
+    'uv'
+    'ripgrep'
+    'ffmpeg'
+    'nss'
+    'at-spi2-core'
+    'cups'
+    'libdrm'
+    'libxkbcommon'
+    'mesa'
+    'pango'
+    'cairo'
+    'alsa-lib'
+)
+
+makedepends=('npm' 'rsync')
+source=("${pkgname}-${_tagver}.tar.gz::https://github.com/NousResearch/hermes-agent/archive/refs/tags/v${_tagver}.tar.gz")
+sha256sums=('15b15ce4e6ec8ea424a081823709d1e17f0943e7b42b59597d24ebb94cbd1742')
+options=('!debug')
+
+build() {
+  cd "${pkgname}-${_tagver}"
+
+  # Keep package manager caches out of the builder's $HOME.
+  export npm_config_cache="$srcdir/npm-cache"
+  export UV_CACHE_DIR="$srcdir/uv-cache"
+
+  # vite-plugin-tailwindcss uses the ignore package which walks up the tree to read
+  # .gitignore files. Creating an empty .git directory stops the scan at this level.
+  [ ! -d .git ] && mkdir .git
+
+  npm ci --ignore-scripts --no-fund --no-audit --progress=false --include=dev
+  npm run build --workspace web
+  npm run build:ink --workspace ui-tui
+  npm run build --workspace ui-tui
+
+  UV_PYTHON_DOWNLOADS=never uv venv \
+    --python /usr/bin/python3.11 \
+    --relocatable \
+    venv
+
+  # Install exactly what upstream's uv.lock pins.
+  UV_PYTHON_DOWNLOADS=never \
+    UV_PROJECT_ENVIRONMENT="$PWD/venv" \
+    uv sync --locked --no-dev --no-install-project --extra all,messaging
+}
+
+check() {
+  cd "${pkgname}-${_tagver}"
+
+  test -s hermes_cli/web_dist/index.html
+  test -s ui-tui/dist/entry.js
+  PYTHONPATH="$PWD" venv/bin/python -c 'import hermes_cli.main'
+}
+
+package() {
+  cd "${pkgname}-${_tagver}"
+
+  # Install to /opt
+  _optdir="$pkgdir/opt/$pkgname"
+  install -d "$_optdir"
+
+  # Copy application files
+  rsync -a --exclude='__pycache__' --exclude='.git' \
+  --exclude='node_modules' --exclude='web/src' \
+  --exclude='web/package.json' --exclude='web/package-lock.json' \
+  --exclude='web/vite.config.ts' --exclude='web/tsconfig*.json' \
+  --exclude='web/eslint.config.js' --exclude='web/README.md' \
+  --exclude='ui-tui/src' --exclude='ui-tui/node_modules' \
+  --exclude='scripts/tests' --exclude='scripts/install.*' \
+  --exclude='build' --exclude='/venv' \
+  . "$_optdir/"
+
+  # Copied separately so the excludes above don't strip files from
+  # third-party packages inside the venv.
+  cp -a venv "$_optdir/"
+
+  echo "console.log('skipping build, using prebuilt dist/entry.js')" > "$_optdir/ui-tui/scripts/build.mjs"
+
+  # Ship the prebuilt TUI into hermes_cli/tui_dist/ so that
+  # _find_bundled_tui() finds it and skips the npm install step (which
+  # would fail with EACCES on the root-owned /opt tree).
+  # Note: hermes_cli is imported from /opt/hermes-agent/hermes_cli/ via
+  # the .pth file, NOT from the venv site-packages, so we copy there.
+  _tuidir="$_optdir/hermes_cli/tui_dist"
+  install -d "$_tuidir"
+  if [ -d "ui-tui/dist" ]; then
+    cp -a ui-tui/dist/* "$_tuidir/"
+  fi
+
+  install -d "$_optdir/venv/lib/python3.11/site-packages"
+  {
+      echo "import sys; sys.path.insert(0, \"/opt/$pkgname\")"
+  } > "$_optdir/venv/lib/python3.11/site-packages/hermes.pth"
+
+  install -d "$pkgdir/usr/bin"
+  {
+    echo "#!/bin/bash"
+    echo "unset PYTHONPATH"
+    echo "unset PYTHONHOME"
+    echo ': "${XDG_DATA_HOME:=$HOME/.local/share}"'
+    echo 'export HERMES_DISABLE_LAZY_INSTALLS=1'
+    echo 'export HERMES_LAZY_INSTALL_TARGET="$XDG_DATA_HOME/hermes-agent/python"'
+    echo "exec /opt/$pkgname/venv/bin/python -m hermes_cli.main" '"$@"'
+  } > "$pkgdir/usr/bin/hermes"
+
+  chmod 755 "$pkgdir/usr/bin/hermes"
+
+  # /opt is root-owned, so Python can't cache bytecode at runtime.
+  /usr/bin/python3.11 -m compileall -f -q -j0 \
+    -s "$pkgdir" -p / "$_optdir"
+
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}
