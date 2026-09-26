@@ -1,0 +1,5 @@
+[pcsx2]
+source = "git"
+git = "https://github.com/PCSX2/pcsx2.git"
+prefix = "v"
+include_regex = 'v\d+\.\d*[02468]+\.\d+'
