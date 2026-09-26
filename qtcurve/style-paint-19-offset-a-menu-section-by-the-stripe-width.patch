@@ -1,0 +1,57 @@
+Offset a menu section by the stripe width
+
+The separator branch of a menu item paints the stripe of the menu across
+the whole row. It then offsets the faded rule by the stripe width, and
+it offsets nothing else. The header bevel of a section row therefore
+covers the stripe, and the title of a section with no bevel lands on the
+stripe.
+
+The header and the title now take a rectangle that starts after the
+stripe, as the faded rule does. The stripe stands clear of the section
+row under both section styles. A menu with no stripe keeps the paint of
+before.
+
+The change sits on the branch work/style-paint of the local tree, as commit 19 of 21.
+A new merge request on system/qtcurve takes that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/qt6/style/qtcurve_api.cpp b/qt6/style/qtcurve_api.cpp
+index 2f401ddc..928316e4 100644
+--- a/qt6/style/qtcurve_api.cpp
++++ b/qt6/style/qtcurve_api.cpp
+@@ -3150,9 +3150,15 @@ Style::drawControl(ControlElement element, const QStyleOption *option,
+                     int textAlignment;
+                     QFont font = m_fntHelper->fontStripStyleName(menuItem->font);
+                     QRect textRect;
++                    // The stripe takes one edge of the row, so the section
++                    // header takes the rest of the row.
++                    QRect sectionRect(doStripe ?
++                                      r.adjusted(reverse ? 0 : stripeWidth, 0,
++                                                 reverse ? -stripeWidth : 0, 0) :
++                                      r);
+                     if (opts.buttonStyleMenuSections) {
+                         QStyleOption opt;
+-                        opt.rect = r.adjusted(2, 2, -3, -2);
++                        opt.rect = sectionRect.adjusted(2, 2, -3, -2);
+                         opt.state = State_Raised | State_Enabled | State_Horizontal;
+                         drawLightBevel(painter, opt.rect, &opt, widget, ROUNDED_ALL,
+                                        getFill(&opt, use), use, true,
+@@ -3161,7 +3167,7 @@ Style::drawControl(ControlElement element, const QStyleOption *option,
+                         font.setBold(true);
+                         painter->setFont(font);
+                         textAlignment = Qt::AlignHCenter | Qt::AlignVCenter;
+-                        textRect = r;
++                        textRect = sectionRect;
+                     } else {
+                         font.setBold(true);
+                         font.setUnderline(true);
+@@ -3182,7 +3188,7 @@ Style::drawControl(ControlElement element, const QStyleOption *option,
+                                       !reverse, true);
+                         }
+                         textAlignment = Qt::AlignLeft | Qt::AlignBottom;
+-                        textRect = r.adjusted(5, 5, -5, -5);
++                        textRect = sectionRect.adjusted(5, 5, -5, -5);
+                     }
+                     drawItemTextWithRole(painter, textRect,
+                                          textAlignment,

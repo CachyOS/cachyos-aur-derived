@@ -1,0 +1,37 @@
+Fill an inactive tab with the opacity of the window
+
+The fill of an inactive tab takes the opacity of the window or the
+opacity of a dialog. The paint divides that value by one hundred and
+fifty. The alpha therefore steps from one at the value one hundred to
+two thirds at the value ninety nine. No value below one hundred gives a
+solid tab.
+
+The paint now divides the value by one hundred. The alpha follows the
+spin box, so the tab fades with the window. The tab no longer takes more
+translucency than the window. A value of one hundred keeps the solid
+fill of before.
+
+The change sits on the branch work/style-paint of the local tree, as commit 12 of 21.
+A new merge request on system/qtcurve takes that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/qt6/style/qtcurve_api.cpp b/qt6/style/qtcurve_api.cpp
+index 08a1ab93..8a7b7edf 100644
+--- a/qt6/style/qtcurve_api.cpp
++++ b/qt6/style/qtcurve_api.cpp
+@@ -3808,12 +3808,10 @@ Style::drawControl(ControlElement element, const QStyleOption *option,
+                 QWidget *top=widget ? widget->window() : 0L;
+                 bool isDialog = top && qtcIsDialog(top);
+ 
+-                // Note: opacity is divided by 150 to make dark
+-                // inactive tabs more translucent
+                 if (isDialog && 100 != opts.dlgOpacity) {
+-                    fill.setAlphaF(opts.dlgOpacity / 150.0);
++                    fill.setAlphaF(opts.dlgOpacity / 100.0);
+                 } else if (!isDialog && 100 != opts.bgndOpacity) {
+-                    fill.setAlphaF(opts.bgndOpacity / 150.0);
++                    fill.setAlphaF(opts.bgndOpacity / 100.0);
+                 }
+             }
+ 

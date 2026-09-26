@@ -1,0 +1,372 @@
+Drop the GTK 3 popup shadow when the shadow setting is off
+
+The GTK 3 sheet gives one shadow to the decoration node. GTK 3 draws that
+node under a window that paints its own frame. It draws the node under a
+menu, a combo box list and a tooltip as well, so one rule shadows them all.
+The setting must reach the popups alone.
+
+The emitter therefore appends one rule when the setting is off. The rule
+takes the selectors .popup decoration and tooltip decoration, and it writes
+box-shadow: none. Measurement on GTK 3.24.52 gives those two selectors. A
+menu and a combo box list carry the class popup with a compositor and with
+none. A tooltip carries the object name tooltip and no class popup. The
+class csd reaches a popup with a compositor alone.
+
+Neither selector reaches a toplevel window, so a window keeps its shadow.
+The emitter appends the rule after the decoration rule, so the sheet of the
+default setting keeps every byte that it holds today. The GTK 4 sheet holds
+no decoration node and no popup shadow, so the two settings give one GTK 4
+sheet. The fallback sheets come from the default settings and do not move.
+
+The build compiles the Qt 6 parser into the emitter, so the emitter reads a
+stylerc key through that parser alone. That parser therefore takes the
+member, the read, the default and the write of popupShadow. The default is
+true, which keeps the shadow that a user has today.
+
+assert-shadow.sh reads the two arms of one build. It asserts that the on arm
+holds the shadow of the decoration rule and no popup rule. It asserts that
+the off arm holds the same shadow and one popup rule of box-shadow: none. It
+asserts that the two GTK 4 arms match byte for byte. The script then breaks
+each contract in a copy of a sheet. It fails if the check passes the copy.
+
+Let the GTK sheet writer own its node names
+
+The writer of the GTK sheets holds the node names in a reference member. Each
+of the two build functions passes the return of nodesFor, which is a
+temporary. That temporary ends at the constructor call, so the member points
+at a stack frame that the program has left.
+
+The emitter reads the node names through that member for the whole run. A
+build with the address sanitizer therefore stops the writer at the first read,
+in the button rules. A build without the sanitizer reads the same frame before
+another call writes over it, so the sheets keep their content by chance alone.
+
+The member takes value semantics. The writer copies the node names of the
+dialect at construction, and it holds them for the whole run. The names are
+nine strings and four flags, and every one of the strings is a literal, so the
+copy allocates nothing.
+
+The four shipped sheets keep every byte. A sanitizer build of the writer now
+runs each of the four sheets to the end.
+
+The change sits on the branch work/gtk4-theme of the local tree, as the
+fourth commit and the commit after it. The fork wyn/qtcurve holds that
+branch. Merge request !15 on system/qtcurve holds that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/gtk4/CMakeLists.txt b/gtk4/CMakeLists.txt
+index c0afb801..6988112f 100644
+--- a/gtk4/CMakeLists.txt
++++ b/gtk4/CMakeLists.txt
+@@ -582,6 +582,34 @@ add_custom_command(TARGET qtcurve-gtk-theme POST_BUILD
+           "${qtc_cover_dir}/flat-gtk-3.0.css"
+   VERBATIM)
+ 
++# The two arms of the shadow setting. The setting moves the shadow of a popup
++# alone and it moves no colour, so no table above holds a row of it.
++# assert-shadow.sh reads the four sheets in place of a table.
++add_custom_command(TARGET qtcurve-gtk-theme POST_BUILD
++  COMMAND "${qtc_writer_command}" --stdout --force
++          --settings "${qtc_check}/shadow-on.qtcurve" --scheme "${qtc_light}"
++          --dialect gtk3 --asset-base "../assets/"
++          --out "${qtc_cover_dir}/shadow-on-gtk-3.0.css"
++  COMMAND "${qtc_writer_command}" --stdout --force
++          --settings "${qtc_check}/shadow-off.qtcurve" --scheme "${qtc_light}"
++          --dialect gtk3 --asset-base "../assets/"
++          --out "${qtc_cover_dir}/shadow-off-gtk-3.0.css"
++  COMMAND "${qtc_writer_command}" --stdout --force
++          --settings "${qtc_check}/shadow-on.qtcurve" --scheme "${qtc_light}"
++          --dialect gtk4 --asset-base "../assets/"
++          --out "${qtc_cover_dir}/shadow-on-gtk-4.0.css"
++  COMMAND "${qtc_writer_command}" --stdout --force
++          --settings "${qtc_check}/shadow-off.qtcurve" --scheme "${qtc_light}"
++          --dialect gtk4 --asset-base "../assets/"
++          --out "${qtc_cover_dir}/shadow-off-gtk-4.0.css"
++  COMMAND sh "${qtc_check}/assert-shadow.sh"
++          "${qtc_cover_dir}/shadow-on-gtk-3.0.css"
++          "${qtc_cover_dir}/shadow-off-gtk-3.0.css"
++          "${qtc_cover_dir}/shadow-on-gtk-4.0.css"
++          "${qtc_cover_dir}/shadow-off-gtk-4.0.css"
++          "${qtc_theme_dir}/gtk-3.0/gtk.css"
++  VERBATIM)
++
+ # Every check above reads a sheet as text. The check below reads one in GTK 3
+ # itself. It builds a menu bar with an open menu. It then reads the node path,
+ # the caption colour and the box of each state that the toolkit gives. A text
+diff --git a/gtk4/check/assert-shadow.sh b/gtk4/check/assert-shadow.sh
+new file mode 100644
+index 00000000..dea02425
+--- /dev/null
++++ b/gtk4/check/assert-shadow.sh
+@@ -0,0 +1,171 @@
++#!/bin/sh
++# assert-shadow.sh ON3 OFF3 ON4 OFF4 SHIPPED3: the shadow setting must reach
++# the popup rule of the GTK 3 sheet and no other rule. ON3 and OFF3 are the
++# GTK 3 sheets of the two arms, ON4 and OFF4 are the GTK 4 sheets of the same
++# two arms, and SHIPPED3 is the GTK 3 sheet of the fallback theme. The run
++# then breaks each contract in a copy of a sheet, and it fails if the check
++# passes the broken copy.
++set -eu
++usage='usage: assert-shadow.sh ON3 OFF3 ON4 OFF4 SHIPPED3'
++on3=${1:?$usage}
++off3=${2:?$usage}
++on4=${3:?$usage}
++off4=${4:?$usage}
++shipped3=${5:?$usage}
++
++tmp=$(mktemp -d)
++trap 'rm -rf "$tmp"' EXIT
++
++popup='.popup decoration'
++tip='tooltip decoration'
++
++# rule_shadow SHEET SELECTOR: prints the box-shadow value of the rule of
++# SELECTOR, and prints nothing when the sheet holds no such rule.
++rule_shadow() {
++    awk -v want="$2 {" '
++        $0 == want { in_rule = 1; next }
++        in_rule && $0 == "}" { in_rule = 0 }
++        in_rule && sub(/^  box-shadow: /, "") { sub(/;$/, ""); print }
++    ' "$1"
++}
++
++# deco_selectors SHEET: prints the selector of every rule that holds the token
++# decoration. A selector stands at column one and it ends with a brace.
++deco_selectors() {
++    sed -n '/^[^[:space:]].* {$/ s/ {$//p' "$1" | grep decoration || true
++}
++
++# set_shadow SHEET SELECTOR VALUE: prints SHEET with the box-shadow of the
++# rule of SELECTOR at VALUE. The run builds a broken copy with it.
++set_shadow() {
++    awk -v want="$2 {" -v val="$3" '
++        $0 == want { in_rule = 1 }
++        in_rule && /^  box-shadow: / { print "  box-shadow: " val ";"; next }
++        in_rule && $0 == "}" { in_rule = 0 }
++        { print }
++    ' "$1"
++}
++
++# rename_rule SHEET FROM TO: prints SHEET with the selector FROM at TO. The
++# run builds a broken copy with it.
++rename_rule() {
++    awk -v from="$2 {" -v to="$3 {" '$0 == from { print to; next } { print }' \
++        "$1"
++}
++
++# check ON3 OFF3 ON4 OFF4 SHIPPED3: gives 0 when the five contracts hold. It
++# names the first contract that fails on the standard error.
++check() {
++    c_on3=$1
++    c_off3=$2
++    c_on4=$3
++    c_off4=$4
++    c_shipped3=$5
++
++    # 1. The on arm gives the decoration node a shadow.
++    keep=$(rule_shadow "$c_on3" decoration)
++    if [ -z "$keep" ]; then
++        echo "assert-shadow: $c_on3 holds no decoration rule" >&2
++        return 1
++    fi
++    if [ "$keep" = none ]; then
++        echo "assert-shadow: $c_on3 gives the decoration node no shadow" >&2
++        return 1
++    fi
++
++    # 2. The on arm holds the decoration rule alone, and it names no popup.
++    if [ "$(deco_selectors "$c_on3")" != decoration ]; then
++        echo "assert-shadow: $c_on3 holds a second decoration rule" >&2
++        return 1
++    fi
++    if grep -qF "$popup" "$c_on3" || grep -qF "$tip" "$c_on3"; then
++        echo "assert-shadow: $c_on3 names a popup of the decoration node" >&2
++        return 1
++    fi
++
++    # 3. The off arm holds one popup rule of no shadow, and the selector of
++    # that rule reads a popup and a tooltip.
++    sel=$(deco_selectors "$c_off3" | grep -vx decoration || true)
++    if [ "$(printf '%s\n' "$sel" | grep -c . || true)" -ne 1 ]; then
++        echo "assert-shadow: $c_off3 holds no single popup rule" >&2
++        return 1
++    fi
++    case $sel in
++        *"$popup"*) ;;
++        *) echo "assert-shadow: $c_off3 misses '$popup'" >&2; return 1;;
++    esac
++    case $sel in
++        *"$tip"*) ;;
++        *) echo "assert-shadow: $c_off3 misses '$tip'" >&2; return 1;;
++    esac
++    if [ "$(rule_shadow "$c_off3" "$sel")" != none ]; then
++        echo "assert-shadow: $c_off3 gives '$sel' a shadow" >&2
++        return 1
++    fi
++
++    # 4. The off arm keeps the shadow of the window.
++    if [ "$(rule_shadow "$c_off3" decoration)" != "$keep" ]; then
++        echo "assert-shadow: $c_off3 moves the shadow of the window" >&2
++        return 1
++    fi
++
++    # 5. The on arm gives the shipped sheet, and the setting moves no GTK 4
++    # rule.
++    if ! cmp -s "$c_on3" "$c_shipped3"; then
++        echo "assert-shadow: $c_on3 differs from $c_shipped3" >&2
++        return 1
++    fi
++    if ! cmp -s "$c_on4" "$c_off4"; then
++        echo "assert-shadow: $c_on4 differs from $c_off4" >&2
++        return 1
++    fi
++    return 0
++}
++
++if ! check "$on3" "$off3" "$on4" "$off4" "$shipped3"; then
++    echo "assert-shadow: the two arms fail the check" >&2
++    exit 1
++fi
++
++# The controls below. Each one breaks one contract in a copy of a sheet, and
++# the check must fail over that copy.
++psel=$(deco_selectors "$off3" | grep -vx decoration)
++broken=0
++
++# control NAME ON3 OFF3 ON4 OFF4 SHIPPED3: the check must fail over the sheets
++# that the caller gives.
++control() {
++    name=$1
++    shift
++    if check "$@" 2> "$tmp/control.log"; then
++        echo "assert-shadow: the check passed the broken sheet of $name" >&2
++        exit 1
++    fi
++    broken=$((broken + 1))
++}
++
++# A popup rule in the on arm, which the setting must keep out of it.
++cp "$on3" "$tmp/paste.css"
++printf '%s {\n  box-shadow: none;\n}\n' "$psel" >> "$tmp/paste.css"
++control paste "$tmp/paste.css" "$off3" "$on4" "$off4" "$shipped3"
++
++# The shadow of the window over the popup rule of the off arm.
++set_shadow "$off3" "$psel" "$(rule_shadow "$on3" decoration)" \
++    > "$tmp/keep.css"
++control keep "$on3" "$tmp/keep.css" "$on4" "$off4" "$shipped3"
++
++# No shadow over the decoration rule of the off arm, which drops the shadow of
++# the window with the shadow of the popup.
++set_shadow "$off3" decoration none > "$tmp/drop.css"
++control drop "$on3" "$tmp/drop.css" "$on4" "$off4" "$shipped3"
++
++# The popup half of the selector alone, which misses a tooltip.
++rename_rule "$off3" "$psel" "$popup" > "$tmp/half.css"
++control half "$on3" "$tmp/half.css" "$on4" "$off4" "$shipped3"
++
++# One byte of the on arm that no row above reads.
++sed 's/margin: 10px/margin: 11px/' "$on3" > "$tmp/byte.css"
++control byte "$tmp/byte.css" "$off3" "$on4" "$off4" "$shipped3"
++
++echo "assert-shadow: the two arms hold the contract of '$psel', and the" \
++     "check fails each of the $broken broken sheets"
+diff --git a/gtk4/check/shadow-off.qtcurve b/gtk4/check/shadow-off.qtcurve
+new file mode 100644
+index 00000000..923bfba2
+--- /dev/null
++++ b/gtk4/check/shadow-off.qtcurve
+@@ -0,0 +1,6 @@
++# The off arm of assert-shadow.sh, where the setting drops the shadow of a
++# popup. The version key stops the migration clause of the parser, so this arm
++# and the on arm differ in the popup rule alone.
++[Settings]
++version=1.9.0
++popupShadow=false
+diff --git a/gtk4/check/shadow-on.qtcurve b/gtk4/check/shadow-on.qtcurve
+new file mode 100644
+index 00000000..e1a5057e
+--- /dev/null
++++ b/gtk4/check/shadow-on.qtcurve
+@@ -0,0 +1,7 @@
++# The on arm of assert-shadow.sh, where the setting keeps the shadow of a
++# popup. The parser runs a migration clause over a settings file that holds no
++# version key, and that clause moves two rules of the sheet. The version key
++# below stops the clause, so this arm gives the shipped sheet byte for byte.
++[Settings]
++version=1.9.0
++popupShadow=true
+diff --git a/gtk4/writer/widgets.cpp b/gtk4/writer/widgets.cpp
+index 40246c4b..8c9bbe1b 100644
+--- a/gtk4/writer/widgets.cpp
++++ b/gtk4/writer/widgets.cpp
+@@ -638,7 +638,11 @@ private:
+     const Options &m_opts;
+     const Palette &m_pal;
+     Sheet &m_sheet;
+-    const Nodes &m_nodes;
++    /**
++     * The node names of the dialect. A caller passes a temporary, so this
++     * member holds a copy and not a reference.
++     */
++    const Nodes m_nodes;
+     /** The colours of each selector that a label pin of the sheet reaches. */
+     QMap<QString, Pin> m_pins;
+     /** The background of the window rule, for a child that paints none. */
+@@ -1856,6 +1860,14 @@ Writer::decoration()
+                    .arg(rgba(QColor(0, 0, 0), 0.35)));
+     box.more << QStringLiteral("margin: 10px");
+     put(QStringLiteral("decoration"), box);
++    // GTK 3 draws the decoration node under a popup and under a window that
++    // paints its own frame. The override below reaches a popup alone, so a
++    // window keeps the shadow of the rule above.
++    if (m_opts.popupShadow) {
++        return;
++    }
++    box.shadow = QStringLiteral("none");
++    put(QStringLiteral(".popup decoration, tooltip decoration"), box);
+ }
+ 
+ void
+diff --git a/qt6/common/common.h b/qt6/common/common.h
+index c17e066f..b6c04125 100644
+--- a/qt6/common/common.h
++++ b/qt6/common/common.h
+@@ -897,6 +897,9 @@ typedef struct {
+     QString          menuTick;
+     int              fontTickWidth;
+     bool             buttonStyleMenuSections;
++    // If true, QtCurve gives a drop shadow to a menu, a tooltip, a combo box
++    // list, a detached tool bar and a detached dock widget.
++    bool             popupShadow;
+ } Options;
+ 
+ void qtcSetupGradient(Gradient *grad, EGradientBorder border, int numStops, ...);
+diff --git a/qt6/common/config_file.cpp b/qt6/common/config_file.cpp
+index 4535c785..f29a5eff 100644
+--- a/qt6/common/config_file.cpp
++++ b/qt6/common/config_file.cpp
+@@ -1279,6 +1279,7 @@ bool qtcReadConfig(const QString &file, Options *opts, Options *defOpts, bool ch
+             CFG_READ_BOOL(borderSbarGroove);
+             CFG_READ_BOOL(borderProgress);
+             CFG_READ_BOOL(popupBorder);
++            CFG_READ_BOOL(popupShadow);
+             CFG_READ_BOOL(unifySpinBtns);
+             CFG_READ_BOOL(unifySpin);
+             CFG_READ_BOOL(unifyCombo);
+@@ -1571,6 +1572,7 @@ void qtcDefaultSettings(Options *opts)
+     opts->borderSbarGroove=true;
+     opts->borderProgress=true;
+     opts->popupBorder=true;
++    opts->popupShadow=true;
+     opts->unifySpinBtns=false;
+     opts->unifySpin=true;
+     opts->unifyCombo=true;
+@@ -2300,6 +2302,7 @@ bool qtcWriteConfig(KConfig *cfg, const Options &opts, const Options &def, bool
+         CFG_WRITE_ENTRY(borderSbarGroove);
+         CFG_WRITE_ENTRY(borderProgress);
+         CFG_WRITE_ENTRY(popupBorder);
++        CFG_WRITE_ENTRY(popupShadow);
+         CFG_WRITE_ENTRY(unifySpinBtns);
+         CFG_WRITE_ENTRY(unifySpin);
+         CFG_WRITE_ENTRY(unifyCombo);

@@ -1,0 +1,40 @@
+Reject a gradient value that holds a partial stop
+
+The value of customgradient<N> holds the border and then one pair of
+numbers for each stop. The value holds one triple for each stop when the
+border name carries the alpha suffix. The reader tests the length with a
+modulo and stores the remainder in a boolean. Every length that the
+stride does not divide then passes the test.
+
+An alpha value of five, eight or eleven elements therefore reaches the
+parse loop. The loop reads one whole stop for each turn and tests no
+end. The loop then steps past the last element and reads the memory
+after the list. A build with the address sanitizer faults in that read.
+
+Test the length against the exact form of the two layouts. A value that
+leaves a part of a stop now takes the path of a value that does not
+parse. The reader drops the gradient.
+
+A legal value keeps its result. An alpha value of seven, ten or thirteen
+elements and a plain value of any odd length parse as before.
+
+The change sits on the branch work/config-io of the local tree, as commit 16 of 18.
+A new merge request on system/qtcurve takes that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/qt6/common/config_file.cpp b/qt6/common/config_file.cpp
+index d0d8ce01..f97bad21 100644
+--- a/qt6/common/config_file.cpp
++++ b/qt6/common/config_file.cpp
+@@ -1574,7 +1574,9 @@ bool qtcReadConfig(const QString &file, Options *opts, Options *defOpts, bool ch
+                     Gradient                   grad;
+ 
+                     grad.border=toGradientBorder(TO_LATIN1((*it)), &haveAlpha);
+-                    ok=vals.size()%(haveAlpha ? 3 : 2);
++                    // The border takes one element and each stop takes two
++                    // elements, or three elements with an alpha.
++                    ok=1==vals.size()%(haveAlpha ? 3 : 2);
+ 
+                     for(++it; it!=end && ok; ++it)
+                     {

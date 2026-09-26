@@ -1,0 +1,123 @@
+Keep the groove border of the scroll bar under the thin key
+
+The writer dropped the border of the scroll bar groove whenever
+the borderSbarGroove key was false. The style suppresses that
+border inside Style::drawLightBevelReal() for WIDGET_TROUGH
+alone. The groove call of Style::drawComplexControl() passes
+WIDGET_TROUGH only when thinSbarGroove is false, and the page
+paths never reach the suppression. Under the thin groove the
+style therefore keeps the border that the sheet dropped.
+
+Writer::scrollBar() now drops the border only when neither
+groove key holds, which mirrors the one reachable gate.
+
+assert-scrollbar.sh moves the noborder arm into the border arms
+and adds the bare arm, which holds the two keys at false and
+expects no border. The two arms carry one control each.
+
+The change sits on the branch work/gtk4-theme of the local tree, as the
+fifteenth commit. The fork wyn/qtcurve holds that branch. Merge request !15
+on system/qtcurve holds that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/gtk4/check/assert-scrollbar.sh b/gtk4/check/assert-scrollbar.sh
+index 7448af82..e1ee7c01 100644
+--- a/gtk4/check/assert-scrollbar.sh
++++ b/gtk4/check/assert-scrollbar.sh
+@@ -47,16 +47,16 @@ edge="1px solid shade($base, 0.750)"
+ custom='#ff8800'
+ 
+ # Every arm of the light scheme, in the order that the run writes them. The
+-# last two arms take no colour name. The noborder arm drops the border of the
++# last three arms take no colour name. The noborder arm keeps the border of the
+ # trough, and the hsv arm writes a literal for every shaded tone.
+ arms='none darken selected blend custom mo slapp app thin wide page corner
+-      square noborder hsv'
++      square noborder bare hsv'
+ # The arms that hold a colour name in the trough rule.
+ namearms='none darken selected blend custom mo slapp app thin wide page corner
+-          square noborder'
++          square noborder bare'
+ # The arms that hold the border of the trough on a colour name.
+ edgearms='none darken selected blend custom mo slapp app thin wide page corner
+-          square'
++          square noborder'
+ # The arms of the distinct scheme, where no two roles share a value.
+ darms='none blend hsv'
+ 
+@@ -101,8 +101,10 @@ settings page 'flatSbarButtons=false\nthinSbarGroove=true\n'
+ settings corner 'flatSbarButtons=false\nthinSbarGroove=true\nscrollbarType=none\n'
+ settings square \
+     'flatSbarButtons=false\nthinSbarGroove=true\nscrollbarType=none\nround=none\n'
+-# The border key of the groove, which drops the border of the trough.
++# The border key of the groove alone, which keeps the border of the trough.
+ settings noborder 'borderSbarGroove=false\n'
++# The two groove keys at false, which drop the border of the trough.
++settings bare 'borderSbarGroove=false\nthinSbarGroove=false\n'
+ # The shading model of the sheet. The GTK function shade() computes the HSL
+ # model alone, so another model gives a literal for every shaded tone. Each
+ # seed then stands as a byte that a reader can measure.
+@@ -268,7 +270,7 @@ check() {
+     fi
+ 
+     # 7. The border of the trough takes the border step of the base ladder,
+-    # and the border key of the groove drops it.
++    # and the two groove keys drop it only together.
+     for c_arm in $edgearms; do
+         if [ "$(row "$d" "$c_arm" "$trough" border)" != "$edge" ]; then
+             echo "assert-scrollbar: the trough of $c_arm borders on" \
+@@ -276,8 +278,8 @@ check() {
+             return 1
+         fi
+     done
+-    if [ "$(row "$d" noborder "$trough" border)" != none ]; then
+-        echo "assert-scrollbar: the noborder arm keeps the border of the" \
++    if [ "$(row "$d" bare "$trough" border)" != none ]; then
++        echo "assert-scrollbar: the bare arm keeps the border of the" \
+              "trough" >&2
+         return 1
+     fi
+@@ -325,7 +327,7 @@ check() {
+     # 10. The block of the browser reads the same helper. Its ground must hold
+     # the trough of the widget, and its rest row must hold the thumb of the
+     # widget. The clause holds only where the sheet carries that block, which
+-    # assert-browser.sh reads. The rest clause reads the arms 1 to 14. Under
++    # assert-browser.sh reads. The rest clause reads the arms 1 to 15. Under
+     # the hsv arm the widget rest row writes the literal of its cover branch
+     # and the block writes the colour name. The two spellings give one colour.
+     if [ -n "$(row "$d" none "$moz" background-color)" ]; then
+@@ -427,10 +429,16 @@ paste hsv "$trough" background-color \
+     "$(row "$work/arm" hsv "$anchor" background-color)"
+ control 'the seed of the trough'
+ 
+-# The border of the noborder arm at a line, which the border key drops.
+-paste noborder "$trough" border "$edge"
++# The border of the noborder arm at none, which is the sheet of the writer
++# that reads the border key alone.
++paste noborder "$trough" border none
+ control 'the border key of the groove'
+ 
++# The border of the bare arm at a line, which is the sheet of a writer that
++# never drops the border.
++paste bare "$trough" border "$edge"
++control 'the two keys of the groove'
++
+ # The border of the thumb of the selected arm on the button ladder, which is
+ # the border of another fill.
+ paste selected "$thumb" border "1px solid shade($button, 0.750)"
+diff --git a/gtk4/writer/widgets.cpp b/gtk4/writer/widgets.cpp
+index 14b5d7f1..f3613a94 100644
+--- a/gtk4/writer/widgets.cpp
++++ b/gtk4/writer/widgets.cpp
+@@ -1644,7 +1644,9 @@ Writer::scrollBar()
+     trough.image = tgrad(QStringLiteral("sbar-trough-img"),
+                          m_opts.grooveAppearance, scrollTone(spec.track));
+     trough.bg = tv(QStringLiteral("sbar-trough-bg"), scrollTone(spec.track));
+-    trough.border = m_opts.borderSbarGroove ?
++    // The style drops this border for the wide groove alone, so the border
++    // falls only when neither groove key holds.
++    trough.border = (m_opts.borderSbarGroove || m_opts.thinSbarGroove) ?
+         tline(QStringLiteral("sbar-trough-border"),
+               lad(Role::Base, QTC_STD_BORDER)) :
+         v(QStringLiteral("sbar-trough-noborder"), QStringLiteral("none"));

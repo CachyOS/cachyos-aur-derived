@@ -1,0 +1,1600 @@
+firefox: carry the scroll bar pair to web pages
+
+A write pass now writes a second owned sheet,
+qtcurve-userContent.css, beside the chrome sheet of each profile,
+and it merges one import line into userContent.css. The sheet
+holds one universal rule with the scroll bar pair of the chrome
+sheet under !important: a scroller with a page rule takes no
+inherited user value, and an ordinary user rule loses to a page
+rule. Pages that state their own scroll bar colours now follow
+the QtCurve pair.
+
+The sheet carries no scrollbar-width row. The Firefox width
+values are three words, no QtCurve option maps to them, and a
+constant row would beat the thin choice of a page for no reason.
+
+The same settings key and the same add-on state govern both
+sheets. A write pass writes both sheets or reports the first
+fault, and a remove pass takes both import lines and both owned
+sheets away; a fault on one sheet pair does not stop the other
+pair. The one stylesheets preference covers both sheets, so the
+notice of about:config does not change. The watch mode watches
+the userContent.css file of each profile beside the chrome sheet.
+
+The mode --stdout-content prints the content sheet. mergeImport
+and removeImport take the import statement as a parameter, so one
+body serves the two sheets of this writer and the one sheet of
+the GTK writer. assert-ff-content.sh proves the rule shape, the
+pair and the absent width row, and the profile checks prove the
+two-file flows.
+
+The change sits on the branch work/firefox-theme of the local tree, as
+commit 12 of 14. The branch holds those fourteen commits above the head of
+work/gtk4-theme, which merge request !15 on system/qtcurve holds. The fork
+wyn/qtcurve holds work/firefox-theme. Merge request !29 on system/qtcurve
+holds that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/firefox/CMakeLists.txt b/firefox/CMakeLists.txt
+index 31087bfb..571fc2e6 100644
+--- a/firefox/CMakeLists.txt
++++ b/firefox/CMakeLists.txt
+@@ -192,13 +192,16 @@ add_custom_command(TARGET qtcurve-firefox-theme POST_BUILD
+           "${qtc_ff_light}" "${qtc_ff_dark}" "${qtc_ff_preview_src}"
+   VERBATIM)
+ 
+-# The scroll bar rule of the sidebars. buildSheet() writes every row of the
+-# map as one custom property of the root, so no row of the map can carry that
+-# rule and no run above reads it. The check below runs the writer over the
+-# slider keys, the pointer key and the groove keys of the settings.
++# The scroll bar rule of the sidebars and the scroll bar rule of the pages.
++# buildSheet() writes every row of the map as one custom property of the root,
++# so no row of the map can carry either rule and no run above reads them. The
++# two checks below run the writer over the slider keys, the pointer key and the
++# groove keys of the settings.
+ add_custom_command(TARGET qtcurve-firefox-theme POST_BUILD
+   COMMAND sh "${qtc_ff_check}/assert-ff-scrollbar.sh" "${qtc_ff_command}"
+           "${qtc_ff_work}/scrollbar" "${qtc_ff_light}" "${qtc_ff_dark}"
++  COMMAND sh "${qtc_ff_check}/assert-ff-content.sh" "${qtc_ff_command}"
++          "${qtc_ff_work}/content" "${qtc_ff_light}" "${qtc_ff_dark}"
+   VERBATIM)
+ 
+ # The two writers must hold no lock name in common, because each one runs a
+diff --git a/firefox/check/assert-ff-content.sh b/firefox/check/assert-ff-content.sh
+new file mode 100644
+index 00000000..e4d28540
+--- /dev/null
++++ b/firefox/check/assert-ff-content.sh
+@@ -0,0 +1,278 @@
++#!/bin/sh
++# assert-ff-content.sh WRITER WORKDIR LIGHT DARK: the owned content sheet must
++# hold the header line of the writer and one universal rule of one
++# declaration. The rule states two literal colours under !important. The
++# sheet must carry no width row, no custom property and no other property.
++# The pair must follow the slider keys. It must hold one track under every
++# key. It must equal the pair of the sidebar rule of the chrome sheet of the
++# same settings. The run writes one settings file, one content sheet and one
++# chrome sheet for each arm under WORKDIR, over the colour file LIGHT. It
++# then breaks one contract in a copy of an arm, and it fails if the check
++# passes the broken copy. One control carries the pair of the colour file
++# DARK, which the writer emits.
++set -eu
++usage='usage: assert-ff-content.sh WRITER WORKDIR LIGHT DARK'
++writer=${1:?$usage}
++work=${2:?$usage}
++light=${3:?$usage}
++dark=${4:?$usage}
++
++# A relative path leaves the sheets outside the directory that the caller
++# names, because the writer runs in a directory of its own.
++case $work in
++    /*) ;;
++    *) work=$PWD/$work;;
++esac
++
++# The colour of the custom arm, which the thumb must carry byte for byte.
++custom='#ff8800'
++# The arms of the slider keys and the arms of the groove keys.
++sliders='none darken selected blend custom mo'
++grooves='thin wide page corner square'
++# The count of the lines of a content sheet: the header line, the head of the
++# rule, one declaration and the close of the rule.
++lines=4
++
++rm -rf "$work"
++mkdir -p "$work/arm" "$work/broken"
++
++# settings NAME BODY: writes the settings file of the arm NAME, which holds
++# the keys of BODY over the shipped preset. BODY carries one escape of a new
++# line for each key.
++settings() {
++    printf '[Settings]\n%b' "$2" > "$work/$1.qtcurve"
++}
++
++# sheet NAME: writes the content sheet and the chrome sheet of the arm NAME.
++# The two runs read one settings file, so the two pairs must agree.
++sheet() {
++    "$writer" --stdout-content --force --settings "$work/$1.qtcurve" \
++        --scheme "$light" --out "$work/arm/$1.css"
++    "$writer" --stdout --force --settings "$work/$1.qtcurve" \
++        --scheme "$light" --out "$work/arm/$1.chrome.css"
++}
++
++# The five slider keys, one arm each, and the pointer key.
++settings none 'shadeSliders=none\n'
++settings darken 'shadeSliders=darken\n'
++settings selected 'shadeSliders=origselected\n'
++settings blend 'shadeSliders=selected\n'
++settings custom "shadeSliders=$custom\\n"
++settings mo 'shadeSliders=origselected\ncolorSliderMouseOver=true\n'
++# The five groove arms, which hold the four corners of the groove keys and the
++# square corner of no button. No one of them may move a colour of the pair.
++settings thin 'flatSbarButtons=true\nthinSbarGroove=true\n'
++settings wide 'flatSbarButtons=true\nthinSbarGroove=false\n'
++settings page 'flatSbarButtons=false\nthinSbarGroove=true\n'
++settings corner 'flatSbarButtons=false\nthinSbarGroove=true\nscrollbarType=none\n'
++settings square \
++    'flatSbarButtons=false\nthinSbarGroove=true\nscrollbarType=none\nround=none\n'
++
++for arm in $sliders $grooves; do
++    sheet "$arm"
++done
++
++# The content sheet of the other colour file, which one control below reads.
++# The writer gives that pair, so the control carries no hand written colour.
++"$writer" --stdout-content --force --settings "$work/none.qtcurve" \
++    --scheme "$dark" --out "$work/dark.css"
++
++# rules FILE: prints the count of the heads of the universal rule of FILE.
++rules() {
++    grep -c '^\* {$' "$1" || true
++}
++
++# body FILE: prints the declarations of the universal rule of FILE, and prints
++# nothing for a sheet that holds no such rule.
++body() {
++    sed -n '/^\* {$/,/^}$/p' "$1" | sed '1d;$d'
++}
++
++# pair FILE: prints the thumb colour and the track colour of the universal rule
++# of FILE, with one space between them. It prints nothing while the rule does
++# not hold the exact shape of the contract.
++pair() {
++    body "$1" | sed -n \
++'s/^  scrollbar-color: \(#[0-9a-f]\{6\}\) \(#[0-9a-f]\{6\}\) !important;$/\1 \2/p'
++}
++
++# sidebar FILE: prints the pair of the sidebar rule of the chrome sheet FILE.
++sidebar() {
++    sed -n '/^:root\[lwt-sidebar\] {$/,/^}$/p' "$1" | sed -n \
++'s/^  scrollbar-color: \(#[0-9a-f]\{6\}\) \(#[0-9a-f]\{6\}\) !important;$/\1 \2/p'
++}
++
++# thumb FILE, track FILE: print one half of the pair of the content sheet FILE.
++thumb() {
++    pair "$1" | cut -d' ' -f1
++}
++track() {
++    pair "$1" | cut -d' ' -f2
++}
++
++# check DIR: gives 0 while the six contracts hold over the arm files of DIR. It
++# names the first contract that fails on the standard error.
++check() {
++    d=$1
++
++    # 1. Each arm opens with the header line of its chrome sheet, and it holds
++    # one universal rule of two literal colours under !important.
++    for c_arm in $sliders $grooves; do
++        c_head=$(head -n 1 "$d/$c_arm.css")
++        if [ "$c_head" != "$(head -n 1 "$d/$c_arm.chrome.css")" ]; then
++            echo "assert-ff-content: $c_arm opens with '$c_head'" >&2
++            return 1
++        fi
++        if [ "$(rules "$d/$c_arm.css")" -ne 1 ]; then
++            echo "assert-ff-content: $c_arm holds" \
++                 "$(rules "$d/$c_arm.css") universal rules" >&2
++            return 1
++        fi
++        if [ -z "$(pair "$d/$c_arm.css")" ]; then
++            echo "assert-ff-content: the rule of $c_arm reads" \
++                 "'$(body "$d/$c_arm.css")'" >&2
++            return 1
++        fi
++    done
++
++    # 2. The sheet states the colour pair alone: no custom property, no width
++    # row and no other property of the browser.
++    for c_arm in $sliders $grooves; do
++        if grep -qF -e '--' "$d/$c_arm.css"; then
++            echo "assert-ff-content: $c_arm declares a custom property" >&2
++            return 1
++        fi
++        if grep -qF 'scrollbar-width' "$d/$c_arm.css"; then
++            echo "assert-ff-content: $c_arm declares a width row" >&2
++            return 1
++        fi
++        c_props=$(grep -c '^  [a-z-]*:' "$d/$c_arm.css" || true)
++        if [ "$c_props" -ne 1 ]; then
++            echo "assert-ff-content: $c_arm declares $c_props properties," \
++                 "and not 1" >&2
++            return 1
++        fi
++    done
++
++    # 3. The whole sheet is the header line and that one rule, and the rule
++    # holds one declaration.
++    for c_arm in $sliders $grooves; do
++        c_lines=$(wc -l < "$d/$c_arm.css")
++        if [ "$c_lines" -ne "$lines" ]; then
++            echo "assert-ff-content: $c_arm holds $c_lines lines, and not" \
++                 "$lines" >&2
++            return 1
++        fi
++        if [ "$(body "$d/$c_arm.css" | wc -l)" -ne 1 ]; then
++            echo "assert-ff-content: the rule of $c_arm holds" \
++                 "$(body "$d/$c_arm.css" | wc -l) declarations" >&2
++            return 1
++        fi
++    done
++
++    # 4. The five slider keys give five thumbs of their own. The reader
++    # takes the colour value of the key as the custom colour of the
++    # slider. The pointer key moves the thumb to the button colour.
++    c_none=$(thumb "$d/none.css")
++    c_custom=$(thumb "$d/custom.css")
++    if [ "$c_custom" != "$custom" ]; then
++        echo "assert-ff-content: the custom arm holds the thumb" \
++             "'$c_custom'" >&2
++        return 1
++    fi
++    if [ "$(for c_arm in none darken selected blend custom; do
++                thumb "$d/$c_arm.css"
++            done | sort -u | wc -l)" -ne 5 ]; then
++        echo "assert-ff-content: two slider keys give one thumb" >&2
++        return 1
++    fi
++    if [ "$(thumb "$d/mo.css")" != "$c_none" ]; then
++        echo "assert-ff-content: the pointer key holds the thumb" \
++             "'$(thumb "$d/mo.css")'" >&2
++        return 1
++    fi
++
++    # 5. No key of the settings moves the track, and the five groove keys
++    # leave it alone as well.
++    if [ "$(for c_arm in $sliders $grooves; do track "$d/$c_arm.css"; done |
++            sort -u | wc -l)" -ne 1 ]; then
++        echo "assert-ff-content: a key of the settings moves the track" >&2
++        return 1
++    fi
++
++    # 6. The pair of an arm is the pair of the sidebar rule of the chrome
++    # sheet of that arm. One map gives both rules.
++    for c_arm in $sliders $grooves; do
++        c_want=$(sidebar "$d/$c_arm.chrome.css")
++        if [ -z "$c_want" ]; then
++            echo "assert-ff-content: the chrome sheet of $c_arm holds no" \
++                 "sidebar pair" >&2
++            return 1
++        fi
++        if [ "$(pair "$d/$c_arm.css")" != "$c_want" ]; then
++            echo "assert-ff-content: $c_arm holds the pair" \
++                 "'$(pair "$d/$c_arm.css")' over the sidebar pair" \
++                 "'$c_want'" >&2
++            return 1
++        fi
++    done
++    return 0
++}
++
++if ! check "$work/arm"; then
++    echo "assert-ff-content: the arms fail the check" >&2
++    exit 1
++fi
++
++# The controls below. Each one breaks one contract in a copy of the arms, and
++# the check must fail over that copy.
++broken=0
++
++# control NAME: the check must fail over the copy under the broken directory.
++control() {
++    if check "$work/broken" 2> "$work/control.log"; then
++        echo "assert-ff-content: the check passed the broken copy of $1" >&2
++        exit 1
++    fi
++    broken=$((broken + 1))
++}
++
++# copy: writes a fresh copy of every arm file under the broken directory.
++copy() {
++    rm -rf "$work/broken"
++    cp -r "$work/arm" "$work/broken"
++}
++
++# The rule cut out of one arm, which is the profile before this sheet shipped.
++copy
++sed '/^\* {$/,/^}$/d' "$work/arm/none.css" > "$work/broken/none.css"
++control 'the rule of an arm'
++
++# The pair of the other colour file, which a writer that reads one colour file
++# for the two sheets would give.
++copy
++row="  scrollbar-color: $(pair "$work/dark.css") !important;"
++sed "s/^  scrollbar-color: .*\$/$row/" "$work/arm/none.css" \
++    > "$work/broken/none.css"
++control 'the pair of another colour file'
++
++# A width row beside the pair, which no key of QtCurve maps to and which would
++# beat the thin choice of a page.
++copy
++sed 's/^\(  scrollbar-color: .*\)$/\1\n  scrollbar-width: thin !important;/' \
++    "$work/arm/none.css" > "$work/broken/none.css"
++control 'a width row of the rule'
++
++# The root selector in place of the universal one, which a page rule on a
++# scroller blocks.
++copy
++sed 's/^\* {$/:root {/' "$work/arm/none.css" > "$work/broken/none.css"
++control 'the root selector'
++
++rm -rf "$work/broken"
++echo "assert-ff-content: the universal rule holds one declaration of two" \
++     "literal colours under !important over $(echo $sliders $grooves | wc -w)" \
++     "arms, the sheet holds $lines lines with no width row and no custom" \
++     "property, the thumb follows the slider keys, one track holds under" \
++     "every key, each pair is the sidebar pair of the chrome sheet of that" \
++     "arm, and the check rejects each of the $broken control copies"
+diff --git a/firefox/check/assert-ff-gate.sh b/firefox/check/assert-ff-gate.sh
+index 60b76001..a1585753 100644
+--- a/firefox/check/assert-ff-gate.sh
++++ b/firefox/check/assert-ff-gate.sh
+@@ -1,10 +1,11 @@
+ #!/bin/sh
+ # assert-ff-gate.sh WRITER WORKDIR: the writer must write a profile only while
+ # the settings hold the key of the gate. The run holds two settings files that
+-# differ in that key alone. A false gate must take the owned sheet away and
+-# keep every foreign line. The watch mode of a false gate must leave with no
+-# resident process. That run is a counted poll of steps of one second. A watch
+-# that stays resident therefore fails the check and never stops the build.
++# differ in that key alone. A false gate must take the two owned sheets away
++# and keep every foreign line. The watch mode of a false gate must leave
++# with no resident process. That run is a counted poll of steps of one
++# second. A watch that stays resident therefore fails the check and never
++# stops the build.
+ # HOME, XDG_CONFIG_HOME and QTCURVE_CONFIG_DIR point into WORKDIR, because the
+ # writer rewrites the files of the caller.
+ set -eu
+@@ -23,6 +24,8 @@ esac
+ 
+ owned=chrome/qtcurve-userChrome.css
+ shared=chrome/userChrome.css
++content_owned=chrome/qtcurve-userContent.css
++content_shared=chrome/userContent.css
+ home=$work/home
+ root=$home/.config/mozilla/firefox
+ dir=$root/gate.default
+@@ -48,6 +51,7 @@ trap 'clean; exit 1' HUP INT QUIT TERM
+ rm -rf "$work"
+ mkdir -p "$dir/chrome" "$qtc"
+ printf '#nav-bar { min-height: 40px; }\n' > "$dir/$shared"
++printf 'body { line-height: 1.5; }\n' > "$dir/$content_shared"
+ printf '[Profile0]\nName=gate\nIsRelative=1\nPath=gate.default\n' \
+     > "$root/profiles.ini"
+ 
+@@ -117,15 +121,18 @@ run_capped() {
+     code=124
+ }
+ 
+-# 1. A true gate writes the owned sheet and the import line.
++# 1. A true gate writes the two owned sheets and the two import lines.
+ gate true
+ run true --write
+ [ "$code" -eq 0 ] || fail "the true gate gave the code $code"
+ [ -s "$dir/$owned" ] || fail "the true gate wrote no owned sheet"
+ grep -qF 'qtcurve-userChrome.css' "$dir/$shared" ||
+     fail "the true gate merged no import line"
++[ -s "$dir/$content_owned" ] || fail "the true gate wrote no content sheet"
++grep -qF 'qtcurve-userContent.css' "$dir/$content_shared" ||
++    fail "the true gate merged no import line of the content sheet"
+ 
+-# 2. A false gate takes both away, and it keeps the foreign line.
++# 2. A false gate takes all four away, and it keeps the two foreign lines.
+ gate false
+ run false --write
+ [ "$code" -eq 0 ] || fail "the false gate gave the code $code"
+@@ -137,6 +144,14 @@ if grep -qF 'qtcurve-userChrome.css' "$dir/$shared"; then
+ fi
+ grep -qF '#nav-bar' "$dir/$shared" ||
+     fail "the false gate dropped the foreign line"
++if [ -e "$dir/$content_owned" ]; then
++    fail "the false gate kept the content sheet"
++fi
++if grep -qF 'qtcurve-userContent.css' "$dir/$content_shared"; then
++    fail "the false gate kept the import line of the content sheet"
++fi
++grep -qF 'line-height' "$dir/$content_shared" ||
++    fail "the false gate dropped the foreign line of the content sheet"
+ 
+ # 3. The watch mode of a false gate leaves with the code 0 and holds no
+ # process. The settings file is inside the watched set, so the save of the
+@@ -158,19 +173,24 @@ fi
+ gate true
+ run again --write
+ [ -s "$dir/$owned" ] || fail "the true gate wrote no owned sheet again"
++[ -s "$dir/$content_owned" ] ||
++    fail "the true gate wrote no content sheet again"
+ 
+ # The control below runs the false arm with --force, which takes the gate out
+-# of the pass. The owned sheet must stay, so the check reads the gate and not
+-# the settings file.
++# of the pass. The two owned sheets must stay, so the check reads the gate and
++# not the settings file.
+ gate false
+ run forced --write --force
+ if [ ! -s "$dir/$owned" ]; then
+     fail "the forced run of the false gate took the owned sheet away"
+ fi
++if [ ! -s "$dir/$content_owned" ]; then
++    fail "the forced run of the false gate took the content sheet away"
++fi
+ 
+ if [ $status -eq 0 ]; then
+-    echo "assert-ff-gate: the false gate removed the owned sheet and kept" \
+-         "the foreign line, the watch mode left with 0, and --force wrote" \
+-         "over the false gate"
++    echo "assert-ff-gate: the false gate removed the 2 owned sheets and kept" \
++         "the 2 foreign lines, the watch mode left with 0, and --force wrote" \
++         "both sheets over the false gate"
+ fi
+ exit $status
+diff --git a/firefox/check/assert-ff-import.sh b/firefox/check/assert-ff-import.sh
+index 7d008264..ac4024a1 100644
+--- a/firefox/check/assert-ff-import.sh
++++ b/firefox/check/assert-ff-import.sh
+@@ -1,11 +1,13 @@
+ #!/bin/sh
+-# assert-ff-import.sh WRITER WORKDIR: the import line of the writer must stand
+-# before every rule of the shared sheet of a profile. A parser of the chrome
++# assert-ff-import.sh WRITER WORKDIR: each import line of the writer must stand
++# before every rule of the shared sheet that holds it. A parser of the chrome
+ # drops an import that stands after a rule. The run builds four fixture
+-# sheets, merges the line into each one and reads the bytes around it. One
+-# sheet holds a charset rule and a style rule on one line, where the import
+-# must stand between the two. It then doctors a copy of one sheet with the
+-# line at the end, and it fails if the check passes that copy.
++# bodies. It writes each one into the chrome sheet and into the content
++# sheet of one profile. It merges the two lines and reads the bytes around
++# them. One body holds
++# a charset rule and a style rule on one line, where the import must stand
++# between the two. It then doctors a copy of each sheet with the line at the
++# end, and it fails if the check passes such a copy.
+ set -eu
+ usage='usage: assert-ff-import.sh WRITER WORKDIR'
+ writer=${1:?$usage}
+@@ -21,6 +23,8 @@ esac
+ 
+ line='@import "qtcurve-userChrome.css";'
+ shared=chrome/userChrome.css
++content_line='@import "qtcurve-userContent.css";'
++content_shared=chrome/userContent.css
+ home=$work/home
+ root=$home/.config/mozilla/firefox
+ status=0
+@@ -58,7 +62,10 @@ printf '#nav-bar { min-height: 40px; }\r\n.tab { color: #101010; }\r\n' \
+ # it ends with no line break. The import must stand between the two rules.
+ printf '@charset "utf-8";#x{color:red}' > "$root/oneline/$shared"
+ 
++# The content sheet of each profile takes the same body, so one fixture proves
++# the merge of both statements.
+ for name in plain charset crlf oneline; do
++    cp "$root/$name/$shared" "$root/$name/$content_shared"
+     cp "$root/$name/$shared" "$work/$name.want"
+ done
+ 
+@@ -76,15 +83,17 @@ run() {
+     fi
+ }
+ 
+-# at_front FILE: gives 0 when the import line stands before every rule of
+-# FILE. A charset rule keeps the first line, and the import line follows it.
+-# The line follows it on the first line when the rule shares that line.
++# at_front FILE LINE: gives 0 when the import line LINE stands before every
++# rule of FILE. A charset rule keeps the first line, and the import line
++# follows it. The line follows it on the first line when the rule shares that
++# line.
+ at_front() {
++    a_line=$2
+     a_first=$(head -n 1 "$1")
+     case $a_first in
+         '@charset'*)
+             a_rest=${a_first#*;}
+-            if [ "$a_rest" = "$line" ]; then
++            if [ "$a_rest" = "$a_line" ]; then
+                 return 0
+             fi
+             if [ -n "$a_rest" ]; then
+@@ -93,13 +102,13 @@ at_front() {
+                 return 1
+             fi
+             a_second=$(sed -n 2p "$1")
+-            if [ "$a_second" != "$line" ]; then
++            if [ "$a_second" != "$a_line" ]; then
+                 echo "assert-ff-import: $1 holds '$a_second' after the" \
+                      "charset rule" >&2
+                 return 1
+             fi;;
+         *)
+-            if [ "$a_first" != "$line" ]; then
++            if [ "$a_first" != "$a_line" ]; then
+                 echo "assert-ff-import: $1 holds '$a_first' on the first" \
+                      "line" >&2
+                 return 1
+@@ -108,10 +117,10 @@ at_front() {
+     return 0
+ }
+ 
+-# foreign FILE WANT: gives 0 when FILE without the import line holds the bytes
+-# of WANT, in order.
++# foreign FILE WANT LINE: gives 0 when FILE without the import line LINE holds
++# the bytes of WANT, in order.
+ foreign() {
+-    sed "\\|^$line\$|d" "$1" > "$work/strip"
++    sed "\\|^$3\$|d" "$1" > "$work/strip"
+     if ! cmp -s "$work/strip" "$2"; then
+         echo "assert-ff-import: $1 without the import line is not $2" >&2
+         return 1
+@@ -121,11 +130,15 @@ foreign() {
+ 
+ run
+ for name in plain charset crlf oneline; do
+-    at_front "$root/$name/$shared" || status=1
++    at_front "$root/$name/$shared" "$line" || status=1
++    at_front "$root/$name/$content_shared" "$content_line" || status=1
+     cp "$root/$name/$shared" "$work/$name.first"
++    cp "$root/$name/$content_shared" "$work/$name.content.first"
+ done
+ for name in plain charset crlf; do
+-    foreign "$root/$name/$shared" "$work/$name.want" || status=1
++    foreign "$root/$name/$shared" "$work/$name.want" "$line" || status=1
++    foreign "$root/$name/$content_shared" "$work/$name.want" \
++        "$content_line" || status=1
+ done
+ 
+ # The fourth sheet takes the import between the two rules of its first line,
+@@ -133,19 +146,30 @@ done
+ printf '@charset "utf-8";%s\n#x{color:red}' "$line" > "$work/oneline.merged"
+ cmp -s "$root/oneline/$shared" "$work/oneline.merged" ||
+     fail "the one line sheet did not take the import after the charset rule"
++printf '@charset "utf-8";%s\n#x{color:red}' "$content_line" \
++    > "$work/oneline.content.merged"
++cmp -s "$root/oneline/$content_shared" "$work/oneline.content.merged" ||
++    fail "the one line content sheet did not take its import in place"
+ 
+-# The carriage returns of the third fixture must survive the merge.
++# The carriage returns of the third fixture must survive the merge, in both
++# sheets.
+ want_cr=$(tr -dc '\r' < "$work/crlf.want" | wc -c)
+ got_cr=$(tr -dc '\r' < "$root/crlf/$shared" | wc -c)
+ if [ "$want_cr" -ne "$got_cr" ]; then
+     fail "the merge left $got_cr carriage returns of $want_cr"
+ fi
++content_cr=$(tr -dc '\r' < "$root/crlf/$content_shared" | wc -c)
++if [ "$want_cr" -ne "$content_cr" ]; then
++    fail "the content merge left $content_cr carriage returns of $want_cr"
++fi
+ 
+ # A second pass must write no byte of a sheet that holds the line.
+ run
+ for name in plain charset crlf oneline; do
+     cmp -s "$root/$name/$shared" "$work/$name.first" ||
+         fail "the second pass moved a byte of the $name sheet"
++    cmp -s "$root/$name/$content_shared" "$work/$name.content.first" ||
++        fail "the second pass moved a byte of the $name content sheet"
+ done
+ 
+ # The remove mode must keep every foreign line, in order.
+@@ -161,25 +185,43 @@ for name in plain charset crlf oneline; do
+     sed 's/\r$//' "$root/$name/$shared" > "$work/$name.left"
+     cmp -s "$work/$name.left" "$work/$name.lines" ||
+         fail "the remove mode moved a line of the $name sheet"
++    sed 's/\r$//' "$root/$name/$content_shared" > "$work/$name.content.left"
++    cmp -s "$work/$name.content.left" "$work/$name.lines" ||
++        fail "the remove mode moved a line of the $name content sheet"
+ done
+ 
+ # The remove mode takes back the bytes of the front merge alone, so the fourth
+ # sheet holds its first bytes again.
+ cmp -s "$root/oneline/$shared" "$work/oneline.want" ||
+     fail "the remove mode did not give the one line sheet its bytes back"
++cmp -s "$root/oneline/$content_shared" "$work/oneline.want" ||
++    fail "the remove mode did not give the one line content sheet its bytes"
+ 
+-# The control below puts the import line at the end of a copy, which is the
+-# append that a parser of the chrome drops. The check must fail over it.
++# The controls below put an import line at the end of a copy, which is the
++# append that a parser of the chrome drops. The check must fail over each one.
++controls=0
+ sed "\\|^$line\$|d" "$work/plain.first" > "$work/append.css"
+ printf '%s\n' "$line" >> "$work/append.css"
+-if at_front "$work/append.css" 2> "$work/control.log"; then
++if at_front "$work/append.css" "$line" 2> "$work/control.log"; then
+     fail "the check passed the control copy of the append"
++else
++    controls=$((controls + 1))
++fi
++sed "\\|^$content_line\$|d" "$work/plain.content.first" \
++    > "$work/append-content.css"
++printf '%s\n' "$content_line" >> "$work/append-content.css"
++if at_front "$work/append-content.css" "$content_line" \
++    2>> "$work/control.log"; then
++    fail "the check passed the control copy of the content append"
++else
++    controls=$((controls + 1))
+ fi
+ 
+ if [ $status -eq 0 ]; then
+-    echo "assert-ff-import: the line stands first in 4 fixture sheets, the" \
+-         "foreign bytes and the $got_cr carriage returns survive, the one" \
+-         "line sheet gives its exact bytes back, a second pass writes" \
+-         "nothing, and the check rejects the append copy"
++    echo "assert-ff-import: the 2 lines stand first in 4 fixture pairs, the" \
++         "foreign bytes and the $got_cr carriage returns of each sheet" \
++         "survive, the one line sheets give their exact bytes back, a second" \
++         "pass writes nothing, and the check rejects each of the $controls" \
++         "append copies"
+ fi
+ exit $status
+diff --git a/firefox/check/assert-ff-keep.sh b/firefox/check/assert-ff-keep.sh
+index 75058aae..cb9c6361 100644
+--- a/firefox/check/assert-ff-keep.sh
++++ b/firefox/check/assert-ff-keep.sh
+@@ -1,10 +1,13 @@
+ #!/bin/sh
+ # assert-ff-keep.sh WRITER WORKDIR: a remove pass that stops must keep the
+-# shared sheet of the profile whole. The run builds a large userChrome.css
+-# that holds the import line. It then runs the remove mode under a file size
+-# limit that the rewrite passes, so the writer takes SIGXFSZ. HOME and
+-# XDG_CONFIG_HOME point into WORKDIR, because the remove mode rewrites the
+-# files of the caller.
++# shared sheet of the profile whole. The run holds two stages, and each one
++# states which shared sheet it limits. The first stage builds a large
++# userChrome.css that holds the import line, and the second stage builds a
++# large userContent.css. Each stage runs the remove mode under a file size
++# limit that the rewrite passes, so the writer takes SIGXFSZ. One stage holds
++# one large sheet, because the signal stops the pass at the first write over
++# the limit. HOME and XDG_CONFIG_HOME point into WORKDIR, because the remove
++# mode rewrites the files of the caller.
+ set -eu
+ usage='usage: assert-ff-keep.sh WRITER WORKDIR'
+ writer=${1:?$usage}
+@@ -20,6 +23,8 @@ esac
+ 
+ shared=chrome/userChrome.css
+ owned=chrome/qtcurve-userChrome.css
++content_shared=chrome/userContent.css
++content_owned=chrome/qtcurve-userContent.css
+ home=$work/home
+ root=$home/.config/mozilla/firefox
+ dir=$root/keep.default
+@@ -30,13 +35,18 @@ mkdir -p "$dir/chrome"
+ printf '[Profile0]\nName=keep\nIsRelative=1\nPath=keep.default\n' \
+     > "$root/profiles.ini"
+ 
+-# The fixture holds one import line of 34 bytes and 4000 rule lines of 32
+-# bytes, so it is 128034 bytes. One unit of ulimit -f is 1024 bytes at most,
+-# and the rewrite of 128000 bytes passes that limit in every shell.
++# big FILE STATEMENT: writes the large fixture FILE, which holds the import
++# line STATEMENT and 4000 rule lines of 32 bytes. One unit of ulimit -f is 1024
++# bytes at most, and the rewrite of 128000 bytes passes that limit in every
++# shell.
++big() {
++    printf '%s\n' "$2" > "$1"
++    awk 'BEGIN { for (i = 0; i < 4000; i++)
++                     printf "label.r%04d { color: #101010; }\n", i }' >> "$1"
++}
++
+ fixture=$work/fixture.css
+-printf '@import "qtcurve-userChrome.css";\n' > "$fixture"
+-awk 'BEGIN { for (i = 0; i < 4000; i++)
+-                 printf "label.r%04d { color: #101010; }\n", i }' >> "$fixture"
++big "$fixture" '@import "qtcurve-userChrome.css";'
+ tail -n +2 "$fixture" > "$work/want.css"
+ cp "$fixture" "$dir/$shared"
+ printf 'x\n' > "$dir/$owned"
+@@ -49,32 +59,44 @@ same() {
+     status=1
+ }
+ 
+-# The writer dies on the signal and gives 153, so the run keeps the exit code
+-# and reads the two files. ulimit -c 0 stops the core file of that signal, and
+-# the shell of the run prints the signal into the log of the run.
+-(
+-    ulimit -c 0
+-    ulimit -f 1
+-    code=0
+-    HOME=$home XDG_CONFIG_HOME=$home/.config "$writer" --remove || code=$?
+-    echo "$code" > "$work/limit.status"
+-) > "$work/limit.log" 2>&1
+-limited=$(cat "$work/limit.status")
++# limited_run NAME: runs the remove mode under the file size limit, and holds
++# the exit code of that run in the variable limited. The writer dies on the
++# signal and gives 153. ulimit -c 0 stops the core file of that signal, and the
++# shell of the run prints the signal into the log of the run.
++limited_run() {
++    (
++        ulimit -c 0
++        ulimit -f 1
++        code=0
++        HOME=$home XDG_CONFIG_HOME=$home/.config "$writer" --remove || code=$?
++        echo "$code" > "$work/$1.status"
++    ) > "$work/$1.log" 2>&1
++    limited=$(cat "$work/$1.status")
++}
++
++# free_run NAME: runs the remove mode with no limit.
++free_run() {
++    HOME=$home XDG_CONFIG_HOME=$home/.config "$writer" --remove \
++        > "$work/$1.log" 2>&1
++}
++
++# The first stage limits the shared chrome sheet.
++limited_run limit
+ same "$dir/$shared" "$fixture"
+ if [ ! -f "$dir/$owned" ]; then
+     echo "assert-ff-keep: the stopped pass deleted the owned sheet" >&2
+     status=1
+ fi
+ if [ $status -eq 0 ]; then
+-    echo "assert-ff-keep: the shared sheet keeps 128034 bytes under the" \
+-         "limit, the owned sheet stays, and the writer gave $limited"
++    echo "assert-ff-keep: the shared chrome sheet keeps" \
++         "$(wc -c < "$fixture") bytes under the limit, the owned sheet" \
++         "stays, and the writer gave $limited"
+ fi
+ 
+ # The same run with no limit must remove the import line, keep every other
+ # line and delete the owned sheet. The limited run above therefore fails on
+ # the write of the shared sheet alone.
+-HOME=$home XDG_CONFIG_HOME=$home/.config "$writer" --remove \
+-    > "$work/free.log" 2>&1
++free_run free
+ same "$dir/$shared" "$work/want.css"
+ if [ -e "$dir/$owned" ]; then
+     echo "assert-ff-keep: the free pass kept the owned sheet" >&2
+@@ -84,4 +106,36 @@ if [ $status -eq 0 ]; then
+     echo "assert-ff-keep: a free pass removes the import line, keeps 4000" \
+          "lines and deletes the owned sheet"
+ fi
++
++# The second stage limits the shared content sheet. The chrome sheet of the
++# profile now holds no import line, so the pass writes no byte of it and it
++# reaches the content pair.
++content_fixture=$work/content-fixture.css
++big "$content_fixture" '@import "qtcurve-userContent.css";'
++tail -n +2 "$content_fixture" > "$work/content-want.css"
++cp "$content_fixture" "$dir/$content_shared"
++printf 'x\n' > "$dir/$content_owned"
++
++limited_run content-limit
++same "$dir/$content_shared" "$content_fixture"
++if [ ! -f "$dir/$content_owned" ]; then
++    echo "assert-ff-keep: the stopped pass deleted the content sheet" >&2
++    status=1
++fi
++if [ $status -eq 0 ]; then
++    echo "assert-ff-keep: the shared content sheet keeps" \
++         "$(wc -c < "$content_fixture") bytes under the limit, the owned" \
++         "content sheet stays, and the writer gave $limited"
++fi
++
++free_run content-free
++same "$dir/$content_shared" "$work/content-want.css"
++if [ -e "$dir/$content_owned" ]; then
++    echo "assert-ff-keep: the free pass kept the content sheet" >&2
++    status=1
++fi
++if [ $status -eq 0 ]; then
++    echo "assert-ff-keep: a free pass removes the import line of the content" \
++         "sheet, keeps 4000 lines and deletes the owned content sheet"
++fi
+ exit $status
+diff --git a/firefox/check/assert-ff-matrix.sh b/firefox/check/assert-ff-matrix.sh
+index b9ac61fc..62681bee 100644
+--- a/firefox/check/assert-ff-matrix.sh
++++ b/firefox/check/assert-ff-matrix.sh
+@@ -3,10 +3,10 @@
+ # --force and the add-on state must hold one matrix of twelve cells. The run
+ # holds three profiles under one root. One holds the identifier ID as the
+ # active theme, one holds the same identifier in a not active state, and one
+-# holds no state file. Five passes read the cells, and the last pass proves
+-# that a sheet of an earlier pass leaves a not active profile. HOME,
+-# XDG_CONFIG_HOME and QTCURVE_CONFIG_DIR point into WORKDIR, because the
+-# writer rewrites the files of the caller.
++# holds no state file. Five passes read the cells over the two owned
++# sheets. The last pass proves that a sheet of an earlier pass leaves a not
++# active profile. HOME, XDG_CONFIG_HOME and QTCURVE_CONFIG_DIR point into
++# WORKDIR, because the writer rewrites the files of the caller.
+ set -eu
+ ulimit -c 0
+ usage='usage: assert-ff-matrix.sh WRITER WORKDIR ID'
+@@ -23,6 +23,7 @@ case $work in
+ esac
+ 
+ owned=chrome/qtcurve-userChrome.css
++content_owned=chrome/qtcurve-userContent.css
+ state=extensions.json
+ home=$work/home
+ root=$home/.config/mozilla/firefox
+@@ -64,15 +65,18 @@ run() {
+     [ "$code" -eq 0 ] || fail "the pass $r_name gave the code $code"
+ }
+ 
+-# has PASS NAME WANT: reads the owned sheet of the profile NAME after the pass
+-# PASS against WANT, which is yes or no.
++# has PASS NAME WANT: reads the two owned sheets of the profile NAME after the
++# pass PASS against WANT, which is yes or no. One want covers both sheets,
++# because one cell of the matrix governs them.
+ has() {
+-    if [ "$3" = yes ]; then
+-        [ -s "$root/$2/$owned" ] ||
+-            fail "the pass $1 wrote no owned sheet of the profile $2"
+-    elif [ -e "$root/$2/$owned" ]; then
+-        fail "the pass $1 kept the owned sheet of the profile $2"
+-    fi
++    for h_name in "$owned" "$content_owned"; do
++        if [ "$3" = yes ]; then
++            [ -s "$root/$2/$h_name" ] ||
++                fail "the pass $1 wrote no $h_name of the profile $2"
++        elif [ -e "$root/$2/$h_name" ]; then
++            fail "the pass $1 kept the $h_name of the profile $2"
++        fi
++    done
+ }
+ 
+ # same_states PASS: the writer reads the state files and never writes them, so
+@@ -157,8 +161,8 @@ same_states flipped
+ 
+ if [ $status -eq 0 ]; then
+     echo "assert-ff-matrix: the 12 cells of the key, --force and the add-on" \
+-         "state held over 5 passes, the pass E took the sheet of the pass D" \
+-         "from the not active profile, the 2 state files kept their bytes," \
+-         "and the flip brought that sheet back"
++         "state held over 5 passes and the 2 owned sheets, the pass E took" \
++         "the sheets of the pass D from the not active profile, the 2 state" \
++         "files kept their bytes, and the flip brought those sheets back"
+ fi
+ exit $status
+diff --git a/firefox/check/assert-ff-profiles.sh b/firefox/check/assert-ff-profiles.sh
+index 8b9f29dc..fe27dd18 100644
+--- a/firefox/check/assert-ff-profiles.sh
++++ b/firefox/check/assert-ff-profiles.sh
+@@ -1,7 +1,7 @@
+ #!/bin/sh
+ # assert-ff-profiles.sh WRITER WORKDIR: the writer must find every profile of
+-# the two roots and write its owned sheet into each one. The run builds seven
+-# fixture layouts under WORKDIR, and each layout holds a private HOME and
++# the two roots and write its two owned sheets into each one. The run builds
++# seven fixture layouts under WORKDIR, and each layout holds a private HOME and
+ # XDG_CONFIG_HOME. A directory outside every root must keep its bytes. A
+ # profile of two roots must take one pass. The remove mode must take every
+ # path of the write mode away.
+@@ -20,6 +20,8 @@ esac
+ 
+ owned=chrome/qtcurve-userChrome.css
+ shared=chrome/userChrome.css
++content_owned=chrome/qtcurve-userContent.css
++content_shared=chrome/userContent.css
+ status=0
+ 
+ rm -rf "$work"
+@@ -59,22 +61,44 @@ ini() {
+     } > "$1"
+ }
+ 
+-# written DIR: gives 0 when DIR holds the owned sheet and the import line on
+-# the first line of the shared sheet.
++# written DIR: gives 0 when DIR holds the two owned sheets, each one with
++# the head of its own rule. The two shared sheets must hold their import
++# lines on the first line. The two heads tell the sheets apart, so a writer
++# that puts one body in both files fails here.
+ written() {
+     if [ ! -s "$1/$owned" ]; then
+         echo "assert-ff-profiles: $1 holds no owned sheet" >&2
+         return 1
+     fi
++    if ! grep -qF ':root {' "$1/$owned"; then
++        echo "assert-ff-profiles: $1 holds no root rule in $owned" >&2
++        return 1
++    fi
+     w_first=$(head -n 1 "$1/$shared")
+     if [ "$w_first" != '@import "qtcurve-userChrome.css";' ]; then
+         echo "assert-ff-profiles: $1 holds '$w_first' on the first line" >&2
+         return 1
+     fi
++    if [ ! -s "$1/$content_owned" ]; then
++        echo "assert-ff-profiles: $1 holds no owned content sheet" >&2
++        return 1
++    fi
++    if ! grep -qF '* {' "$1/$content_owned"; then
++        echo "assert-ff-profiles: $1 holds no universal rule in" \
++             "$content_owned" >&2
++        return 1
++    fi
++    w_first=$(head -n 1 "$1/$content_shared")
++    if [ "$w_first" != '@import "qtcurve-userContent.css";' ]; then
++        echo "assert-ff-profiles: $1 holds '$w_first' on the first line of" \
++             "the content sheet" >&2
++        return 1
++    fi
+     return 0
+ }
+ 
+-# untouched DIR: gives 0 when DIR holds no owned sheet and no import line.
++# untouched DIR: gives 0 when DIR holds no owned sheet and no import line, in
++# both pairs.
+ untouched() {
+     if [ -e "$1/$owned" ]; then
+         echo "assert-ff-profiles: $1 holds an owned sheet" >&2
+@@ -85,6 +109,17 @@ untouched() {
+         echo "assert-ff-profiles: $1 holds the import line" >&2
+         return 1
+     fi
++    if [ -e "$1/$content_owned" ]; then
++        echo "assert-ff-profiles: $1 holds an owned content sheet" >&2
++        return 1
++    fi
++    if [ -e "$1/$content_shared" ] &&
++        grep -qF 'qtcurve-userContent.css' "$1/$content_shared"
++    then
++        echo "assert-ff-profiles: $1 holds the import line of the content" \
++             "sheet" >&2
++        return 1
++    fi
+     return 0
+ }
+ 
+diff --git a/firefox/check/assert-ff-state.sh b/firefox/check/assert-ff-state.sh
+index 42efc498..6c7c7adf 100644
+--- a/firefox/check/assert-ff-state.sh
++++ b/firefox/check/assert-ff-state.sh
+@@ -2,11 +2,11 @@
+ # assert-ff-state.sh WRITER WORKDIR ID: the writer must follow the add-on state
+ # of each profile. The run holds nine profiles under one root, and eight of
+ # them carry a state file of their own shape. A profile that holds the
+-# identifier ID in a not active state loses the sheet, and every other shape
+-# keeps the add-on free flow. The state files keep their bytes, because the
+-# writer reads them and never writes them. HOME, XDG_CONFIG_HOME and
+-# QTCURVE_CONFIG_DIR point into WORKDIR, because the writer rewrites the files
+-# of the caller.
++# identifier ID in a not active state loses the two owned sheets. Every
++# other shape keeps the add-on free flow. The state files keep their bytes,
++# because the writer reads them and never writes them. HOME,
++# XDG_CONFIG_HOME and QTCURVE_CONFIG_DIR point into WORKDIR, because the
++# writer rewrites the files of the caller.
+ set -eu
+ ulimit -c 0
+ usage='usage: assert-ff-state.sh WRITER WORKDIR ID'
+@@ -24,6 +24,8 @@ esac
+ 
+ owned=chrome/qtcurve-userChrome.css
+ shared=chrome/userChrome.css
++content_owned=chrome/qtcurve-userContent.css
++content_shared=chrome/userContent.css
+ state=extensions.json
+ pref=toolkit.legacyUserProfileCustomizations.stylesheets
+ home=$work/home
+@@ -67,9 +69,11 @@ write_state() {
+         > "$root/$1/$state"
+ }
+ 
+-# seed_sheet NAME: writes the seed into the owned sheet of the profile NAME.
++# seed_sheet NAME: writes the seed into the two owned sheets of the profile
++# NAME.
+ seed_sheet() {
+     printf '%s\n' "$seed" > "$root/$1/$owned"
++    printf '%s\n' "$seed" > "$root/$1/$content_owned"
+ }
+ 
+ # run NAME ARGS...: runs the writer over the private home, and holds the exit
+@@ -89,14 +93,18 @@ count() {
+     printf '%s\n' "$n"
+ }
+ 
+-# has NAME WANT: reads the owned sheet of the profile NAME against WANT, which
+-# is yes or no.
++# has NAME WANT: reads the two owned sheets of the profile NAME against WANT,
++# which is yes or no. One want covers both sheets, because one state governs
++# them.
+ has() {
+-    if [ "$2" = yes ]; then
+-        [ -s "$root/$1/$owned" ] || fail "the profile $1 holds no owned sheet"
+-    elif [ -e "$root/$1/$owned" ]; then
+-        fail "the profile $1 keeps an owned sheet"
+-    fi
++    for h_name in "$owned" "$content_owned"; do
++        if [ "$2" = yes ]; then
++            [ -s "$root/$1/$h_name" ] ||
++                fail "the profile $1 holds no $h_name"
++        elif [ -e "$root/$1/$h_name" ]; then
++            fail "the profile $1 keeps $h_name"
++        fi
++    done
+ }
+ 
+ # save_states: copies every state file, for the byte compare after a pass.
+@@ -160,7 +168,10 @@ seed_sheet unparseable-held
+ seed_sheet unknown-schema
+ printf '@import "qtcurve-userChrome.css";\n#nav-bar { min-height: 40px; }\n' \
+     > "$root/inactive/$shared"
++printf '@import "qtcurve-userContent.css";\nbody { line-height: 1.5; }\n' \
++    > "$root/inactive/$content_shared"
+ cp "$root/unparseable-held/$owned" "$work/held.want"
++cp "$root/unparseable-held/$content_owned" "$work/held-content.want"
+ save_states
+ 
+ # 1. One pass over the nine arms, with the key of the gate true.
+@@ -169,15 +180,24 @@ run first --write
+ has active yes
+ grep -qF 'qtcurve-userChrome.css' "$root/active/$shared" ||
+     fail "the arm active merged no import line"
++grep -qF 'qtcurve-userContent.css' "$root/active/$content_shared" ||
++    fail "the arm active merged no import line of the content sheet"
+ has inactive no
+ if grep -qF 'qtcurve-userChrome.css' "$root/inactive/$shared"; then
+     fail "the arm inactive kept the import line"
+ fi
+ grep -qF '#nav-bar' "$root/inactive/$shared" ||
+     fail "the arm inactive dropped the foreign line"
++if grep -qF 'qtcurve-userContent.css' "$root/inactive/$content_shared"; then
++    fail "the arm inactive kept the import line of the content sheet"
++fi
++grep -qF 'line-height' "$root/inactive/$content_shared" ||
++    fail "the arm inactive dropped the foreign line of the content sheet"
+ has absent yes
+ cmp -s "$root/unparseable-held/$owned" "$work/held.want" ||
+     fail "the arm unparseable-held lost the bytes of its sheet"
++cmp -s "$root/unparseable-held/$content_owned" "$work/held-content.want" ||
++    fail "the arm unparseable-held lost the bytes of its content sheet"
+ has unparseable-bare no
+ has unknown-schema no
+ has missing-array yes
+@@ -198,6 +218,8 @@ n=$(count "the profile $root/inactive needs $pref" "$work/first.log")
+ # no add-on hold the same bytes. One pass writes one sheet body.
+ cmp -s "$root/active/$owned" "$root/absent/$owned" ||
+     fail "the sheets of the arms active and absent differ"
++cmp -s "$root/active/$content_owned" "$root/absent/$content_owned" ||
++    fail "the content sheets of the arms active and absent differ"
+ same_states first
+ 
+ # 2. The same pass again. The transition line fires on the transition alone,
+@@ -217,6 +239,8 @@ has unknown-schema no
+ has array-shape yes
+ cmp -s "$root/unparseable-held/$owned" "$work/held.want" ||
+     fail "the second pass moved a byte of the sheet of unparseable-held"
++cmp -s "$root/unparseable-held/$content_owned" "$work/held-content.want" ||
++    fail "the second pass moved a byte of the held content sheet"
+ same_states second
+ 
+ # The control below runs the same fixtures with --force, which takes the state
+@@ -228,9 +252,11 @@ has unknown-schema yes
+ same_states forced
+ 
+ # The control below makes the record of the arm inactive active, and one plain
+-# pass must bring the sheet back. A reader that latches the remove fails here,
+-# and so does a reader that holds the state of an earlier pass.
+-rm -f "$root/inactive/$owned"
++# pass must bring the two sheets back. A reader that latches the remove fails
++# here, and so does a reader that holds the state of an earlier pass. The
++# control takes both owned names away, because a sheet of the forced pass above
++# would answer the flip in place of the pass.
++rm -f "$root/inactive/$owned" "$root/inactive/$content_owned"
+ write_state inactive 37 "$(record "$id" true false)"
+ cp "$root/inactive/$state" "$work/inactive.want"
+ run flipped --write
+@@ -238,9 +264,9 @@ has inactive yes
+ same_states flipped
+ 
+ if [ $status -eq 0 ]; then
+-    echo "assert-ff-state: the 9 arms of the predicate held, the 8 state" \
+-         "files kept their bytes over 4 passes, the not active arm took 1" \
+-         "transition line and 0 notices, --force wrote the 2 held profiles," \
+-         "and the flip brought the sheet back"
++    echo "assert-ff-state: the 9 arms of the predicate held over the 2 owned" \
++         "sheets, the 8 state files kept their bytes over 4 passes, the not" \
++         "active arm took 1 transition line and 0 notices, --force wrote the" \
++         "2 held profiles, and the flip brought both sheets back"
+ fi
+ exit $status
+diff --git a/firefox/writer/main.cpp b/firefox/writer/main.cpp
+index e69edb3f..a37f69ad 100644
+--- a/firefox/writer/main.cpp
++++ b/firefox/writer/main.cpp
+@@ -84,6 +84,16 @@ const char *const ownedName = "qtcurve-userChrome.css";
+ /** The file of a profile that holds the import line of the writer. */
+ const char *const sharedName = "userChrome.css";
+ 
++/** The content file of a profile that holds the sheet of the writer. */
++const char *const contentOwnedName = "qtcurve-userContent.css";
++
++/** The content file of a profile that holds the import line of the writer. */
++const char *const contentSharedName = "userContent.css";
++
++/** The one line of the shared content sheet that QtCurve owns. */
++const char *const contentImportStatement =
++    "@import \"qtcurve-userContent.css\";";
++
+ /** The file of a profile that holds the preferences of the user. */
+ const char *const prefsName = "prefs.js";
+ 
+@@ -107,7 +117,8 @@ usage()
+ {
+     fprintf(stderr,
+             "usage: qtcurve-firefox-writer [--write|--remove|--watch|\n"
+-            "                               --stdout|--manifest|--map]\n"
++            "                               --stdout|--stdout-content|\n"
++            "                               --manifest|--map]\n"
+             "  --remove          delete the Firefox files of the writer\n"
+             "  --manifest        write the manifest of the static theme\n"
+             "  --map             write the map of the two emitters\n"
+@@ -274,42 +285,83 @@ noticePref(const QString &dir)
+ }
+ 
+ /**
+- * Writes the owned sheet of the profile dir and merges the import line into
+- * the shared sheet of that profile. The call writes no byte of a sheet that
+- * holds the content already.
++ * Writes one owned sheet under the directory sheetDir, and merges the import
++ * line of that sheet into the shared sheet beside it. The call writes no byte
++ * of a sheet that holds the body already.
+  *
+- * \param content the whole owned sheet, in UTF-8.
+- * \param dir the profile directory, which the call never makes.
++ * \param sheetDir the chrome directory of a profile, which holds the two
++ *     sheet pairs and which the call never makes.
++ * \param body the whole owned sheet, in UTF-8.
++ * \param ownedFile the name of the owned sheet.
++ * \param sharedFile the name of the shared sheet of this pair.
++ * \param statement the import line of this pair.
++ * \param changed the call sets it to true when the owned sheet takes bytes.
++ * \param hadImport the call sets it to true when the shared sheet held the
++ *     import line before the merge.
+  * \return 0 on success, 1 when the owned sheet does not open, and 6 when the
+  *     shared sheet does not open.
+  */
+ int
+-writeProfile(const QByteArray &content, const QString &dir)
++writeSheet(const QString &sheetDir, const QByteArray &body,
++           const char *ownedFile, const char *sharedFile,
++           const char *statement, bool *changed, bool *hadImport)
+ {
+-    const QString chrome = chromeOf(dir);
+-    const QString owned = chrome + QLatin1Char('/') +
+-        QString::fromLatin1(ownedName);
+-    const QString shared = chrome + QLatin1Char('/') +
+-        QString::fromLatin1(sharedName);
+-    bool changed = true;
++    const QString owned = sheetDir + QLatin1Char('/') +
++        QString::fromLatin1(ownedFile);
++    const QString shared = sheetDir + QLatin1Char('/') +
++        QString::fromLatin1(sharedFile);
++    *changed = true;
++    *hadImport = false;
+     QFile old(owned);
+-    if (old.open(QIODevice::ReadOnly) && old.readAll() == content) {
++    if (old.open(QIODevice::ReadOnly) && old.readAll() == body) {
+         old.close();
+-        changed = false;
++        *changed = false;
+     } else {
+-        const int written = writeOwned(owned, content);
++        const int written = writeOwned(owned, body);
+         if (written != 0) {
+             return written;
+         }
+     }
+-    const bool hadImport = holdsLine(shared, QByteArray(Gtk::importStatement));
+-    const int merged = mergeImport(shared, Placement::Front);
+-    if (merged != 0) {
+-        return merged;
++    *hadImport = holdsLine(shared, QByteArray(statement));
++    return mergeImport(shared, Placement::Front, statement);
++}
++
++/**
++ * Writes the two owned sheets of the profile dir and merges the two import
++ * lines into the shared sheets of that profile. A fault in one sheet pair
++ * does not stop the other pair, and the call writes no byte of a sheet that
++ * holds its content already.
++ *
++ * \param chrome the whole owned chrome sheet, in UTF-8.
++ * \param content the whole owned content sheet, in UTF-8.
++ * \param dir the profile directory, which the call never makes.
++ * \return 0 on success, 1 when an owned sheet does not open, and 6 when a
++ *     shared sheet does not open.
++ */
++int
++writeProfile(const QByteArray &chrome, const QByteArray &content,
++             const QString &dir)
++{
++    const QString sheetDir = chromeOf(dir);
++    bool changedChrome = false;
++    bool hadImportChrome = false;
++    bool changedContent = false;
++    bool hadImportContent = false;
++    const int chromeCode = writeSheet(sheetDir, chrome, ownedName, sharedName,
++                                      Gtk::importStatement, &changedChrome,
++                                      &hadImportChrome);
++    const int contentCode = writeSheet(sheetDir, content, contentOwnedName,
++                                       contentSharedName,
++                                       contentImportStatement, &changedContent,
++                                       &hadImportContent);
++    const int code = chromeCode != 0 ? chromeCode : contentCode;
++    if (code != 0) {
++        return code;
+     }
+-    if (changed || !hadImport) {
+-        printf("%s: the profile %s holds the new sheet, and Firefox takes it"
+-               " after a restart\n", writerName,
++    if (changedChrome || !hadImportChrome || changedContent ||
++        !hadImportContent) {
++        printf("%s: the profile %s holds the new sheets, and Firefox takes"
++               " them after a restart\n", writerName,
+                dir.toLocal8Bit().constData());
+     }
+     noticePref(dir);
+@@ -317,22 +369,26 @@ writeProfile(const QByteArray &content, const QString &dir)
+ }
+ 
+ /**
+- * Takes the import line out of the shared sheet of the profile dir. It then
+- * deletes the owned sheet of that profile, and it prints each path that it
+- * deletes. A file that is absent is no error.
++ * Takes the import line of one pair out of the shared sheet under the
++ * directory sheetDir, and then deletes the owned sheet of that pair. The call
++ * keeps the owned sheet while the shared sheet does not open.
+  *
+- * \param dir the profile directory, which the call never removes.
++ * \param sheetDir the chrome directory of a profile, which the call never
++ *     removes.
++ * \param ownedFile the name of the owned sheet.
++ * \param sharedFile the name of the shared sheet of this pair.
++ * \param statement the import line of this pair.
+  * \param gone the call sets it to true when it deletes the owned sheet.
+  * \return 0 on success, and 6 when the shared sheet does not open.
+  */
+ int
+-removeProfile(const QString &dir, bool *gone = nullptr)
++removeSheet(const QString &sheetDir, const char *ownedFile,
++            const char *sharedFile, const char *statement, bool *gone)
+ {
+-    const QString chrome = chromeOf(dir);
+-    const QString shared = chrome + QLatin1Char('/') +
+-        QString::fromLatin1(sharedName);
++    const QString shared = sheetDir + QLatin1Char('/') +
++        QString::fromLatin1(sharedFile);
+     bool changed = false;
+-    const int code = removeImport(shared, &changed);
++    const int code = removeImport(shared, &changed, statement);
+     if (changed) {
+         printf("%s: removed the import line of %s\n", writerName,
+                shared.toLocal8Bit().constData());
+@@ -340,8 +396,8 @@ removeProfile(const QString &dir, bool *gone = nullptr)
+     if (code != 0) {
+         return code;
+     }
+-    const QString owned = chrome + QLatin1Char('/') +
+-        QString::fromLatin1(ownedName);
++    const QString owned = sheetDir + QLatin1Char('/') +
++        QString::fromLatin1(ownedFile);
+     if (removeOwned(owned)) {
+         if (gone) {
+             *gone = true;
+@@ -351,6 +407,43 @@ removeProfile(const QString &dir, bool *gone = nullptr)
+     return 0;
+ }
+ 
++/**
++ * Takes the two import lines out of the shared sheets of the profile dir, and
++ * deletes the two owned sheets. A fault in one sheet pair does not stop the
++ * other pair, and a file that is absent is no error.
++ *
++ * \param dir the profile directory, which the call never removes.
++ * \param gone the call sets it to true when it deletes an owned sheet.
++ * \return 0 on success, and the first code of a shared sheet that does not
++ *     open.
++ */
++int
++removeProfile(const QString &dir, bool *gone = nullptr)
++{
++    const QString sheetDir = chromeOf(dir);
++    const int chromeCode = removeSheet(sheetDir, ownedName, sharedName,
++                                       Gtk::importStatement, gone);
++    const int contentCode = removeSheet(sheetDir, contentOwnedName,
++                                        contentSharedName,
++                                        contentImportStatement, gone);
++    return chromeCode != 0 ? chromeCode : contentCode;
++}
++
++/**
++ * Returns true when the chrome directory of the profile dir holds no owned
++ * sheet of the writer. A failed unlink and an absent file give one answer to
++ * the caller of removeOwned, so a caller that must know reads the two paths.
++ */
++bool
++ownedGone(const QString &dir)
++{
++    const QString sheetDir = chromeOf(dir);
++    return !QFile::exists(sheetDir + QLatin1Char('/') +
++                          QString::fromLatin1(ownedName)) &&
++        !QFile::exists(sheetDir + QLatin1Char('/') +
++                       QString::fromLatin1(contentOwnedName));
++}
++
+ /**
+  * Deletes the owned files of every profile, and returns the first exit code
+  * that is not 0. A profile that fails does not stop the profiles after it.
+@@ -397,7 +490,8 @@ runWrite(const Args &args)
+                 err.toLocal8Bit().constData());
+         return bad;
+     }
+-    const QByteArray content = buildSheet(opts, pal).toUtf8();
++    const QByteArray chrome = buildSheet(opts, pal).toUtf8();
++    const QByteArray content = buildContentSheet(opts, pal).toUtf8();
+     if (Gtk::emitError() != 0) {
+         return Gtk::emitError();
+     }
+@@ -405,17 +499,17 @@ runWrite(const Args &args)
+     for (const QString &dir : profiles(true)) {
+         int code = 0;
+         if (args.force) {
+-            code = writeProfile(content, dir);
++            code = writeProfile(chrome, content, dir);
+         } else {
+             switch (addonState(dir)) {
+             case AddonState::Inactive: {
+                 bool gone = false;
+                 code = removeProfile(dir, &gone);
+-                if (gone) {
++                if (gone && code == 0 && ownedGone(dir)) {
+                     printf("%s: the profile %s holds the QtCurve add-on not"
+-                           " active; the writer removed the sheet, and Firefox"
+-                           " shows the change after a restart\n", writerName,
+-                           dir.toLocal8Bit().constData());
++                           " active; the writer removed every QtCurve sheet,"
++                           " and Firefox shows the change after a restart\n",
++                           writerName, dir.toLocal8Bit().constData());
+                 }
+                 break;
+             }
+@@ -425,7 +519,7 @@ runWrite(const Args &args)
+                 break;
+             case AddonState::NoAddon:
+             case AddonState::Active:
+-                code = writeProfile(content, dir);
++                code = writeProfile(chrome, content, dir);
+                 break;
+             }
+         }
+@@ -451,7 +545,11 @@ give(const Args &args, const QString &text)
+     return 0;
+ }
+ 
+-/** Prints one sheet to standard output, and returns the exit code. */
++/**
++ * Prints one sheet to standard output, and returns the exit code. The mode
++ * --stdout prints the chrome sheet, and the mode --stdout-content prints the
++ * content sheet.
++ */
+ int
+ runStdout(const Args &args)
+ {
+@@ -469,7 +567,8 @@ runStdout(const Args &args)
+                 err.toLocal8Bit().constData());
+         return bad;
+     }
+-    const QString text = buildSheet(opts, pal);
++    const QString text = args.mode == QLatin1String("--stdout-content") ?
++        buildContentSheet(opts, pal) : buildSheet(opts, pal);
+     if (Gtk::emitError() != 0) {
+         return Gtk::emitError();
+     }
+@@ -512,9 +611,9 @@ runManifest(const Args &args)
+ /**
+  * Returns the paths that the watch mode reads. The set holds the settings of
+  * QtCurve, the colour file of KDE and the profile list of each root. It also
+- * holds the shared sheet and the extensions.json file of each profile that the
+- * roots hold at this moment. A profile that arrives later reaches the watcher
+- * through the profile list.
++ * holds the two shared sheets and the extensions.json file of each profile
++ * that the roots hold at this moment. A profile that arrives later reaches the
++ * watcher through the profile list.
+  */
+ QStringList
+ watchPaths()
+@@ -529,6 +628,8 @@ watchPaths()
+     for (const QString &dir : profiles(false)) {
+         paths << chromeOf(dir) + QLatin1Char('/') +
+             QString::fromLatin1(sharedName);
++        paths << chromeOf(dir) + QLatin1Char('/') +
++            QString::fromLatin1(contentSharedName);
+         paths << dir + QLatin1Char('/') + QString::fromLatin1(stateName);
+     }
+     return paths;
+@@ -544,6 +645,7 @@ parse(const QStringList &argv, Args &args)
+             arg == QLatin1String("--remove") ||
+             arg == QLatin1String("--watch") ||
+             arg == QLatin1String("--stdout") ||
++            arg == QLatin1String("--stdout-content") ||
+             arg == QLatin1String("--manifest") ||
+             arg == QLatin1String("--map")) {
+             args.mode = arg;
+@@ -635,7 +737,8 @@ main(int argc, char **argv)
+         return 1;
+     }
+ 
+-    if (args.mode == QLatin1String("--stdout")) {
++    if (args.mode == QLatin1String("--stdout") ||
++        args.mode == QLatin1String("--stdout-content")) {
+         return runStdout(args);
+     }
+     if (args.mode == QLatin1String("--manifest")) {
+diff --git a/firefox/writer/sheet.cpp b/firefox/writer/sheet.cpp
+index c302629c..2253574a 100644
+--- a/firefox/writer/sheet.cpp
++++ b/firefox/writer/sheet.cpp
+@@ -203,5 +203,19 @@ buildSheet(const Options &opts, const Palette &pal)
+     return out;
+ }
+ 
++QString
++buildContentSheet(const Options &opts, const Palette &pal)
++{
++    QString out = QStringLiteral("/* %1 writes this file, and it takes every"
++                                 " byte of it. */\n")
++        .arg(QLatin1String(Gtk::writerName));
++    out += QStringLiteral("* {\n"
++                          "  scrollbar-color: %1 %2 !important;\n"
++                          "}\n")
++        .arg(Gtk::hex(ffColour(opts, pal, FfRole::ScrollThumb)),
++             Gtk::hex(ffColour(opts, pal, FfRole::ScrollTrack)));
++    return out;
++}
++
+ }
+ }
+diff --git a/firefox/writer/sheet.h b/firefox/writer/sheet.h
+index 0c2dfc4f..fd5ab8ea 100644
+--- a/firefox/writer/sheet.h
++++ b/firefox/writer/sheet.h
+@@ -42,6 +42,17 @@ namespace Firefox {
+  */
+ QString buildSheet(const Options &opts, const Gtk::Palette &pal);
+ 
++/**
++ * Returns the text of the content sheet that the writer owns in a profile.
++ * The sheet holds one header line and one universal rule that carries the
++ * scroll bar pair of the chrome sheet.
++ *
++ * \param opts  the QtCurve settings, which give the slider keys.
++ * \param pal   the colours of the live scheme or of a colour file.
++ * \return the whole sheet, which ends with one newline.
++ */
++QString buildContentSheet(const Options &opts, const Gtk::Palette &pal);
++
+ }
+ }
+ 
+diff --git a/gtk4/writer/userfile.cpp b/gtk4/writer/userfile.cpp
+index e593852c..e37eb6ae 100644
+--- a/gtk4/writer/userfile.cpp
++++ b/gtk4/writer/userfile.cpp
+@@ -156,7 +156,7 @@ frontMerge(const QByteArray &contents, const QByteArray &statement)
+ }
+ 
+ int
+-mergeImport(const QString &path, Placement placement)
++mergeImport(const QString &path, Placement placement, const char *statement)
+ {
+     if (!QDir().mkpath(QFileInfo(path).absolutePath())) {
+         return 6;
+@@ -167,18 +167,18 @@ mergeImport(const QString &path, Placement placement)
+                 path.toLocal8Bit().constData());
+         return 6;
+     }
+-    const QByteArray statement(importStatement);
+-    if (contents.contains(statement)) {
++    const QByteArray line(statement);
++    if (contents.contains(line)) {
+         return 0;
+     }
+     if (placement == Placement::Front) {
+-        contents = frontMerge(contents, statement);
++        contents = frontMerge(contents, line);
+     } else {
+         contents = contents.trimmed();
+         if (!contents.isEmpty()) {
+             contents.append('\n');
+         }
+-        contents.append(statement);
++        contents.append(line);
+         contents.append('\n');
+     }
+     if (!saveWhole(path, contents)) {
+@@ -190,7 +190,7 @@ mergeImport(const QString &path, Placement placement)
+ }
+ 
+ int
+-removeImport(const QString &path, bool *changed)
++removeImport(const QString &path, bool *changed, const char *statement)
+ {
+     if (!QFile::exists(path)) {
+         return 0;
+@@ -202,7 +202,7 @@ removeImport(const QString &path, bool *changed)
+         return 6;
+     }
+     QByteArray out;
+-    QByteArray front(importStatement);
++    QByteArray front(statement);
+     front.append('\n');
+     const int at = charsetEnd(raw);
+     if (at > 0 && raw.mid(at, front.size()) == front) {
+@@ -215,7 +215,7 @@ removeImport(const QString &path, bool *changed)
+         QList<QByteArray> kept;
+         const QList<QByteArray> lines = contents.split('\n');
+         for (const QByteArray &one : lines) {
+-            if (one.trimmed() != QByteArray(importStatement)) {
++            if (one.trimmed() != QByteArray(statement)) {
+                 kept.append(one);
+             }
+         }
+diff --git a/gtk4/writer/userfile.h b/gtk4/writer/userfile.h
+index 506b7683..48f62f2f 100644
+--- a/gtk4/writer/userfile.h
++++ b/gtk4/writer/userfile.h
+@@ -68,29 +68,33 @@ int writeOwned(const QString &path, const QByteArray &content);
+ int copyAssets(const QString &srcDir, const QString &dstDir);
+ 
+ /**
+- * Puts the QtCurve import line into path when the content of the file does
+- * not hold it. End appends the line to the trimmed content, and Front puts
+- * the line before every other byte and keeps a leading @charset rule first.
+- * The function writes no byte when the line is there, and a write that fails
++ * Puts the import line into path when the content of the file does not hold
++ * it. End appends the line to the trimmed content, and Front puts the line
++ * before every other byte and keeps a leading @charset rule first. The
++ * function writes no byte when the line is there, and a write that fails
+  * keeps the old content of the file.
+  *
+  * \param path       the shared sheet of the user, which the call can make.
+  * \param placement  the end or the front of the file.
++ * \param statement  the import line, which importStatement gives by default.
+  * \return 0 on success, and 6 when the read or the write of the file fails.
+  */
+-int mergeImport(const QString &path, Placement placement);
++int mergeImport(const QString &path, Placement placement,
++                const char *statement = importStatement);
+ 
+ /**
+- * Removes the QtCurve import line from path and keeps every other line. A
+- * line after a leading @charset rule goes away with the bytes of the front
+- * merge alone, and that file keeps every other byte. The function writes no
+- * byte when the file holds no import line, and a write that fails keeps the
+- * old content of the file.
++ * Removes the import line from path and keeps every other line. A line after
++ * a leading @charset rule goes away with the bytes of the front merge alone,
++ * and that file keeps every other byte. The function writes no byte when the
++ * file holds no import line, and a write that fails keeps the old content of
++ * the file.
+  *
+- * \param changed  the call sets it to true when the file loses the line.
++ * \param changed    the call sets it to true when the file loses the line.
++ * \param statement  the import line, which importStatement gives by default.
+  * \return 0 on success or on a missing file, and 6 on a read or write fault.
+  */
+-int removeImport(const QString &path, bool *changed = nullptr);
++int removeImport(const QString &path, bool *changed = nullptr,
++                 const char *statement = importStatement);
+ 
+ /**
+  * Deletes path and gives no error when the file is already gone.

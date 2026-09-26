@@ -1,0 +1,62 @@
+Take the default when a number in the config fails to parse
+
+readNumEntry returns QString::toInt() without the success flag. A value
+that is not a number reaches the style as zero, not as the shipped
+default. A value outside the range of int does the same.
+
+Zero is a live setting for these keys, not an off state. It clears every
+check box of the eight keys that carry bit flags. It selects the small
+check box for crSize and removes the password character. It makes the
+window background fully translucent for bgndOpacity. The next save
+writes the lost value back over the file.
+
+Pass the success flag and return the default when the parse fails. An
+empty value and an absent key still take the default, as before.
+
+CFG_READ_INT_BOOL reads a key that held a boolean before the option
+became a bit mask, and it needs the old pair of tokens. Read true and
+false in the macro itself. An old file therefore keeps its meaning, and
+a malformed value on the same key now takes the default.
+
+A reader oracle over the fix reads thin=zzqq as 1, crSize=zzz as 15,
+gbLabel=zzz as 9, passwordChar=25CF as 9679 and bgndOpacity=2147483648
+as 100. Each value is the shipped default, and each read as zero before
+the change.
+
+The change sits on the branch work/config-io of the local tree, as commit 3 of 18.
+A new merge request on system/qtcurve takes that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/qt6/common/config_file.cpp b/qt6/common/config_file.cpp
+index 17a4e735..1073777e 100644
+--- a/qt6/common/config_file.cpp
++++ b/qt6/common/config_file.cpp
+@@ -698,8 +698,10 @@ inline QString readStringEntry(QtCConfig &cfg, const QString &key)
+ static int readNumEntry(QtCConfig &cfg, const QString &key, int def)
+ {
+     const QString &val(readStringEntry(cfg, key));
++    bool           ok=false;
++    const int      num(val.toInt(&ok));
+ 
+-    return val.isEmpty() ? def : val.toInt();
++    return ok ? num : def;
+ }
+ 
+ static int readVersionEntry(QtCConfig &cfg, const QString &key)
+@@ -790,9 +792,14 @@ static void readDoubleList(QtCConfig &cfg, const char *key, double *list, int co
+         opts->ENTRY = readNumEntry(cfg, #ENTRY, def->ENTRY);    \
+     } while (0)
+ 
++// The key held a boolean before the option became a bit mask, so true
++// selects DEF and false selects zero.
+ #define CFG_READ_INT_BOOL(ENTRY, DEF) do {                              \
+-        if (readBoolEntry(cfg, #ENTRY, false)) {                        \
++        QString sVal(readStringEntry(cfg, #ENTRY));                     \
++        if (sVal == QLatin1String("true")) {                            \
+             opts->ENTRY = DEF;                                          \
++        } else if (sVal == QLatin1String("false")) {                    \
++            opts->ENTRY = 0;                                            \
+         } else {                                                        \
+             opts->ENTRY = readNumEntry(cfg, #ENTRY, def->ENTRY);        \
+         }                                                               \

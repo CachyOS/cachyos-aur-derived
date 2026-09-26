@@ -1,0 +1,91 @@
+Use one name rule for the installed background image
+
+The extension helper scanned the whole path for the last dot, so a
+folder name with a dot became the extension. An empty file selection
+resolved to the save folder, and the installer then wrote a
+configuration value that names no file. The remover dropped the
+extension that the installer appends, so every copied image stayed in
+the configuration folder.
+
+Take the extension from the file name alone, install only from a real
+file, and remove every name that the installer can write. No string of
+the dialog changes, and a saved configuration reads unchanged.
+
+The change sits on the branch work/image-dialog of the local tree, as commit 5 of 5.
+A new merge request on system/qtcurve takes that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/qt6/config/qtcurveconfig.cpp b/qt6/config/qtcurveconfig.cpp
+index 10d47151..9abaef8a 100644
+--- a/qt6/config/qtcurveconfig.cpp
++++ b/qt6/config/qtcurveconfig.cpp
+@@ -102,16 +102,17 @@ allocate_kstyle_config(QWidget* parent)
+     return new QtCurveConfig(parent);
+ }
+ 
+-static QString getExt(const QString &file)
++static inline QString getFileName(const QString &f)
+ {
+-    int dotPos=file.lastIndexOf('.');
+-
+-    return dotPos!=-1 ? file.mid(dotPos) : QString();
++    return QFileInfo(f).fileName();
+ }
+ 
+-static inline QString getFileName(const QString &f)
++static QString getExt(const QString &file)
+ {
+-    return QFileInfo(f).fileName();
++    QString name(getFileName(file));
++    int dotPos=name.lastIndexOf('.');
++
++    return dotPos!=-1 ? name.mid(dotPos) : QString();
+ }
+ 
+ static QString getThemeFile(const QString &file)
+@@ -150,10 +151,30 @@ static void copyFile(const QString &src, const QString &dest)
+     }
+ }
+ 
++static void removeInstalledThemeFile(const QString &file)
++{
++    QDir dir(QtCurve::getConfDir());
++    QString name(QLatin1String(THEME_IMAGE_PREFIX)+file);
++    // The installer appends the extension of the source, or no extension.
++    const QStringList installed(dir.entryList({name, name+QLatin1String(".*")},
++                                              QDir::Files));
++
++    for (const QString &f : installed)
++        removeFile(dir.filePath(f));
++}
++
+ static QString installThemeFile(const QString &src, const QString &dest)
+ {
+-    QString source(getThemeFile(src)),
+-            name(QLatin1String(THEME_IMAGE_PREFIX)+dest+getExt(source)),
++    QString source(getThemeFile(src));
++
++    // The folder keeps an installed image only while the configuration names it.
++    if(!QFileInfo(source).isFile())
++    {
++        removeInstalledThemeFile(dest);
++        return QString();
++    }
++
++    QString name(QLatin1String(THEME_IMAGE_PREFIX)+dest+getExt(source)),
+             destination(QtCurve::getConfDir()+name);
+ 
+ //     printf("INST THM \"%s\" \"%s\"", source.toLatin1().constData(), destination.toLatin1().constData());
+@@ -177,11 +198,6 @@ static QString saveThemeFile(const QString &src, const QString &dest, const QStr
+     return destination;
+ }
+ 
+-static void removeInstalledThemeFile(const QString &file)
+-{
+-    removeFile(QtCurve::getConfDir()+QLatin1String(THEME_IMAGE_PREFIX)+file);
+-}
+-
+ static void
+ removeThemeImages(const QString &themeFile)
+ {

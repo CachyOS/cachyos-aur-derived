@@ -1,0 +1,28 @@
+Build the image file URL from the local path
+
+The image dialog gave the local path to the URL constructor, which reads
+the text as a URL. A per cent sign in the path became the start of an
+escape. The file requester then showed the name of a file that does not
+exist, and the configuration named that file.
+
+Take the URL from QUrl::fromLocalFile, which keeps every character of
+the path.
+
+The change sits on the branch work/image-dialog of the local tree, as commit 4 of 5.
+A new merge request on system/qtcurve takes that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/qt6/config/imagepropertiesdialog.cpp b/qt6/config/imagepropertiesdialog.cpp
+index a8b16e7a..6519425b 100644
+--- a/qt6/config/imagepropertiesdialog.cpp
++++ b/qt6/config/imagepropertiesdialog.cpp
+@@ -126,7 +126,7 @@ CImagePropertiesDialog::set(const QString &file, int width, int height,
+         posCombo->setCurrentIndex(pos);
+ 
+     fileRequester->setUrl(QFile::exists(file) && !QFileInfo(file).isDir() ?
+-                          QUrl(file) : QUrl());
++                          QUrl::fromLocalFile(file) : QUrl());
+ }
+ 
+ QSize

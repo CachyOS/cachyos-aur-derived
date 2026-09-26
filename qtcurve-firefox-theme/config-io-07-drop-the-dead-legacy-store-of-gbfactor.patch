@@ -1,0 +1,31 @@
+Drop the dead legacy store of gbFactor
+
+The branch for a config file older than version 1.6 sets gbFactor to
+zero. The reader then runs the unguarded read of the same key, which
+takes the value of the file or the shipped default of minus three.
+Nothing reads the field between the two lines, so the assignment reaches
+no reader.
+
+The sibling assignments of the block stay live, because the reads of
+groupBox and gbLabel sit in the matching else branch.
+
+Drop the assignment. No value changes, and the block now states only
+what it still decides.
+
+The change sits on the branch work/config-io of the local tree, as commit 7 of 18.
+A new merge request on system/qtcurve takes that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/qt6/common/config_file.cpp b/qt6/common/config_file.cpp
+index a87d1bca..dba55b55 100644
+--- a/qt6/common/config_file.cpp
++++ b/qt6/common/config_file.cpp
+@@ -1223,7 +1223,6 @@ bool qtcReadConfig(const QString &file, Options *opts, Options *defOpts, bool ch
+                      groupBoxLine=readBoolEntry(cfg, "groupBoxLine", true);
+                 opts->groupBox=framelessGroupBoxes ? (groupBoxLine ? FRAME_LINE : FRAME_NONE) : FRAME_PLAIN;
+                 opts->gbLabel=framelessGroupBoxes ? GB_LBL_BOLD : 0;
+-                opts->gbFactor=0;
+                 def->focus=FOCUS_LINE;
+                 def->crHighlight=3;
+             } else {
