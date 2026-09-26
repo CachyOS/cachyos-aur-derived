@@ -6,7 +6,7 @@
 
 pkgname=proton-pass
 pkgver=1.41.1
-pkgrel=1
+pkgrel=2
 pkgdesc="Open-source and secure identity manager"
 arch=('aarch64' 'x86_64')
 url="https://proton.me/pass"
@@ -17,7 +17,7 @@ conflicts=('proton-pass-bin')
 source=("${pkgname}-${pkgver}.tar.gz::https://github.com/ProtonMail/WebClients/archive/refs/tags/${pkgname}@${pkgver}.tar.gz"
         "proton-pass.desktop")
 sha256sums=('94dd37d17624b0500beea405b42cc02e0d9506df2c773f6f48c4e73ef9f0fdbf'
-            '501210c67fc921a2fb4ba591980192ad1da60e26fb6b2fd7d68aad4075eafac7')
+            '4bf5617be156193f79c1b50cff0cb632288d0d38c906b3690d8212d8414d48b7')
 
 prepare() {
     cd WebClients-${pkgname}-${pkgver}
