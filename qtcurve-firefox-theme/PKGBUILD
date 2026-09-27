@@ -262,7 +262,7 @@ sha256sums=('e01dbf05c24c11a3660e6185a9a7607d0838d4560ab717d44b449e9520476f6e'
             '421e9969b125452e77d6f3e83200b80dcf263715c811b8a867b7a1ecd17720ac'
             'bbfbcfdd99f45c1d6c6365208279349f83b30f0891061e6dcb425e4cdedb15a6'
             '76bb238db584dde12364736fb002737f23826b06ea4fc3d43ad1ee826928cf6c'
-            '034914850a95185dbc77ba26dcd3fe43f32fbf0a4e63c76b129015e9677b8997')
+            '23a17a146db657c8744ec7b7852c23a7e92a24bb5ee34ce004f6fb75d4e684c8')
 
 pkgver() {
 	git -C "$_srcname" log -1 --format=%cd --date=format:%Y%m%d
@@ -424,7 +424,7 @@ prepare() {
 	patch -Np1 -d "$_srcname" -i "$srcdir/firefox-theme-description.patch"
 	# The patch prints the about:config notice on a transition, not on every pass.
 	patch -Np1 -d "$_srcname" -i "$srcdir/firefox-notice-transition.patch"
-	# The patch holds ten fixes of bugs.kde.org for the Qt and GTK 2 styles.
+	# The patch holds ten fixes of bugs.kde.org and one crash fix for the Qt and GTK 2 styles.
 	patch -Np1 -d "$_srcname" -i "$srcdir/bug-sweep.patch"
 }
 

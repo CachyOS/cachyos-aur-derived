@@ -240,8 +240,39 @@ The glow of buttons and other widgets keeps its painter.
 
 BUG: 336662
 
+Delete the dock title bar later and add it only to a dock with none
+
+QtCurve put an empty title bar on the Places dock of a KDE file dialog.
+Style::unpolish() deleted that title bar at once.
+
+QApplication::setStyle() takes one copy of the list of all widgets. It
+unpolishes each widget of the copy with the old style. Then it polishes
+each widget with the new style and sends it a StyleChange event. The
+deleted title bar stayed in the copy, so Qt read freed memory later in
+the same call. An application that kept a KDE file dialog, open or
+closed, crashed when the user changed the widget style from QtCurve to
+another style. The first application style sheet caused the same crash.
+
+Style::unpolish() now takes the title bar off the dock and calls
+deleteLater(). The title bar stays alive until control goes back to the
+event loop, after setStyle() returns. If the dock goes first, the title
+bar goes with it, and Qt removes the posted event.
+
+KIO 5.44 and later versions put an empty title bar of their own on that
+dock. The style replaced it, and after a change to another style the
+dock showed the default title bar of Qt. Now the style adds its title
+bar only to a dock with no title bar, as with an older KIO. Thus a new
+polish, for example after a style sheet update, adds no second bar.
+Style::unpolish() takes away only a QtCurve title bar and ignores the
+parent widgets, so a file widget with no parent keeps no old bar.
+
+With KIO 5.44 and later, the list of places starts 4 pixels lower under
+QtCurve, because the KIO bar is PM_DockWidgetTitleBarButtonMargin high.
+
+CCBUG: 381377
+
 The changes sit on the branch work/bug-sweep of the local tree, as
-commits 1 to 10 of 10. The fork wyn/qtcurve holds that branch. Merge
+commits 1 to 11 of 11. The fork wyn/qtcurve holds that branch. Merge
 request !31 on system/qtcurve holds that branch. The tenth change
 follows the etchBottomCol block that the patch style-paint-01 adds.
 
@@ -537,10 +568,18 @@ index 00072d4e..e3fbe0c5 100644
      mutable bool m_active;
      mutable const QWidget *m_sbWidget;
 diff --git a/qt5/style/qtcurve_api.cpp b/qt5/style/qtcurve_api.cpp
-index 06576e3c..5cb70685 100644
+index 06576e3c..9d5b52ac 100644
 --- a/qt5/style/qtcurve_api.cpp
 +++ b/qt5/style/qtcurve_api.cpp
-@@ -731,14 +731,12 @@ void Style::polish(QWidget *widget)
+@@ -677,6 +677,7 @@ void Style::polish(QWidget *widget)
+         widget->setPalette(pal);
+         widget->setMask(QRegion(widget->rect().adjusted(0, 0, -6, -6))+QRegion(widget->rect().adjusted(6, 6, 0, 0)));
+     } else if (qobject_cast<QDockWidget*>(widget) &&
++               !((QDockWidget*)widget)->titleBarWidget() &&
+                qtcCheckType<QSplitter>(widget->parentWidget()) &&
+                qtcCheckType(getParent<2>(widget), "KFileWidget"))
+         ((QDockWidget*)widget)->setTitleBarWidget(new QtCurveDockWidgetTitleBar(widget));
+@@ -731,14 +732,12 @@ void Style::polish(QWidget *widget)
          }
  
      if (qobject_cast<QMenu*>(widget)) {
@@ -557,7 +596,26 @@ index 06576e3c..5cb70685 100644
          }
          if (opts.menuBgndOpacity != 100 ||
              !(opts.square & SQUARE_POPUP_MENUS)) {
-@@ -1155,7 +1153,8 @@ bool Style::eventFilter(QObject *object, QEvent *event)
+@@ -977,14 +976,11 @@ void Style::unpolish(QWidget *widget)
+             }
+         }
+     } else if (qobject_cast<QDockWidget *>(widget) &&
+-               ((QDockWidget*)widget)->titleBarWidget() &&
+                qobject_cast<QtCurveDockWidgetTitleBar*>(
+-                   ((QDockWidget*)widget)->titleBarWidget()) &&
+-               qtcCheckType<QSplitter>(widget->parentWidget()) &&
+-               getParent<3>(widget) &&
+-               qtcCheckType(getParent<2>(widget), "KFileWidget")) {
+-        delete ((QDockWidget *)widget)->titleBarWidget();
+-        ((QDockWidget*)widget)->setTitleBarWidget(0L);
++                   ((QDockWidget*)widget)->titleBarWidget())) {
++        QWidget *titleBar = ((QDockWidget*)widget)->titleBarWidget();
++        ((QDockWidget*)widget)->setTitleBarWidget(nullptr);
++        titleBar->deleteLater();
+     } else if (opts.boldProgress && "CE_CapacityBar"==widget->objectName()) {
+         m_fntHelper->unSetBold(widget);
+     }
+@@ -1155,7 +1151,8 @@ bool Style::eventFilter(QObject *object, QEvent *event)
          if(!(opts.square & SQUARE_POPUP_MENUS) &&
             object->inherits("QComboBoxPrivateContainer")) {
              QWidget *widget = static_cast<QWidget*>(object);
@@ -567,7 +625,7 @@ index 06576e3c..5cb70685 100644
                  widget->clearMask();
              } else {
                  widget->setMask(windowMask(widget->rect(),
-@@ -1403,7 +1402,8 @@ bool Style::eventFilter(QObject *object, QEvent *event)
+@@ -1403,7 +1400,8 @@ bool Style::eventFilter(QObject *object, QEvent *event)
          } else if (!(opts.square & SQUARE_POPUP_MENUS) &&
                     object->inherits("QComboBoxPrivateContainer")) {
              QWidget *widget = static_cast<QWidget*>(object);
@@ -577,7 +635,7 @@ index 06576e3c..5cb70685 100644
                  widget->clearMask();
              } else {
                  widget->setMask(windowMask(widget->rect(),
-@@ -2302,7 +2302,7 @@ Style::drawControl(ControlElement element, const QStyleOption *option,
+@@ -2302,7 +2300,7 @@ Style::drawControl(ControlElement element, const QStyleOption *option,
          break;
      }
      case CE_MenuScroller: {
@@ -586,7 +644,7 @@ index 06576e3c..5cb70685 100644
          painter->fillRect(r, use[ORIGINAL_SHADE]);
          painter->setPen(use[QTC_STD_BORDER]);
          drawRect(painter, r);
-@@ -3828,10 +3828,10 @@ Style::drawControl(ControlElement element, const QStyleOption *option,
+@@ -3828,10 +3826,10 @@ Style::drawControl(ControlElement element, const QStyleOption *option,
                      painter->setClipRect(r2.adjusted(-1, 0, 1, -1));
                  else
                      painter->setClipping(false);
@@ -599,7 +657,7 @@ index 06576e3c..5cb70685 100644
  
                  if(selected || thin)
                      painter->setClipping(false);
-@@ -3919,12 +3919,12 @@ Style::drawControl(ControlElement element, const QStyleOption *option,
+@@ -3919,12 +3917,12 @@ Style::drawControl(ControlElement element, const QStyleOption *option,
                      painter->setClipRect(r2.adjusted(0, 1, 0, 0));
                  else
                      painter->setClipping(false);
@@ -614,7 +672,7 @@ index 06576e3c..5cb70685 100644
  
                  if(selected)
                  {
-@@ -4004,12 +4004,12 @@ Style::drawControl(ControlElement element, const QStyleOption *option,
+@@ -4004,12 +4002,12 @@ Style::drawControl(ControlElement element, const QStyleOption *option,
                      painter->setClipRect(r2.adjusted(0, 0, -1, 0));
                  else
                      painter->setClipping(false);
@@ -629,7 +687,7 @@ index 06576e3c..5cb70685 100644
  
                  if(selected)
                  {
-@@ -4082,12 +4082,12 @@ Style::drawControl(ControlElement element, const QStyleOption *option,
+@@ -4082,12 +4080,12 @@ Style::drawControl(ControlElement element, const QStyleOption *option,
                      painter->setClipRect(r2.adjusted(1, 0, 0, 0));
                  else
                      painter->setClipping(false);
@@ -894,10 +952,18 @@ index 61e3277e..0eb40dd9 100644
      mutable bool m_active;
      mutable const QWidget *m_sbWidget;
 diff --git a/qt6/style/qtcurve_api.cpp b/qt6/style/qtcurve_api.cpp
-index 928316e4..cc59e2df 100644
+index 928316e4..568f8910 100644
 --- a/qt6/style/qtcurve_api.cpp
 +++ b/qt6/style/qtcurve_api.cpp
-@@ -728,14 +728,12 @@ void Style::polish(QWidget *widget)
+@@ -674,6 +674,7 @@ void Style::polish(QWidget *widget)
+         widget->setPalette(pal);
+         widget->setMask(QRegion(widget->rect().adjusted(0, 0, -6, -6))+QRegion(widget->rect().adjusted(6, 6, 0, 0)));
+     } else if (qobject_cast<QDockWidget*>(widget) &&
++               !((QDockWidget*)widget)->titleBarWidget() &&
+                qtcCheckType<QSplitter>(widget->parentWidget()) &&
+                qtcCheckType(getParent<2>(widget), "KFileWidget"))
+         ((QDockWidget*)widget)->setTitleBarWidget(new QtCurveDockWidgetTitleBar(widget));
+@@ -728,14 +729,12 @@ void Style::polish(QWidget *widget)
          }
  
      if (qobject_cast<QMenu*>(widget)) {
@@ -914,7 +980,26 @@ index 928316e4..cc59e2df 100644
          }
          if (opts.menuBgndOpacity != 100 ||
              !(opts.square & SQUARE_POPUP_MENUS)) {
-@@ -1153,7 +1151,8 @@ bool Style::eventFilter(QObject *object, QEvent *event)
+@@ -974,14 +973,11 @@ void Style::unpolish(QWidget *widget)
+             }
+         }
+     } else if (qobject_cast<QDockWidget *>(widget) &&
+-               ((QDockWidget*)widget)->titleBarWidget() &&
+                qobject_cast<QtCurveDockWidgetTitleBar*>(
+-                   ((QDockWidget*)widget)->titleBarWidget()) &&
+-               qtcCheckType<QSplitter>(widget->parentWidget()) &&
+-               getParent<3>(widget) &&
+-               qtcCheckType(getParent<2>(widget), "KFileWidget")) {
+-        delete ((QDockWidget *)widget)->titleBarWidget();
+-        ((QDockWidget*)widget)->setTitleBarWidget(0L);
++                   ((QDockWidget*)widget)->titleBarWidget())) {
++        QWidget *titleBar = ((QDockWidget*)widget)->titleBarWidget();
++        ((QDockWidget*)widget)->setTitleBarWidget(nullptr);
++        titleBar->deleteLater();
+     } else if (opts.boldProgress && "CE_CapacityBar"==widget->objectName()) {
+         m_fntHelper->unSetBold(widget);
+     }
+@@ -1153,7 +1149,8 @@ bool Style::eventFilter(QObject *object, QEvent *event)
          if(!(opts.square & SQUARE_POPUP_MENUS) &&
             object->inherits("QComboBoxPrivateContainer")) {
              QWidget *widget = static_cast<QWidget*>(object);
@@ -924,7 +1009,7 @@ index 928316e4..cc59e2df 100644
                  widget->clearMask();
              } else {
                  widget->setMask(windowMask(widget->rect(),
-@@ -1401,7 +1400,8 @@ bool Style::eventFilter(QObject *object, QEvent *event)
+@@ -1401,7 +1398,8 @@ bool Style::eventFilter(QObject *object, QEvent *event)
          } else if (!(opts.square & SQUARE_POPUP_MENUS) &&
                     object->inherits("QComboBoxPrivateContainer")) {
              QWidget *widget = static_cast<QWidget*>(object);
@@ -934,7 +1019,7 @@ index 928316e4..cc59e2df 100644
                  widget->clearMask();
              } else {
                  widget->setMask(windowMask(widget->rect(),
-@@ -2314,7 +2314,7 @@ Style::drawControl(ControlElement element, const QStyleOption *option,
+@@ -2314,7 +2312,7 @@ Style::drawControl(ControlElement element, const QStyleOption *option,
          break;
      }
      case CE_MenuScroller: {
@@ -943,7 +1028,7 @@ index 928316e4..cc59e2df 100644
          painter->fillRect(r, use[ORIGINAL_SHADE]);
          painter->setPen(use[QTC_STD_BORDER]);
          drawRect(painter, r);
-@@ -3844,10 +3844,10 @@ Style::drawControl(ControlElement element, const QStyleOption *option,
+@@ -3844,10 +3842,10 @@ Style::drawControl(ControlElement element, const QStyleOption *option,
                      painter->setClipRect(r2.adjusted(-1, 0, 1, -1));
                  else
                      painter->setClipping(false);
@@ -956,7 +1041,7 @@ index 928316e4..cc59e2df 100644
  
                  if(selected || thin)
                      painter->setClipping(false);
-@@ -3936,12 +3936,12 @@ Style::drawControl(ControlElement element, const QStyleOption *option,
+@@ -3936,12 +3934,12 @@ Style::drawControl(ControlElement element, const QStyleOption *option,
                      painter->setClipRect(r2.adjusted(0, 1, 0, 0));
                  else
                      painter->setClipping(false);
@@ -971,7 +1056,7 @@ index 928316e4..cc59e2df 100644
  
                  if(selected)
                  {
-@@ -4022,12 +4022,12 @@ Style::drawControl(ControlElement element, const QStyleOption *option,
+@@ -4022,12 +4020,12 @@ Style::drawControl(ControlElement element, const QStyleOption *option,
                      painter->setClipRect(r2.adjusted(0, 0, -1, 0));
                  else
                      painter->setClipping(false);
@@ -986,7 +1071,7 @@ index 928316e4..cc59e2df 100644
  
                  if(selected)
                  {
-@@ -4101,12 +4101,12 @@ Style::drawControl(ControlElement element, const QStyleOption *option,
+@@ -4101,12 +4099,12 @@ Style::drawControl(ControlElement element, const QStyleOption *option,
                      painter->setClipRect(r2.adjusted(1, 0, 0, 0));
                  else
                      painter->setClipping(false);
