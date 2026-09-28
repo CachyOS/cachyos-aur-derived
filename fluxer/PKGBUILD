@@ -1,7 +1,7 @@
 # Maintainer: witchlliee <witchlliee@tuta.io>
 
 pkgname=fluxer
-pkgver=2026.927.142044
+pkgver=2026.928.213903
 pkgrel=1
 pkgdesc="A free and open source group chat, video, and voice calling app"
 arch=('x86_64')
@@ -13,7 +13,7 @@ source=(
   "fluxer-${pkgver}-x64.tar.gz::https://pkgs.fluxer.com/desktop/stable/linux/x64/${pkgver}/tar_gz"
   "fluxer.desktop"
 )
-sha256sums=('126dbef18f4cad1cdc930fd469b059d82b09d10f6493ea8c9dbbfe5861364c82'
+sha256sums=('5bacf9900aa546420351935d0ac236c13049338a6f63a0ddca26e07db1b945e4'
             'd126b3c15f4884517f9b0472506045991cf3b6fdcfa36b389e665394a0b96ed1')
 
 package() {
