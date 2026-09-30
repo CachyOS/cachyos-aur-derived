@@ -1,0 +1,4 @@
+[parallel-hashmap]
+source = "git"
+git = "https://github.com/greg7mdp/parallel-hashmap.git"
+prefix = "v"
