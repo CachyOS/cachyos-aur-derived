@@ -1,0 +1,4 @@
+[wl-clipboard-rs]
+source = "git"
+git = "https://github.com/YaLTeR/wl-clipboard-rs.git"
+prefix = "v"
