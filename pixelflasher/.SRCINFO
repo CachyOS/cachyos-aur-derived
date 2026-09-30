@@ -1,6 +1,6 @@
 pkgbase = pixelflasher
 	pkgdesc = Pixel phone flashing GUI utility with features.
-	pkgver = 10.1.0.1
+	pkgver = 10.1.0.2
 	pkgrel = 1
 	url = https://github.com/badabing2005/PixelFlasher
 	arch = any
@@ -29,10 +29,10 @@ pkgbase = pixelflasher
 	optdepends = libnotify: Display system toast notifications
 	optdepends = scrcpy: Launch Screen Copy
 	options = !strip
-	source = PixelFlasher-10.1.0.1.tar.gz::https://github.com/badabing2005/PixelFlasher/archive/refs/tags/v10.1.0.1.tar.gz
+	source = PixelFlasher-10.1.0.2.tar.gz::https://github.com/badabing2005/PixelFlasher/archive/refs/tags/v10.1.0.2.tar.gz
 	source = git+https://android.googlesource.com/platform/system/update_engine.git
 	source = PixelFlasher.desktop
-	sha256sums = 1aee82d29bd103007dc0a3ca6903e0f010149897eee9e67556c92e7529922787
+	sha256sums = c9faaac79774d1978b479fda2136d7e2ba7c90cc7e2fa6a3cb3ea07573d6d988
 	sha256sums = SKIP
 	sha256sums = dbb31a1b359bdda2d6501ccf5d80fb888508619da948c3f98d4b0cb74f907615
 
