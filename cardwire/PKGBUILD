@@ -3,7 +3,7 @@
 
 pkgname=cardwire
 pkgver=0.12.2
-pkgrel=2
+pkgrel=4
 pkgdesc='GPU manager for Wayland systems using eBPF LSM hooks'
 arch=('x86_64')
 url='https://github.com/OpenGamingCollective/cardwire'
@@ -11,15 +11,9 @@ license=('GPL-3.0-only')
 depends=('dbus' 'fontconfig' 'glib2' 'glibc' 'hicolor-icon-theme' 'hwdata' 'libgcc'
          'libglvnd' 'libxcb' 'libxkbcommon' 'sqlite' 'systemd'
          'systemd-libs' 'upower' 'vulkan-icd-loader' 'wayland' 'xdg-utils')
-makedepends=('clang' 'pkgconf' 'rust' 'rust-src')
-# Upstream's eBPF build needs LLVM 23; the repository linker uses LLVM 22.
-# Pin and checksum the upstream build tool instead of fetching it with binstall.
-# This tool is used only during compilation and is not included in the package.
-_bpf_linker_ver=0.11.0
-source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz"
-        "bpf-linker-$_bpf_linker_ver-x86_64.tar.zst::https://github.com/aya-rs/bpf-linker/releases/download/v$_bpf_linker_ver/bpf-linker-x86_64-unknown-linux-musl.tar.zst")
-sha256sums=('3b96e8bba14c9bcd4e104954244a7403f7dda6e3b336bbf6f0a079d589d11ddb'
-            '10f62ba9ab7e544d538370552660efcb4f1a19153d5752bbf0f6b51f3bada450')
+makedepends=('bpf-linker>=0.11.0-2' 'clang' 'llvm-libs>=23.1' 'pkgconf' 'rust' 'rust-src')
+source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
+sha256sums=('3b96e8bba14c9bcd4e104954244a7403f7dda6e3b336bbf6f0a079d589d11ddb')
 # Upstream release CI disables LTO. Keep the first package aligned with it.
 options=('!lto')
 
@@ -30,7 +24,6 @@ prepare() {
 
 build() {
   cd "$pkgname-$pkgver"
-  export PATH="$srcdir:$PATH"
   # Arch's rust + rust-src can build the tier-3 BPF target using build-std.
   # Use a clean chroot without rustup, which would select a separate nightly.
   export RUSTC_BOOTSTRAP=1
