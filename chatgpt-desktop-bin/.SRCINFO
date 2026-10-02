@@ -1,6 +1,6 @@
 pkgbase = chatgpt-desktop-bin
 	pkgdesc = Official ChatGPT desktop app for Linux
-	pkgver = 26.928.21956
+	pkgver = 26.930.21537
 	pkgrel = 1
 	url = https://chatgpt.com/download
 	arch = x86_64
@@ -43,18 +43,18 @@ pkgbase = chatgpt-desktop-bin
 	optdepends = kde-cli-tools: file deletion support under KDE Plasma
 	optdepends = libsecret: Secret Service credential storage support
 	optdepends = pipewire: screen sharing under Wayland
-	provides = chatgpt=26.928.21956
-	provides = openai-codex-desktop=26.928.21956
+	provides = chatgpt=26.930.21537
+	provides = openai-codex-desktop=26.930.21537
 	conflicts = chatgpt
 	conflicts = openai-codex-desktop
 	replaces = openai-codex-desktop
-	noextract = chatgpt_26.928.21956_amd64.deb
+	noextract = chatgpt_26.930.21537_amd64.deb
 	options = !strip
 	options = !debug
 	backup = etc/apparmor.d/chatgpt
 	source = chatgpt-launcher.sh
 	sha256sums = aab6b1105d7273443234e77412fbaa35ff9e04098ac63c2f73ae8e87afb43bd2
-	source_x86_64 = chatgpt_26.928.21956_amd64.deb::https://persistent.oaistatic.com/codex-app-prod/linux/deb/pool/main/c/chatgpt/chatgpt_26.928.21956_amd64.deb
-	sha256sums_x86_64 = 9ac8d0711b4601368d49deddbf50a8fe52358cb61b6d9f7a5c18b41ed4500ad8
+	source_x86_64 = chatgpt_26.930.21537_amd64.deb::https://persistent.oaistatic.com/codex-app-prod/linux/deb/pool/main/c/chatgpt/chatgpt_26.930.21537_amd64.deb
+	sha256sums_x86_64 = 60fdb6d895d776f8831ff35a783de04cdbfa280f0f3d972584315f98e57aa256
 
 pkgname = chatgpt-desktop-bin
