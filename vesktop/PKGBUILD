@@ -1,0 +1,66 @@
+# Maintainer: witchlliee <witchlliee@tuta.io>
+
+_pkgname=Vesktop
+pkgname=vesktop
+_appname=vencord-desktop
+pkgdesc="A standalone Electron-based Discord app with Vencord & improved Linux support"
+pkgver=1.6.7
+pkgrel=1
+arch=("x86_64")
+url="https://github.com/Vencord/Vesktop"
+license=('GPL-3.0-or-later')
+provides=(
+  "${pkgname}=${pkgver}"
+  "${_appname}=${pkgver}"
+)
+conflicts=(
+  "${pkgname}"
+  "${_appname}"
+)
+depends=('alsa-lib' 'gtk3' 'nss')
+makedepends=('pnpm' 'npm' 'nodejs')
+optdepends=(
+  'libnotify: Notifications'
+  'xdg-utils: Open links, files, etc'
+)
+source=(
+  "${_pkgname}-${pkgver}.tar.gz::https://github.com/Vencord/Vesktop/archive/v${pkgver}.tar.gz"
+  "vesktop.desktop"
+  "vesktop.sh"
+)
+sha256sums=('8c0dbd65e85f46797bc89591a92f8677e2565ea51cd96f661f1dd5da74c819d1'
+            '455c00b862aa0a7e18ca8e23d65d5c5ee4506cdfb15f1bf6f622cce39827de46'
+            '64500b5dbf14c8e166a5d638e956e70fe3ce6f33771476b48d3c1fd733e13f14')
+
+prepare() {
+  sed -i -e "
+      s/@appname@/${pkgname}/g
+      s/@runname@/app.asar/g
+      s/@cfgdirname@/${pkgname}/g
+  " "${srcdir}/${pkgname}.sh"
+}
+
+build() {
+  cd "${srcdir}/${_pkgname}-${pkgver}"
+
+  pnpm i --frozen-lockfile
+  pnpm package:dir
+}
+
+package() {
+  cd "${srcdir}/${_pkgname}-${pkgver}"
+
+  # Create necessary directories
+  install -d "${pkgdir}/usr/lib/${pkgname}"
+  install -d "${pkgdir}/usr/bin"
+
+  cp -R "dist/linux-unpacked/." "${pkgdir}/usr/lib/${pkgname}"
+
+  install -Dm755 "../vesktop.sh" "${pkgdir}/usr/bin/${pkgname}" # Start script
+
+  install -Dm644 "../vesktop.desktop" "${pkgdir}/usr/share/applications/vesktop.desktop"
+  install -Dm644 "build/icon.svg" "${pkgdir}/usr/share/icons/hicolor/scalable/apps/${pkgname}.svg"
+
+  # docs
+  install -Dm644 "LICENSE" "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+}
