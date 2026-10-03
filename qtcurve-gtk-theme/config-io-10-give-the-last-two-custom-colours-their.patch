@@ -1,0 +1,32 @@
+Give the last two custom colours their default
+
+qtcDefaultSettings sets eight of the ten custom colours to black and
+names neither customCrBgndColor nor customSortedLvColor. A file can name
+a custom shade with no colour. The dialog can show the colour button of
+the check mark background. Each path reads a QColor that no line of the
+tree ever set.
+
+The style holds its own Options and calls no default routine, so the two
+fields hold a colour that reports itself as invalid.
+
+Set both to black, the value that the eight sibling colours hold. The
+render does not move, because an invalid colour already paints as black.
+
+The change sits on the branch work/config-io of the local tree, as commit 10 of 18.
+A new merge request on system/qtcurve takes that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/qt6/common/config_file.cpp b/qt6/common/config_file.cpp
+index 9ef6d216..fa594391 100644
+--- a/qt6/common/config_file.cpp
++++ b/qt6/common/config_file.cpp
+@@ -1740,6 +1740,8 @@ void qtcDefaultSettings(Options *opts)
+     opts->customComboBtnColor.setRgb(0, 0, 0);
+     opts->customMenuStripeColor.setRgb(0, 0, 0);
+     opts->customProgressColor.setRgb(0, 0, 0);
++    opts->customCrBgndColor.setRgb(0, 0, 0);
++    opts->customSortedLvColor.setRgb(0, 0, 0);
+     opts->titlebarAlignment=ALIGN_FULL_CENTER;
+     opts->titlebarEffect=EFFECT_SHADOW;
+     opts->centerTabText=false;

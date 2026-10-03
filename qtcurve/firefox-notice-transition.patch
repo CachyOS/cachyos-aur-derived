@@ -1,0 +1,334 @@
+firefox: print the about:config notice on a transition
+
+The watch mode runs one write pass on every wake. Before this change,
+each pass printed the about:config notice while the prefs.js file of a
+profile held no row of the style sheet preference. A daemon over such a
+profile therefore took one notice line per wake for its whole life.
+
+The writer now holds the set of the profiles that took the notice. A
+pass prints the line when it finds no row and the profile is not in the
+set. A pass that finds the row takes the profile out of the set. The
+first pass of a run, a row that leaves prefs.js, and a new image of the
+daemon each print the line one time. A wake that changes nothing prints
+nothing.
+
+A pass that writes a sheet of the profile prints the line beside the
+restart line, because Firefox takes no sheet without the row. The set
+lives in the process, so a one-shot run prints as before, and the
+writer still never writes prefs.js. Firefox replaces prefs.js by rename,
+and the directory watch of each profile reports that rename, so the
+watch set does not grow.
+
+assert-ff-notice.sh gains a watch arm over one daemon and a profile
+without the row. The arm runs three wakes that change nothing, adds and
+removes the row by rename, and rewrites one sheet in place. It counts
+the passes through the line of a profile directory that profiles.ini
+names and the disk does not hold.
+
+The change sits on the branch work/firefox-theme of the local tree, as
+commit 14 of 14. The branch holds those fourteen commits above the head of
+work/gtk4-theme, which merge request !15 on system/qtcurve holds. The fork
+wyn/qtcurve holds work/firefox-theme. Merge request !29 on system/qtcurve
+holds that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/firefox/check/assert-ff-notice.sh b/firefox/check/assert-ff-notice.sh
+index bb786c62..325499a7 100644
+--- a/firefox/check/assert-ff-notice.sh
++++ b/firefox/check/assert-ff-notice.sh
+@@ -3,7 +3,8 @@
+ # that Firefox reads before it takes the shared sheet. The run holds two
+ # profiles that differ in the prefs.js file alone. The profile without the row
+ # must take one notice, and the profile with the row must take none. The file
+-# keeps its bytes, because the writer never writes it.
++# keeps its bytes, because the writer never writes it. A watch arm runs one
++# daemon over a third profile, and the notice prints only after a transition.
+ set -eu
+ usage='usage: assert-ff-notice.sh WRITER WORKDIR'
+ writer=${1:?$usage}
+@@ -85,9 +86,210 @@ if [ "$(count without)" -ne 0 ]; then
+     fail "the control profile took $(count without) notices, and not 0"
+ fi
+ 
++# The watch arm below runs the writer as a daemon over a home of its own.
++# The profile watched holds no row. The section gone names a directory that
++# the disk does not hold, so each pass prints one line of that section. That
++# line counts the passes. A wake is a touch of the settings file. Every wait
++# polls the log with a deadline, because two wakes inside the debounce give
++# one pass.
++dhome=$work/daemon
++droot=$dhome/.config/mozilla/firefox
++dqtc=$dhome/qtcurve
++dlog=$work/watch.log
++wakes=3
++pids=
++last=
++daemon=
++code=0
++
++clean() {
++    for p in $pids; do
++        kill "$p" 2>/dev/null || true
++    done
++}
++
++# A signal that stops the run leaves a writer of the run alive. The trap
++# takes it away, and SIGKILL runs no trap.
++trap clean EXIT
++trap 'clean; exit 1' HUP INT QUIT TERM
++
++mkdir -p "$droot/watched/chrome" "$dqtc"
++{
++    printf '[Profile0]\nName=watched\nIsRelative=1\nPath=watched\n\n'
++    printf '[Profile1]\nName=gone\nIsRelative=1\nPath=gone\n'
++} > "$droot/profiles.ini"
++printf '[Settings]\nfirefoxTheme=true\n' > "$dqtc/stylerc"
++cp "$work/without.want" "$droot/watched/prefs.js"
++
++# stop TEXT: records the fault TEXT and ends the run, because every later
++# wait of the arm then meets the same deadline.
++stop() {
++    fail "$1"
++    exit $status
++}
++
++# running PID: gives 0 while the process PID runs. A process that ended and
++# waits for its parent holds the state Z, and it does not run.
++running() {
++    state=$(sed -n 's/^State:[[:space:]]*//p' "/proc/$1/status" 2>/dev/null) ||
++        return 1
++    case $state in
++        Z*|'') return 1;;
++        *) return 0;;
++    esac
++}
++
++# start LOG ARGS...: starts one run of the writer over the home of the arm,
++# and holds its pid in the variable last.
++start() {
++    log=$1
++    shift
++    (
++        ulimit -c 0
++        export HOME="$dhome" XDG_CONFIG_HOME="$dhome/.config" \
++            QTCURVE_CONFIG_DIR="$dqtc"
++        exec "$writer" "$@"
++    ) > "$log" 2>&1 &
++    last=$!
++    pids="$pids $last"
++}
++
++# wait_exit PID LIMIT NAME: waits at most LIMIT seconds for the run PID to
++# end, and holds its exit code in the variable code. A run that stays at
++# the limit takes a signal, and the arm stops.
++wait_exit() {
++    i=0
++    while [ "$i" -lt "$2" ]; do
++        if ! running "$1"; then
++            code=0
++            wait "$1" || code=$?
++            return 0
++        fi
++        sleep 1
++        i=$((i + 1))
++    done
++    kill "$1" 2>/dev/null || true
++    stop "$3 runs after $2 seconds"
++}
++
++# lines TEXT: prints the count of the lines of the watch log that hold TEXT.
++lines() {
++    n=$(grep -cF "$1" "$dlog" 2>/dev/null) || n=0
++    printf '%s\n' "$n"
++}
++
++# passes: prints the count of the passes of the daemon, through the line of
++# the section gone.
++passes() {
++    lines "the profile directory $droot/gone of "
++}
++
++# notices: prints the count of the notice lines of the profile watched.
++notices() {
++    lines "the profile $droot/watched needs $pref"
++}
++
++# restarts: prints the count of the restart lines of the profile watched.
++restarts() {
++    lines "the profile $droot/watched holds the new sheets"
++}
++
++# wait_passes N LIMIT NAME: waits at most LIMIT seconds for N passes, and
++# one second more for a pass that must not come. The arm stops at the
++# deadline, and a count over N is a fault of the step NAME.
++wait_passes() {
++    i=0
++    while [ "$(passes)" -lt "$1" ]; do
++        if [ "$i" -ge "$2" ]; then
++            stop "$3 gave $(passes) passes in $2 seconds, not $1"
++        fi
++        sleep 1
++        i=$((i + 1))
++    done
++    sleep 1
++    [ "$(passes)" -eq "$1" ] || fail "$3 gave $(passes) passes, not $1"
++}
++
++# wake: touches the settings file, so the daemon runs one pass that changes
++# nothing.
++wake() {
++    touch "$dqtc/stylerc"
++}
++
++# 1. The first pass of the daemon prints one notice, because the row is
++# absent, and one restart line, because the sheets are new.
++start "$dlog" --watch --force --default
++daemon=$last
++wait_passes 1 15 "the first pass of the watch mode"
++running "$daemon" || stop "the watch mode stopped at the first pass"
++n=$(notices)
++[ "$n" -eq 1 ] ||
++    fail "the first pass of the watch mode took $n notices, not 1"
++n=$(restarts)
++[ "$n" -eq 1 ] ||
++    fail "the first pass of the watch mode took $n restart lines, not 1"
++
++# 2. A wake that changes nothing prints no notice. The count of the passes
++# must grow by one per wake, so a dead daemon fails here and not in silence.
++w=0
++while [ "$w" -lt "$wakes" ]; do
++    w=$((w + 1))
++    wake
++    wait_passes $((w + 1)) 15 "wake $w of the watch mode"
++done
++n=$(notices)
++[ "$n" -eq 1 ] ||
++    fail "$wakes wakes that changed nothing left $n notices in the log, not 1"
++
++# 3. The row that enters prefs.js by rename wakes the daemon, and the pass
++# prints no notice.
++cp "$work/with.want" "$dhome/prefs.next"
++mv "$dhome/prefs.next" "$droot/watched/prefs.js"
++wait_passes $((wakes + 2)) 15 "the row added by rename"
++n=$(notices)
++[ "$n" -eq 1 ] ||
++    fail "the row added by rename left $n notices in the log, not 1"
++
++# 4. The row that leaves prefs.js by rename prints one notice, and the wake
++# after it prints none. A writer that prints on every pass fails at the wake.
++cp "$work/without.want" "$dhome/prefs.next"
++mv "$dhome/prefs.next" "$droot/watched/prefs.js"
++wait_passes $((wakes + 3)) 15 "the row removed by rename"
++n=$(notices)
++[ "$n" -eq 2 ] ||
++    fail "the row removed by rename left $n notices in the log, not 2"
++wake
++wait_passes $((wakes + 4)) 15 "the wake after the removed row"
++n=$(notices)
++[ "$n" -eq 2 ] ||
++    fail "the wake after the removed row left $n notices in the log, not 2"
++
++# 5. A pass that writes a sheet prints the notice beside the restart line.
++# The rewrite of the shared sheet wakes the daemon once more, and that pass
++# prints nothing.
++: > "$droot/watched/chrome/userChrome.css"
++wait_passes $((wakes + 6)) 15 "the rewritten sheet"
++n=$(restarts)
++[ "$n" -eq 2 ] ||
++    fail "the rewritten sheet left $n restart lines in the log, not 2"
++n=$(notices)
++[ "$n" -eq 3 ] ||
++    fail "the rewritten sheet left $n notices in the log, not 3"
++
++# 6. The daemon stops on a signal. The file keeps its bytes.
++running "$daemon" || fail "the watch mode stopped before the end of the arm"
++kill "$daemon" 2>/dev/null || true
++wait_exit "$daemon" 10 "the watch mode"
++cmp -s "$droot/watched/prefs.js" "$work/without.want" ||
++    fail "the writer moved a byte of the prefs.js of the watched profile"
++
+ if [ $status -eq 0 ]; then
+     echo "assert-ff-notice: the profile without the preference took one" \
+          "notice, the profile with it took none, and the row of the control" \
+          "stopped the notice"
++    echo "assert-ff-notice: the watch mode took one notice on its first pass," \
++         "none over $wakes wakes that changed nothing, none at the row added" \
++         "by rename, one at the row removed by rename, none at the wake after" \
++         "it, and one at the rewritten sheet"
+ fi
+ exit $status
+diff --git a/firefox/writer/main.cpp b/firefox/writer/main.cpp
+index a37f69ad..b2a9606c 100644
+--- a/firefox/writer/main.cpp
++++ b/firefox/writer/main.cpp
+@@ -38,6 +38,7 @@
+ #include <QCoreApplication>
+ #include <QDir>
+ #include <QFile>
++#include <QSet>
+ #include <QTextStream>
+ 
+ #include <stdio.h>
+@@ -264,13 +265,24 @@ holdsLine(const QString &path, const QByteArray &line)
+ }
+ 
+ /**
+- * Prints one notice line when the prefs.js file of the profile dir holds no
+- * user_pref row of the style sheet preference. The writer reads that file and
+- * never writes it, so a torn read can print one notice that the user does not
+- * need.
++ * Holds each profile after its notice line, until a pass reads the row
++ * of the style sheet preference in its prefs.js. A pass that writes no
++ * sheet prints no second line for a profile of the set.
++ */
++QSet<QString> noticedProfiles;
++
++/**
++ * Prints one notice line when prefs.js of the profile dir holds no row of
++ * the style sheet preference and noticedProfiles does not hold dir. The
++ * writer reads that file and never writes it, so a torn read can print
++ * one notice that the user does not need.
++ *
++ * \param dir the profile directory, which keys noticedProfiles.
++ * \param wrote true when the pass wrote a sheet of the profile. The line
++ *     then prints for a profile of noticedProfiles too.
+  */
+ void
+-noticePref(const QString &dir)
++noticePref(const QString &dir, bool wrote)
+ {
+     const QString prefs = dir + QLatin1Char('/') +
+         QString::fromLatin1(prefsName);
+@@ -278,8 +290,13 @@ noticePref(const QString &dir)
+     row.append(styleSheetPref);
+     row.append("\", true);");
+     if (holdsLine(prefs, row)) {
++        noticedProfiles.remove(dir);
++        return;
++    }
++    if (!wrote && noticedProfiles.contains(dir)) {
+         return;
+     }
++    noticedProfiles.insert(dir);
+     printf("%s: the profile %s needs %s true, which about:config sets\n",
+            writerName, dir.toLocal8Bit().constData(), styleSheetPref);
+ }
+@@ -358,13 +375,14 @@ writeProfile(const QByteArray &chrome, const QByteArray &content,
+     if (code != 0) {
+         return code;
+     }
+-    if (changedChrome || !hadImportChrome || changedContent ||
+-        !hadImportContent) {
++    const bool wrote = changedChrome || !hadImportChrome || changedContent ||
++        !hadImportContent;
++    if (wrote) {
+         printf("%s: the profile %s holds the new sheets, and Firefox takes"
+                " them after a restart\n", writerName,
+                dir.toLocal8Bit().constData());
+     }
+-    noticePref(dir);
++    noticePref(dir, wrote);
+     return 0;
+ }
+ 

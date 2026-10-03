@@ -1,0 +1,70 @@
+Restore the child layout margin in the Qt 6 style
+
+Commit fbadbbf3 ("copy qt5 to qt6") copied qt5/ to qt6/. Commit a501c957
+and commit 23e2ad04 then deleted the cases for the three metrics that
+Qt 6 no longer defines. The four layout margin cases now return 9 pixels
+for every widget, and layoutSpacing returns 4 pixels. The Qt 5 style
+returns 9 pixels for a window and 6 pixels for a child layout. It returns
+2 pixels when OpenOffice asks without a widget. Its layout spacing is
+6 pixels.
+
+Dolphin 26.08 sets the height of the StatusBarSpaceInfo widget in
+src/statusbar/dolphinstatusbar.cpp. Line 126 takes the greatest of the
+font height, the minimum zoom slider height, and the stop button height.
+Dolphin hides that button at line 97, and adds it to the layout at line
+149. The button therefore keeps the default geometry of a child widget,
+which is 30 pixels high. With a 10 point font the other two values are
+16 and 23 pixels. Line 135 then makes 30 pixels the fixed height of the
+space widget.
+
+Line 39 of src/statusbar/statusbarspaceinfo.cpp passes -1 for the top and
+the bottom margin of the layout, so the style sets both. A 9 pixel margin
+leaves 12 pixels for the contents. The free space bar asks for the
+greater of the font height and its 12 pixel bar. A 16 pixel font
+therefore costs the bar 4 pixels of height. The button beside the bar
+holds the free space text, and cuts it at the top and at the bottom.
+
+Restore the Qt 5 values. A window keeps the 9 pixel margin. The space
+widget gets a 6 pixel margin, and 18 pixels for its contents. A layout
+that sets no spacing again leaves 6 pixels between its widgets. Breeze
+gives the same 18 pixels and the same 6 pixel gap.
+
+The change sits on the branch work/child-layout-margin of the local tree. The
+fork wyn/qtcurve holds that branch. Merge request !7 on system/qtcurve holds
+that branch as the source.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/qt6/style/qtcurve.cpp b/qt6/style/qtcurve.cpp
+index 2cf76a44..7ec26c1b 100644
+--- a/qt6/style/qtcurve.cpp
++++ b/qt6/style/qtcurve.cpp
+@@ -1164,7 +1164,8 @@ int Style::layoutSpacing(QSizePolicy::ControlType control1,
+     Q_UNUSED(orientation);
+     Q_UNUSED(option);
+     Q_UNUSED(widget);
+-    return 4;
++    // Qt 6 has no PM_DefaultLayoutSpacing. Keep the Qt 5 value of 6 pixels.
++    return 6;
+ }
+ 
+ // Use 'drawItemTextWithRole' when already know which role to use.
+diff --git a/qt6/style/qtcurve_api.cpp b/qt6/style/qtcurve_api.cpp
+index 0d3a2fb7..faf4880f 100644
+--- a/qt6/style/qtcurve_api.cpp
++++ b/qt6/style/qtcurve_api.cpp
+@@ -1589,7 +1589,13 @@ Style::pixelMetric(PixelMetric metric, const QStyleOption *option,
+     case PM_LayoutTopMargin:
+     case PM_LayoutRightMargin:
+     case PM_LayoutBottomMargin:
+-        return 9;
++        // Qt 6 has no PM_DefaultTopLevelMargin and no PM_DefaultChildMargin.
++        // Keep the Qt 5 values. A window gets 9 pixels. Any other layout
++        // gets 6 pixels, or 2 pixels when OpenOffice asks without a widget.
++        if ((option && (option->state & State_Window)) ||
++            (widget && widget->isWindow()))
++            return 9;
++        return isOOWidget(widget) ? 2 : 6;
+     case PM_MenuBarItemSpacing:
+         return 0;
+     case PM_ToolBarItemMargin:

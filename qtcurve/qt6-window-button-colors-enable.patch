@@ -1,0 +1,186 @@
+Enable the window button colour pickers when their checkbox changes
+
+The page "Window button colors" of the style dialog holds nine background
+pickers and eighteen icon pickers. Two checkboxes on the page "Window buttons"
+own those columns. setWidgetOptions() called setEnabled(false) on the nine
+background pickers when opts.titlebarButtons lacked TITLEBAR_BUTTON_COLOR. It
+did the same for the eighteen icon pickers when the flag
+TITLEBAR_BUTTON_ICON_COLOR was absent. No code called setEnabled(true) on those
+pickers.
+
+The user ticked "Use custom background colors", moved to the next page, and
+found the pickers grey. The pickers came back only after a save of the options
+and a new dialog.
+
+The patch adds the function updateTitlebarButtonColorState(). The function sets
+the state of the nine background pickers from the checkbox
+titlebarButtons_custom. It sets the state of the eighteen icon pickers from the
+checkbox titlebarButtons_customIcon. The function runs from the slot of each
+checkbox, and from setWidgetOptions() in place of the two blocks of
+setEnabled(false). The dialog still sets the colour of every picker at each
+load, so a disabled picker keeps its colour.
+
+The patch touches the Qt 6 configuration dialog alone. qt5/config and qt4/config
+hold separate copies of the dialog, and each copy carries the same defect. This
+package builds neither copy, because it sets QTC_QT5_ENABLE_KDE off and
+ENABLE_QT4 off.
+
+The change sits on the branch work/window-button-colors of the local tree. The
+fork wyn/qtcurve holds that branch. Merge request !10 on system/qtcurve holds
+that branch as the source.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/qt6/config/qtcurveconfig.cpp b/qt6/config/qtcurveconfig.cpp
+index 0c891ce3..a2acea26 100644
+--- a/qt6/config/qtcurveconfig.cpp
++++ b/qt6/config/qtcurveconfig.cpp
+@@ -1043,9 +1043,9 @@ QtCurveConfig::QtCurveConfig(QWidget *parent)
+                 squareScrollViews, squareFrame, squareTabFrame, squareSlider,
+                 squareScrollbarSlider, squareWindows, squareTooltips,
+                 squarePopupMenus, titlebarButtons_button,
+-                titlebarButtons_customIcon, titlebarButtons_noFrame,
+-                titlebarButtons_round, titlebarButtons_hoverFrame,
+-                titlebarButtons_hoverSymbol, titlebarButtons_hoverSymbolFull,
++                titlebarButtons_noFrame, titlebarButtons_round,
++                titlebarButtons_hoverFrame, titlebarButtons_hoverSymbol,
++                titlebarButtons_hoverSymbolFull,
+                 titlebarButtons_sunkenBackground, titlebarButtons_arrowMinMax,
+                 titlebarButtons_colorOnMouseOver,
+                 titlebarButtons_colorSymbolsOnly, titlebarButtons_colorInactive,
+@@ -1164,6 +1164,8 @@ QtCurveConfig::QtCurveConfig(QWidget *parent)
+             qtcSlot(this, groupBoxChanged));
+     connect(qtcSlot(titlebarButtons_custom, toggled),
+             qtcSlot(this, titlebarButtons_customChanged));
++    connect(qtcSlot(titlebarButtons_customIcon, toggled),
++            qtcSlot(this, titlebarButtons_customIconChanged));
+     connect(qtcSlot(titlebarButtons_useHover, toggled),
+             qtcSlot(this, titlebarButtons_useHoverChanged));
+     connect(qtcSlot(borderProgress, toggled),
+@@ -1592,9 +1594,52 @@ void QtCurveConfig::titlebarButtons_customChanged()
+ {
+     if(titlebarButtons_custom->isChecked())
+         titlebarButtons_useHover->setChecked(false);
++    updateTitlebarButtonColorState();
+     updateChanged();
+ }
+ 
++void QtCurveConfig::titlebarButtons_customIconChanged()
++{
++    updateTitlebarButtonColorState();
++    updateChanged();
++}
++
++// Set the enabled state of the colour pickers of the window buttons.
++// The nine background pickers follow the checkbox titlebarButtons_custom.
++// The eighteen icon pickers follow the checkbox titlebarButtons_customIcon.
++// A disabled picker keeps its colour, because the dialog loads every colour.
++// A caller must run this function after the two checkboxes hold the new state.
++void QtCurveConfig::updateTitlebarButtonColorState()
++{
++    bool background = titlebarButtons_custom->isChecked();
++    bool icon = titlebarButtons_customIcon->isChecked();
++
++    for (auto *w: {titlebarButtons_colorClose, titlebarButtons_colorMin,
++                titlebarButtons_colorMax, titlebarButtons_colorKeepAbove,
++                titlebarButtons_colorKeepBelow, titlebarButtons_colorHelp,
++                titlebarButtons_colorMenu, titlebarButtons_colorShade,
++                titlebarButtons_colorAllDesktops}) {
++        w->setEnabled(background);
++    }
++
++    for (auto *w: {titlebarButtons_colorCloseIcon, titlebarButtons_colorMinIcon,
++                titlebarButtons_colorMaxIcon, titlebarButtons_colorKeepAboveIcon,
++                titlebarButtons_colorKeepBelowIcon, titlebarButtons_colorHelpIcon,
++                titlebarButtons_colorMenuIcon, titlebarButtons_colorShadeIcon,
++                titlebarButtons_colorAllDesktopsIcon,
++                titlebarButtons_colorCloseInactiveIcon,
++                titlebarButtons_colorMinInactiveIcon,
++                titlebarButtons_colorMaxInactiveIcon,
++                titlebarButtons_colorKeepAboveInactiveIcon,
++                titlebarButtons_colorKeepBelowInactiveIcon,
++                titlebarButtons_colorHelpInactiveIcon,
++                titlebarButtons_colorMenuInactiveIcon,
++                titlebarButtons_colorShadeInactiveIcon,
++                titlebarButtons_colorAllDesktopsInactiveIcon}) {
++        w->setEnabled(icon);
++    }
++}
++
+ void QtCurveConfig::titlebarButtons_useHoverChanged()
+ {
+     if(titlebarButtons_useHover->isChecked())
+@@ -3451,18 +3496,6 @@ void QtCurveConfig::setWidgetOptions(const Options &opts)
+     titlebarButtons_colorMenu->setColor(getColor(opts.titlebarButtonColors, TITLEBAR_MENU));
+     titlebarButtons_colorShade->setColor(getColor(opts.titlebarButtonColors, TITLEBAR_SHADE));
+     titlebarButtons_colorAllDesktops->setColor(getColor(opts.titlebarButtonColors, TITLEBAR_ALL_DESKTOPS));
+-    // however, we can disable the widgets when their info isn't used.
+-    if (!(opts.titlebarButtons&TITLEBAR_BUTTON_COLOR)) {
+-        titlebarButtons_colorClose->setEnabled(false);
+-        titlebarButtons_colorMin->setEnabled(false);
+-        titlebarButtons_colorMax->setEnabled(false);
+-        titlebarButtons_colorKeepAbove->setEnabled(false);
+-        titlebarButtons_colorKeepBelow->setEnabled(false);
+-        titlebarButtons_colorHelp->setEnabled(false);
+-        titlebarButtons_colorMenu->setEnabled(false);
+-        titlebarButtons_colorShade->setEnabled(false);
+-        titlebarButtons_colorAllDesktops->setEnabled(false);
+-    }
+ 
+     titlebarButtons_colorCloseIcon->setColor(getColor(opts.titlebarButtonColors, TITLEBAR_CLOSE, 1));
+     titlebarButtons_colorMinIcon->setColor(getColor(opts.titlebarButtonColors, TITLEBAR_MIN, 1));
+@@ -3483,27 +3516,6 @@ void QtCurveConfig::setWidgetOptions(const Options &opts)
+     titlebarButtons_colorMenuInactiveIcon->setColor(getColor(opts.titlebarButtonColors, TITLEBAR_MENU, 2));
+     titlebarButtons_colorShadeInactiveIcon->setColor(getColor(opts.titlebarButtonColors, TITLEBAR_SHADE, 2));
+     titlebarButtons_colorAllDesktopsInactiveIcon->setColor(getColor(opts.titlebarButtonColors, TITLEBAR_ALL_DESKTOPS, 2));
+-    if (!(opts.titlebarButtons&TITLEBAR_BUTTON_ICON_COLOR)) {
+-        titlebarButtons_colorCloseIcon->setEnabled(false);
+-        titlebarButtons_colorMinIcon->setEnabled(false);
+-        titlebarButtons_colorMaxIcon->setEnabled(false);
+-        titlebarButtons_colorKeepAboveIcon->setEnabled(false);
+-        titlebarButtons_colorKeepBelowIcon->setEnabled(false);
+-        titlebarButtons_colorHelpIcon->setEnabled(false);
+-        titlebarButtons_colorMenuIcon->setEnabled(false);
+-        titlebarButtons_colorShadeIcon->setEnabled(false);
+-        titlebarButtons_colorAllDesktopsIcon->setEnabled(false);
+-
+-        titlebarButtons_colorCloseInactiveIcon->setEnabled(false);
+-        titlebarButtons_colorMinInactiveIcon->setEnabled(false);
+-        titlebarButtons_colorMaxInactiveIcon->setEnabled(false);
+-        titlebarButtons_colorKeepAboveInactiveIcon->setEnabled(false);
+-        titlebarButtons_colorKeepBelowInactiveIcon->setEnabled(false);
+-        titlebarButtons_colorHelpInactiveIcon->setEnabled(false);
+-        titlebarButtons_colorMenuInactiveIcon->setEnabled(false);
+-        titlebarButtons_colorShadeInactiveIcon->setEnabled(false);
+-        titlebarButtons_colorAllDesktopsInactiveIcon->setEnabled(false);
+-    }
+ 
+     titlebarButtons_button->setChecked(opts.titlebarButtons&TITLEBAR_BUTTON_STD_COLOR);
+     titlebarButtons_custom->setChecked(opts.titlebarButtons&TITLEBAR_BUTTON_COLOR);
+@@ -3520,6 +3532,7 @@ void QtCurveConfig::setWidgetOptions(const Options &opts)
+     titlebarButtons_arrowMinMax->setChecked(opts.titlebarButtons&TITLEBAR_BUTTOM_ARROW_MIN_MAX);
+     titlebarButtons_hideOnInactiveWindow->setChecked(opts.titlebarButtons&TITLEBAR_BUTTOM_HIDE_ON_INACTIVE_WINDOW);
+     titlebarButtons_useHover->setChecked(opts.titlebarButtons&TITLEBAR_BUTTON_USE_HOVER_COLOR);
++    updateTitlebarButtonColorState();
+ 
+     populateShades(opts);
+ 
+diff --git a/qt6/config/qtcurveconfig.h b/qt6/config/qtcurveconfig.h
+index 474374c7..a10869eb 100644
+--- a/qt6/config/qtcurveconfig.h
++++ b/qt6/config/qtcurveconfig.h
+@@ -206,12 +206,14 @@ private:
+     void tabMoChanged();
+     void thinSbarGrooveChanged();
+     void titlebarButtons_customChanged();
++    void titlebarButtons_customIconChanged();
+     void titlebarButtons_useHoverChanged();
+     void unifySpinBtnsToggled();
+     void unifySpinToggled();
+     void updateChanged();
+     void updateGradStop();
+     void updatePreview();
++    void updateTitlebarButtonColorState();
+     void windowBorder_blendChanged();
+     void windowBorder_colorTitlebarOnlyChanged();
+     void windowBorder_menuColorChanged();

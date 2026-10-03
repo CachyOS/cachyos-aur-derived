@@ -1,0 +1,81 @@
+Give the gradient stop order a consistent rule
+
+GradientStop::operator< tests the position with an exact comparison and
+then falls back to the equality of qtcEqual, which holds for a
+difference below 0.0001. Two stops that sit closer than that compare
+less than each other in both directions, so the order is not a strict
+weak ordering.
+
+GradientStopCont derives from std::set, and the reader accepts any
+position between zero and one, so a file reaches that state. The
+container then breaks. A pair of near positions traverses in falling
+order. A lookup then misses a stop that the set holds. Both the writer
+and the paint code walk the stops in traversal order.
+
+Order the stops on the grid of qtcEqual. Each field goes to its nearest
+grid point, so two stops on one point are equivalent and the order obeys
+the rule of std::set. The epsilon takes a name, because the equality and
+the order must hold one value.
+
+The grid also repairs a lookup of the config dialog. The dialog rebuilds
+a stop from the text of its row. That text holds six significant digits.
+A rebuilt position of 0.984 therefore differs from the stored position
+by one unit in the last place. The old rule tests the position exactly
+first and misses such a stop, and an exact rule misses it as well.
+
+The built-in gradients and every file that the dialog wrote keep their
+exact text, because their positions stand 0.001 apart at least.
+
+The change sits on the branch work/config-io of the local tree, as commit 17 of 18.
+A new merge request on system/qtcurve takes that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/lib/utils/number.h b/lib/utils/number.h
+index 7e66b66b..89f359cc 100644
+--- a/lib/utils/number.h
++++ b/lib/utils/number.h
+@@ -47,7 +47,9 @@ qtcSquare(const T &a)
+ 
+ #define qtcBound(a, b, c) qtcMax(a, qtcMin(b, c))
+ #define qtcLimit(v, l) qtcBound(0, v, l)
+-#define qtcEqual(v1, v2) (std::abs(v1 - v2) < 0.0001)
++// qtcEqual calls two numbers equal when the difference is below this value.
++#define QTC_EQUAL_EPSILON 0.0001
++#define qtcEqual(v1, v2) (std::abs(v1 - v2) < QTC_EQUAL_EPSILON)
+ 
+ namespace QtCurve {
+ 
+diff --git a/qt6/common/common.h b/qt6/common/common.h
+index b6c04125..4b642b2b 100644
+--- a/qt6/common/common.h
++++ b/qt6/common/common.h
+@@ -660,16 +660,25 @@ struct GradientStop {
+                 qtcEqual(alpha, o.alpha));
+     }
+ 
++    // Order two stops on the grid of qtcEqual. Two stops on one grid point
++    // are equivalent, so the order is a strict weak ordering, the rule that
++    // std::set demands of its comparison.
+     bool operator<(const GradientStop &o) const
+     {
+-        return pos<o.pos || (qtcEqual(pos, o.pos) &&
+-                             (val < o.val || (qtcEqual(val, o.val) &&
+-                                              alpha < o.alpha)));
++        if(grid(pos)!=grid(o.pos))
++            return grid(pos)<grid(o.pos);
++        if(grid(val)!=grid(o.val))
++            return grid(val)<grid(o.val);
++        return grid(alpha)<grid(o.alpha);
+     }
+ 
+     double pos,
+            val,
+            alpha;
++
++private:
++    // Give the number of the nearest point of the grid of qtcEqual.
++    static long grid(double v) { return std::lround(v/QTC_EQUAL_EPSILON); }
+ };
+ 
+ typedef struct

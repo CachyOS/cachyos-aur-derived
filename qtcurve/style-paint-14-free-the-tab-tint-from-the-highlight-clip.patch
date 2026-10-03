@@ -1,0 +1,54 @@
+Free the tab tint from the highlight clip
+
+The paint of a selected tab clips the border of the highlight to the
+first rows of the tab. The clip stays in force after that border, so the
+colour of the selected tab reaches those rows alone. A tab therefore
+loses the tint while the highlight option and the tint option both hold
+true.
+
+The paint now drops the clip after the border of the highlight. The tint
+covers the whole tab again, as it does while the highlight option holds
+false. The four tab positions take the same line, and the highlight
+keeps the paint of before.
+
+The change sits on the branch work/style-paint of the local tree, as commit 14 of 21.
+A new merge request on system/qtcurve takes that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/qt6/style/qtcurve_api.cpp b/qt6/style/qtcurve_api.cpp
+index 8a7b7edf..bc1de6fe 100644
+--- a/qt6/style/qtcurve_api.cpp
++++ b/qt6/style/qtcurve_api.cpp
+@@ -3896,6 +3896,7 @@ Style::drawControl(ControlElement element, const QStyleOption *option,
+                         QPAINTER_RENDERHINT_AA_MAYBE_OFF(painter);
+                         painter->setClipRect(QRect(r.x(), r.y(), r.width(), highlightBorder));
+                         drawBorder(painter, r, option, ROUNDED_ALL, m_highlightCols, WIDGET_TAB_TOP, BORDER_FLAT, false, 3);
++                        painter->setClipping(false);
+                     }
+ 
+                     if(opts.colorSelTab)
+@@ -3981,6 +3982,7 @@ Style::drawControl(ControlElement element, const QStyleOption *option,
+                         QPAINTER_RENDERHINT_AA_MAYBE_OFF(painter);
+                         painter->setClipRect(QRect(r.x(), r.y()+r.height()-highlightBorder, r.width(), r.y()+r.height()-1));
+                         drawBorder(painter, r, option, ROUNDED_ALL, m_highlightCols, WIDGET_TAB_BOT, BORDER_FLAT, false, 3);
++                        painter->setClipping(false);
+                     }
+ 
+                     if(opts.colorSelTab)
+@@ -4059,6 +4061,7 @@ Style::drawControl(ControlElement element, const QStyleOption *option,
+                         QPAINTER_RENDERHINT_AA_MAYBE_OFF(painter);
+                         painter->setClipRect(QRect(r.x(), r.y(), highlightBorder, r.height()));
+                         drawBorder(painter, r, option, ROUNDED_ALL, m_highlightCols, WIDGET_TAB_TOP, BORDER_FLAT, false, 3);
++                        painter->setClipping(false);
+                     }
+ 
+                     if(opts.colorSelTab)
+@@ -4137,6 +4140,7 @@ Style::drawControl(ControlElement element, const QStyleOption *option,
+                         QPAINTER_RENDERHINT_AA_MAYBE_OFF(painter);
+                         painter->setClipRect(QRect(r.x()+r.width()-highlightBorder, r.y(), r.x()+r.width()-1, r.height()));
+                         drawBorder(painter, r, option, ROUNDED_ALL, m_highlightCols, WIDGET_TAB_TOP, BORDER_FLAT, false, 3);
++                        painter->setClipping(false);
+                     }
+ 
+                     if(opts.colorSelTab)

@@ -1,0 +1,61 @@
+Return a narrow splitter width for the Dolphin status bar
+
+Dolphin 26.08 takes the geometry of its small status bar from the style
+in src/statusbar/dolphinstatusbar.cpp. The clippingAmount() function at
+line 308 returns 2 pixels plus twice PM_SplitterWidth. Line 437 takes
+two clipping amounts for the left margin of the layout, and one for the
+right margin. Line 292 asks for the text width, plus one average
+character width, plus two clipping amounts. Line 282 adds one clipping
+amount to the minimum height of the bar. The full width status bar keeps
+the fixed margins at line 434, and takes no clipping amount.
+
+The label therefore keeps the text width, plus one average character
+width, minus one clipping amount. Each pixel of the metric costs the
+label 2 pixels of width. Each pixel also adds 2 pixels to the height of
+the bar.
+
+Breeze returns 1 pixel, so the clipping amount is 4 pixels. QtCurve
+returns 7 pixels for the default line style of splitters, or 6 pixels
+for the other styles. The clipping amount is then 16 or 14 pixels.
+
+The Plasma default font is Noto Sans at 10 points. At 96 dots per inch
+that font has an average character width of 8 pixels. It draws
+"1 folder, 5 files (1.1 MiB)" in 144 pixels.
+
+Breeze therefore gives the label 148 pixels, 4 more than the text needs.
+QtCurve gives the label 136 pixels with the default line style, 8 less
+than the text needs. The label then elides the text to
+"1 folder, 5…s (1.1 MiB)". The bar is also 12 pixels taller.
+
+Return the Breeze value of 1 pixel for the status bar widget. The small
+bar then gets the Breeze geometry. The case for PM_SplitterWidth moves
+above the case for PM_DockWidgetSeparatorExtent, so the test covers one
+metric. Both metrics keep the shared return. Every other widget keeps
+the QtCurve width, and a call with no widget keeps it too. Dolphin 26.08
+uses Qt 6, so the identical block at qt5/style/qtcurve_api.cpp:1690
+needs no change.
+
+Drop this patch when Dolphin no longer takes its status bar geometry
+from PM_SplitterWidth.
+
+diff --git a/qt6/style/qtcurve_api.cpp b/qt6/style/qtcurve_api.cpp
+index faf4880f..36b69e42 100644
+--- a/qt6/style/qtcurve_api.cpp
++++ b/qt6/style/qtcurve_api.cpp
+@@ -1685,8 +1685,15 @@ Style::pixelMetric(PixelMetric metric, const QStyleOption *option,
+         return 4;
+     // case PM_DockWindowHandleExtent:
+     //     return 10;
+-    case PM_DockWidgetSeparatorExtent:
+     case PM_SplitterWidth:
++        // Dolphin takes the width, the margins and the minimum height
++        // of its small status bar from this metric. Each pixel of the
++        // metric costs the status label 2 pixels. The label then elides
++        // the text. Return 1 pixel, the Breeze value.
++        if (qtcCheckType(widget, "DolphinStatusBar"))
++            return 1;
++        QTC_FALLTHROUGH();
++    case PM_DockWidgetSeparatorExtent:
+         return LINE_1DOT==opts.splitters ? 7 : 6;
+     case PM_ToolBarHandleExtent:
+         return LINE_1DOT==opts.handles ? 7 : 8;
