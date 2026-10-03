@@ -1,7 +1,7 @@
 pkgbase = cardwire
 	pkgdesc = GPU manager for Wayland systems using eBPF LSM hooks
-	pkgver = 0.12.2
-	pkgrel = 4
+	pkgver = 0.12.3
+	pkgrel = 1
 	url = https://github.com/OpenGamingCollective/cardwire
 	arch = x86_64
 	license = GPL-3.0-only
@@ -29,7 +29,7 @@ pkgbase = cardwire
 	depends = wayland
 	depends = xdg-utils
 	options = !lto
-	source = cardwire-0.12.2.tar.gz::https://github.com/OpenGamingCollective/cardwire/archive/refs/tags/v0.12.2.tar.gz
-	sha256sums = 3b96e8bba14c9bcd4e104954244a7403f7dda6e3b336bbf6f0a079d589d11ddb
+	source = cardwire-0.12.3.tar.gz::https://github.com/OpenGamingCollective/cardwire/archive/refs/tags/v0.12.3.tar.gz
+	sha256sums = 3cb5d7195806d07f3466b4bf29bd874a9519199442741c9d3cd4518633657fd6
 
 pkgname = cardwire
