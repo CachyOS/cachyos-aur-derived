@@ -1,0 +1,78 @@
+# Maintainer: Sad65 <suspiciousfella@proton.me>
+# Contributor: HurricanePootis <hurricanepootis@protonmail.com>
+pkgname=an-anime-game-launcher
+pkgver=3.19.8
+pkgrel=1
+pkgdesc="An Anime Game launcher for Linux with telemetry disabling"
+arch=('x86_64')
+url="https://github.com/an-anime-team/an-anime-game-launcher"
+license=('GPL-3.0-only')
+depends=(
+    'gtk4'
+    'libadwaita'
+    'glibc'
+    'libgcc'
+    'gdk-pixbuf2'
+    'glib2'
+    'pango'
+    'cairo'
+    'imagemagick'
+    'polkit'
+    'wayland'
+    'hicolor-icon-theme'
+    'xz'
+    'bzip2'
+    '7zip'
+    'libwebp-utils'
+    'git'
+)
+makedepends=(
+    'cargo'
+    'cmake'
+    'openssl'
+    'protobuf'
+)
+optdepends=(
+    'mangohud'
+    'gamescope'
+    'gamemode'
+)
+source=("${pkgname}-${pkgver}.tar.gz::${url}/archive/${pkgver}.tar.gz")
+sha256sums=('ce4ebe5c1e3654e1ebe02ce7d4a65653fe5707deceaaa2b5ee2945cb83dffa6d')
+
+prepare() {
+    cd "${pkgname}-${pkgver}"
+    export RUSTUP_TOOLCHAIN=stable
+    cargo fetch --locked --target "$(rustc -vV | sed -n 's/host: //p')"
+}
+
+build() {
+    cd "${pkgname}-${pkgver}"
+    export RUSTUP_TOOLCHAIN=stable
+    export CARGO_TARGET_DIR=target
+    export CFLAGS+=" -ffat-lto-objects"
+    cargo build --frozen --release --all-features
+}
+
+package() {
+    cd "${pkgname}-${pkgver}"
+    local _appid="moe.launcher.an-anime-game-launcher"
+
+    install -Dm755 target/release/anime-game-launcher \
+        "${pkgdir}/usr/bin/an-anime-game-launcher"
+
+    install -Dm644 assets/anime-game-launcher.desktop \
+        "${pkgdir}/usr/share/applications/${_appid}.desktop"
+    install -Dm644 assets/images/icon.png \
+        "${pkgdir}/usr/share/icons/hicolor/512x512/apps/${_appid}.png"
+
+    sed -i \
+        -e 's/^Exec=AppRun/Exec=an-anime-game-launcher/' \
+        -e "s/^Icon=icon/Icon=${_appid}/" \
+        "${pkgdir}/usr/share/applications/${_appid}.desktop"
+    echo "StartupWMClass=${_appid}" \
+        >> "${pkgdir}/usr/share/applications/${_appid}.desktop"
+
+    install -Dm644 LICENSE \
+        "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+}
