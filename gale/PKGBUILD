@@ -1,6 +1,6 @@
 # Maintainer: Mark Wagie <mark dot wagie at proton dot me>
 pkgname=gale
-pkgver=1.23.0
+pkgver=1.23.1
 pkgrel=1
 pkgdesc="A modern mod manager for Thunderstore"
 arch=('x86_64')
@@ -18,7 +18,7 @@ makedepends=(
 )
 source=("$pkgname-$pkgver.tar.gz::https://github.com/Kesomannen/gale/archive/refs/tags/$pkgver.tar.gz"
         "$pkgname.desktop")
-sha256sums=('2ce3300e59322c95734caa9b43ee6341f583603fe493c9745754f311d5fbce5c'
+sha256sums=('12257751a1f2706d1ca63fedf193a76d78aa1dd49045886dc013faffc257e74b'
             '4de7796da59ef55bf7bbcde65a53b051245f80b3284ab53be20c4728345c4ff1')
 
 prepare() {
