@@ -1,7 +1,7 @@
 pkgbase = ayugram-desktop
 	pkgdesc = Desktop Telegram client with good customization and Ghost mode.
-	pkgver = 7.0.9
-	pkgrel = 5
+	pkgver = 7.2.9
+	pkgrel = 1
 	url = https://github.com/AyuGram/AyuGramDesktop
 	arch = x86_64
 	arch = aarch64
@@ -64,10 +64,9 @@ pkgbase = ayugram-desktop
 	optdepends = webkit2gtk-4.1: embedded browser features provided by webkit2gtk-4.1
 	optdepends = webkitgtk-6.0: embedded browser features provided by webkitgtk-6.0 (Wayland only)
 	optdepends = xdg-desktop-portal: desktop integration
-	source = AyuGram-7.0.9-full.tar.gz::https://github.com/AyuGram/AyuGramDesktop/releases/download/v7.0.9/AyuGramDesktop-7.0.9-full.tar.gz
+	source = AyuGram-7.2.9-full.tar.gz::https://github.com/AyuGram/AyuGramDesktop/releases/download/v7.2.9/AyuGramDesktop-7.2.9-full.tar.gz
 	source = td-51743dfd01dff6179e2d8f7095729caa4e2222e9.tar.gz::https://github.com/tdlib/td/archive/51743dfd01dff6179e2d8f7095729caa4e2222e9.tar.gz
-	sha256sums = ce74c400e488fc90d3784f3ba3d602cafecd5053b7a273a597718683a47abb0f
+	sha256sums = ead2665a32f38277e76d3041a5b780100afa0d87b7b1440c1278c5229936a842
 	sha256sums = f2c6b92533ba41a024b9fdb86d346c8bfc876d5961738ad463effbd844d61405
-	sha256sums = 566920c751e0f599411ff914649ffbf1f19e26a0ead368d9c4a18cbf760406e1
 
 pkgname = ayugram-desktop

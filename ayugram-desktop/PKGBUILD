@@ -1,8 +1,8 @@
 # Use environment variable MAKEPKG_AYUGRAM_API_ID and MAKEPKG_AYUGRAM_API_HASH to override default values
 
 pkgname=ayugram-desktop
-pkgver=7.0.9
-pkgrel=5
+pkgver=7.2.9
+pkgrel=1
 pkgdesc="Desktop Telegram client with good customization and Ghost mode."
 arch=("x86_64" "aarch64")
 url="https://github.com/AyuGram/AyuGramDesktop"
@@ -69,9 +69,8 @@ _tdlib_commit=51743dfd01dff6179e2d8f7095729caa4e2222e9
 source=("AyuGram-$pkgver-full.tar.gz::https://github.com/AyuGram/AyuGramDesktop/releases/download/v$pkgver/AyuGramDesktop-$pkgver-full.tar.gz"
         "td-$_tdlib_commit.tar.gz::https://github.com/tdlib/td/archive/$_tdlib_commit.tar.gz")
 
-sha256sums=('ce74c400e488fc90d3784f3ba3d602cafecd5053b7a273a597718683a47abb0f'
-            'f2c6b92533ba41a024b9fdb86d346c8bfc876d5961738ad463effbd844d61405'
-            '566920c751e0f599411ff914649ffbf1f19e26a0ead368d9c4a18cbf760406e1')
+sha256sums=('ead2665a32f38277e76d3041a5b780100afa0d87b7b1440c1278c5229936a842'
+            'f2c6b92533ba41a024b9fdb86d346c8bfc876d5961738ad463effbd844d61405')
 
 build() {
     cmake -B td-$_tdlib_commit/build -S td-$_tdlib_commit \
