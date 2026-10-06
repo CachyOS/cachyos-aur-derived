@@ -1,7 +1,7 @@
 # Maintainer: NelloKudo <marshnelloosu@gmail.com>
 
 pkgname=iloader
-pkgver=2.3.5
+pkgver=2.3.6
 pkgrel=1
 pkgdesc="User-friendly sideloader"
 arch=('x86_64' 'aarch64')
@@ -23,7 +23,7 @@ optdepends=('libayatana-appindicator: system tray icon support')
 conflicts=('iloader-appimage' 'iloader-bin')
 source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz"
         "$pkgname.desktop")
-sha256sums=('47b8f8811418e8d24be4c29dd9f2d28cb4df551e8e99f7f0ceda32b5b6c651eb'
+sha256sums=('ee096938ecd2145fea4cab30a30f7884181684b33dcc7c8ab860805fd4f49d56'
             '755768d09b767b37df904b2afd092c9e52263d5a9752780a1b054f6229d8fa92')
 
 prepare() {
