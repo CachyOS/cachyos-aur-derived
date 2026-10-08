@@ -130,6 +130,7 @@ pkgbase = qtcurve-firefox-theme
 	source = firefox-theme-description.patch
 	source = firefox-notice-transition.patch
 	source = bug-sweep.patch
+	source = firefox-157.patch
 	sha256sums = e01dbf05c24c11a3660e6185a9a7607d0838d4560ab717d44b449e9520476f6e
 	sha256sums = 60d6c52289f3b6e7c0645bb9acaa96a769801f66e77f50cd5551b7e613611152
 	sha256sums = e4219281d09f042bac722d7ab6a6784b9b56ea34129e8b877942c91770d9a912
@@ -242,5 +243,6 @@ pkgbase = qtcurve-firefox-theme
 	sha256sums = bbfbcfdd99f45c1d6c6365208279349f83b30f0891061e6dcb425e4cdedb15a6
 	sha256sums = 76bb238db584dde12364736fb002737f23826b06ea4fc3d43ad1ee826928cf6c
 	sha256sums = 23a17a146db657c8744ec7b7852c23a7e92a24bb5ee34ce004f6fb75d4e684c8
+	sha256sums = 709d64f32c146014c1cff5055dd9a2f0c5b11b48814210d79d5ba75a5e11824e
 
 pkgname = qtcurve-firefox-theme
