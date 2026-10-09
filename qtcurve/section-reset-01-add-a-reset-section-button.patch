@@ -16,14 +16,40 @@ tree, so the copied default cannot move that spin box.
 
 The section field map lives once, in sectionmap.h.
 
-The change sits on the branch work/section-reset of the local tree, as
-commit 1 of 4. The fork wyn/qtcurve holds that branch. Merge request !30
-on system/qtcurve holds that branch.
+Move the Reset Section button below the page area
+
+In the sidebar, the button reads as a reset of the whole dialog.
+It resets only the section that the stack shows.
+
+A footer below the page stack now holds the button. The footer
+holds a sunken line and then a row with the button at the left.
+A spacer fills the rest of the row. The footer pins the button to
+the page area, under the section that it resets.
+
+The section list now also spans the footer row. The list runs the
+full height of the page stack and the footer.
+
+The button is now the last tab stop. Seventeen page controls had
+no tab stop. They took focus after the controls with a tab stop.
+Each of them now has a tab stop at its place in the page layout.
+
+The dialog adds the Window Manager page at run time. The .ui file
+cannot set the tab order of the controls on that page. A call now
+puts the button after these controls. Focus goes from the section
+list to the page controls and then to the button.
+
+When another QtCurve configuration dialog is already open, the
+dialog shows a note alone. It hides the title, the section list
+and the button. It now hides the line as well.
+
+The changes sit on the branch work/section-reset of the local tree, as
+commits 1 and 5 of 6. The fork wyn/qtcurve holds that branch. Merge
+request !30 on system/qtcurve holds that branch.
 
 Drop this patch when upstream merges the change.
 
 diff --git a/qt6/config/qtcurveconfig.cpp b/qt6/config/qtcurveconfig.cpp
-index 2ef8fce5..cbdca44f 100644
+index 2ef8fce5..01f7f399 100644
 --- a/qt6/config/qtcurveconfig.cpp
 +++ b/qt6/config/qtcurveconfig.cpp
 @@ -25,6 +25,7 @@
@@ -34,15 +60,16 @@ index 2ef8fce5..cbdca44f 100644
  // TODO
  #ifdef QTC_QT6_STYLE_SUPPORT
  #  include "exportthemedialog.h"
-@@ -1265,6 +1266,7 @@ QtCurveConfig::QtCurveConfig(QWidget *parent)
+@@ -1265,6 +1266,8 @@ QtCurveConfig::QtCurveConfig(QWidget *parent)
          stack->setCurrentIndex(kwinPage);
          titleLabel->setVisible(false);
          stackList->setVisible(false);
 +        resetSectionButton->setVisible(false);
++        resetSectionLine->setVisible(false);
      }
  }
  
-@@ -1374,6 +1376,80 @@ void QtCurveConfig::defaults()
+@@ -1374,6 +1377,80 @@ void QtCurveConfig::defaults()
      kwin->defaults();
  }
  
@@ -123,7 +150,16 @@ index 2ef8fce5..cbdca44f 100644
  void QtCurveConfig::emboldenToggled()
  {
      if(!embolden->isChecked() && IND_NONE==defBtnIndicator->currentIndex())
-@@ -1785,6 +1861,12 @@ void QtCurveConfig::setupStack()
+@@ -1765,6 +1842,8 @@ void QtCurveConfig::setupStack()
+                            "page.</i></p>"));
+     }
+     stack->insertWidget(i, kwin);
++    if (kwin->ok())
++        QWidget::setTabOrder(kwin->tabWidget, resetSectionButton);
+     new CStackItem(stackList, i18n("Window Manager"), i++);
+ 
+     new CStackItem(stackList, i18n("Window buttons"), i++);
+@@ -1785,6 +1864,12 @@ void QtCurveConfig::setupStack()
      first->setSelected(true);
      connect(qtcSlot(stackList, itemSelectionChanged),
              qtcSlot(this, changeStack));
@@ -136,7 +172,7 @@ index 2ef8fce5..cbdca44f 100644
  }
  
  void
-@@ -1887,6 +1969,8 @@ void QtCurveConfig::changeStack()
+@@ -1887,6 +1972,8 @@ void QtCurveConfig::changeStack()
              updatePreview();
          stack->setCurrentIndex(item->stack());
      }
@@ -174,36 +210,149 @@ index b6fefe28..dae8aecb 100644
      void windowBorder_blendChanged();
      void windowBorder_colorTitlebarOnlyChanged();
 diff --git a/qt6/config/qtcurveconfigbase.ui b/qt6/config/qtcurveconfigbase.ui
-index 89b21846..4b8ccbb2 100644
+index 89b21846..62a0f197 100644
 --- a/qt6/config/qtcurveconfigbase.ui
 +++ b/qt6/config/qtcurveconfigbase.ui
-@@ -75,7 +75,7 @@
-      </column>
+@@ -30,7 +30,7 @@
+      </property>
      </widget>
     </item>
--   <item row="1" column="1">
-+   <item row="1" column="1" rowspan="2">
-     <widget class="QStackedWidget" name="stack">
+-   <item row="1" column="0">
++   <item row="1" column="0" rowspan="2">
+     <widget class="QTreeWidget" name="stackList">
       <property name="sizePolicy">
-       <sizepolicy hsizetype="MinimumExpanding" vsizetype="Preferred">
-@@ -4559,6 +4559,9 @@
+       <sizepolicy hsizetype="Maximum" vsizetype="Expanding">
+@@ -4559,6 +4559,40 @@
       </widget>
      </widget>
     </item>
-+   <item row="2" column="0">
-+    <widget class="QPushButton" name="resetSectionButton"/>
++   <item row="2" column="1">
++    <layout class="QVBoxLayout" name="resetSectionFooter">
++     <item>
++      <widget class="QFrame" name="resetSectionLine">
++       <property name="frameShape">
++        <enum>QFrame::HLine</enum>
++       </property>
++       <property name="frameShadow">
++        <enum>QFrame::Sunken</enum>
++       </property>
++      </widget>
++     </item>
++     <item>
++      <layout class="QHBoxLayout" name="resetSectionRow">
++       <item>
++        <widget class="QPushButton" name="resetSectionButton"/>
++       </item>
++       <item>
++        <spacer name="resetSectionSpacer">
++         <property name="orientation">
++          <enum>Qt::Horizontal</enum>
++         </property>
++         <property name="sizeHint" stdset="0">
++          <size>
++           <width>40</width>
++           <height>0</height>
++          </size>
++         </property>
++        </spacer>
++       </item>
++      </layout>
++     </item>
++    </layout>
 +   </item>
    </layout>
   </widget>
   <layoutdefault spacing="6" margin="11"/>
-@@ -4576,6 +4579,7 @@
-  </customwidgets>
-  <tabstops>
-   <tabstop>stackList</tabstop>
-+  <tabstop>resetSectionButton</tabstop>
-   <tabstop>presetsCombo</tabstop>
-   <tabstop>saveButton</tabstop>
+@@ -4581,6 +4615,7 @@
    <tabstop>deleteButton</tabstop>
+   <tabstop>importButton</tabstop>
+   <tabstop>exportButton</tabstop>
++  <tabstop>previewControlButton</tabstop>
+   <tabstop>appearance</tabstop>
+   <tabstop>bgndAppearance</tabstop>
+   <tabstop>bgndAppearance_btn</tabstop>
+@@ -4644,6 +4679,7 @@
+   <tabstop>flatSbarButtons</tabstop>
+   <tabstop>sbarBgndAppearance</tabstop>
+   <tabstop>sliderThumbs</tabstop>
++  <tabstop>sliderWidth</tabstop>
+   <tabstop>progressAppearance</tabstop>
+   <tabstop>progressColor</tabstop>
+   <tabstop>customProgressColor</tabstop>
+@@ -4664,6 +4700,7 @@
+   <tabstop>lvButton</tabstop>
+   <tabstop>sortedLv</tabstop>
+   <tabstop>customSortedLvColor</tabstop>
++  <tabstop>forceAlternateLvCols</tabstop>
+   <tabstop>selectionAppearance</tabstop>
+   <tabstop>borderSelection</tabstop>
+   <tabstop>lvLines</tabstop>
+@@ -4705,6 +4742,7 @@
+   <tabstop>titlebarIcon</tabstop>
+   <tabstop>windowBorder_colorTitlebarOnly</tabstop>
+   <tabstop>windowBorder_blend</tabstop>
++  <tabstop>windowBorder_fill</tabstop>
+   <tabstop>windowBorder_menuColor</tabstop>
+   <tabstop>windowBorder_addLightBorder</tabstop>
+   <tabstop>windowBorder_separator</tabstop>
+@@ -4753,6 +4791,7 @@
+   <tabstop>titlebarButtons_colorKeepAboveInactiveIcon</tabstop>
+   <tabstop>titlebarButtons_colorKeepBelowInactiveIcon</tabstop>
+   <tabstop>menubarAppearance</tabstop>
++  <tabstop>menubarBlend</tabstop>
+   <tabstop>shadeMenubars</tabstop>
+   <tabstop>customMenubarsColor</tabstop>
+   <tabstop>shadeMenubarOnlyWhenActive</tabstop>
+@@ -4769,11 +4808,17 @@
+   <tabstop>shadePopupMenu</tabstop>
+   <tabstop>useHighlightForMenu</tabstop>
+   <tabstop>thin_menuitems</tabstop>
++  <tabstop>menuIcons</tabstop>
++  <tabstop>onlyTicksInMenu</tabstop>
++  <tabstop>buttonStyleMenuSections</tabstop>
++  <tabstop>lighterPopupMenuBgnd</tabstop>
+   <tabstop>menuBgndAppearance</tabstop>
+   <tabstop>menuBgndAppearance_btn</tabstop>
+   <tabstop>menuBgndGrad</tabstop>
+   <tabstop>menuBgndImage</tabstop>
+   <tabstop>menuBgndImage_btn</tabstop>
++  <tabstop>menuDelay</tabstop>
++  <tabstop>menuCloseDelay</tabstop>
+   <tabstop>menuStripe</tabstop>
+   <tabstop>customMenuStripeColor</tabstop>
+   <tabstop>menuStripeAppearance</tabstop>
+@@ -4806,6 +4851,7 @@
+   <tabstop>firefoxTheme</tabstop>
+   <tabstop>passwordChar</tabstop>
+   <tabstop>expanderHighlight</tabstop>
++  <tabstop>dropShadowSize</tabstop>
+   <tabstop>noBgndGradientApps</tabstop>
+   <tabstop>noBgndImageApps</tabstop>
+   <tabstop>noBgndOpacityApps</tabstop>
+@@ -4814,10 +4860,15 @@
+   <tabstop>useQtFileDialogApps</tabstop>
+   <tabstop>menubarApps</tabstop>
+   <tabstop>statusbarApps</tabstop>
++  <tabstop>nonnativeMenubarApps</tabstop>
+   <tabstop>exportKde3Button</tabstop>
+   <tabstop>exportQt3Button</tabstop>
+   <tabstop>gradCombo</tabstop>
++  <tabstop>copyGradientButton</tabstop>
+   <tabstop>gradStops</tabstop>
++  <tabstop>stopPosition</tabstop>
++  <tabstop>stopValue</tabstop>
++  <tabstop>stopAlpha</tabstop>
+   <tabstop>updateButton</tabstop>
+   <tabstop>addButton</tabstop>
+   <tabstop>removeButton</tabstop>
+@@ -4834,6 +4885,7 @@
+   <tabstop>customAlphas</tabstop>
+   <tabstop>alpha0</tabstop>
+   <tabstop>alpha1</tabstop>
++  <tabstop>resetSectionButton</tabstop>
+  </tabstops>
+  <includes>
+   <include location="local">kcolorbutton.h</include>
 diff --git a/qt6/config/sectionmap.h b/qt6/config/sectionmap.h
 new file mode 100644
 index 00000000..be8d5505
