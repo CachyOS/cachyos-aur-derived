@@ -35,11 +35,10 @@ makedepends=(
     vulkan-headers
 )
 
-provides=("quickshell" "quickshell-git")
+provides=("quickshell")
 
 conflicts=(
     quickshell
-    quickshell-git
 )
 options=(!debug)
 _archive="$pkgname-$pkgver"
