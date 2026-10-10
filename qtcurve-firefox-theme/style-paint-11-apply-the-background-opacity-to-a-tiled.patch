@@ -1,0 +1,51 @@
+Apply the background opacity to a tiled image
+
+The background of a window and the background of a menu can take a
+tiled image. The paint of the image takes the pixmap of the file, and it
+drops the opacity of the background. The two spin boxes for the opacity
+therefore have no effect while an appearance names a tiled image. The
+other appearances carry the opacity into the colour of the paint.
+
+The tile now paints with the opacity of the background. A value below
+one hundred gives a translucent window and a translucent menu. A value
+of one hundred keeps the paint of before, and the other appearances keep
+their paint as well.
+
+The change sits on the branch work/style-paint of the local tree, as commit 11 of 21.
+A new merge request on system/qtcurve takes that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/qt6/style/qtcurve.cpp b/qt6/style/qtcurve.cpp
+index 6536ff17..60d54c10 100644
+--- a/qt6/style/qtcurve.cpp
++++ b/qt6/style/qtcurve.cpp
+@@ -2242,21 +2242,26 @@ Style::drawBackground(QPainter *p, const QColor &bgnd, const QRect &r,
+             }
+         }
+ 
++        p->save();
++        // The tile holds the alpha of its own file. The opacity of the
++        // background therefore applies at the paint of the tile.
++        if (app == APPEARANCE_FILE && opacity != 100) {
++            p->setOpacity(opacity / 100.0);
++        }
+         if (path.isEmpty()) {
+             p->drawTiledPixmap(r, oneOf(app, APPEARANCE_STRIPED,
+                                         APPEARANCE_FILE) ||
+                                scaledSize == pix.size() ? pix :
+                                pix.scaled(scaledSize, Qt::IgnoreAspectRatio));
+         } else {
+-            p->save();
+             p->setBrushOrigin(r.x(), r.y());
+             p->fillPath(path,
+                         QBrush(oneOf(app, APPEARANCE_STRIPED,
+                                      APPEARANCE_FILE) ||
+                                scaledSize == pix.size() ? pix :
+                                pix.scaled(scaledSize, Qt::IgnoreAspectRatio)));
+-            p->restore();
+         }
++        p->restore();
+ 
+         if (isWindow && noneOf(app, APPEARANCE_STRIPED, APPEARANCE_FILE) &&
+             grad == GT_HORIZ &&

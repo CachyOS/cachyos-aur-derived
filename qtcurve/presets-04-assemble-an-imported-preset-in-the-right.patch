@@ -1,0 +1,105 @@
+Assemble an imported preset in the right order
+
+The import saved the new preset before it loaded the decoration settings
+of the imported file. The stored preset therefore held the decoration
+settings of the session. The import also gave the save an underscored
+name, which no other path builds. The preset list therefore held a name
+that a later lookup missed. The window background block assigned the new
+file name before the copy, so the copy looked for a file that the archive
+does not hold.
+
+Copy the image files under the file name of the preset. Load every part
+of the imported file, then save under the name that the user entered.
+Assign the new image name after the copy, as the three other image blocks
+do.
+
+The change sits on the branch work/presets of the local tree, as commit 4 of 4.
+A new merge request on system/qtcurve takes that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/qt6/config/qtcurveconfig.cpp b/qt6/config/qtcurveconfig.cpp
+index 62144828..1d8b7092 100644
+--- a/qt6/config/qtcurveconfig.cpp
++++ b/qt6/config/qtcurveconfig.cpp
+@@ -2811,55 +2811,58 @@ void QtCurveConfig::importPreset()
+                                          name, name);
+                     if (!name.isEmpty()) {
+                         QString qtcDir(QtCurve::qtcSaveDir());
+-                        name=name.replace(' ', '_');
++                        // savePreset() builds the file name of the preset in
++                        // this way, and the image files take that name.
++                        QString themeName(QString(name).replace(' ', '_'));
+ 
+                         if (compressed && tmpDir) {
+                             // printf("IMPORT\n");
+                             if (opts.bgndImage.type == IMG_FILE) {
+                                 auto &bgndFile = opts.bgndImage.pixmap.file;
+-                                QString fileName(name + BGND_FILE IMAGE_FILE +
++                                QString fileName(themeName +
++                                                 BGND_FILE IMAGE_FILE +
+                                                  getExt(bgndFile));
+                                 saveThemeFile(tmpDir->path() + '/' +
+                                               getFileName(bgndFile),
+-                                              BGND_FILE IMAGE_FILE, name);
++                                              BGND_FILE IMAGE_FILE, themeName);
+                                 bgndFile = fileName;
+                             }
+                             if (opts.menuBgndImage.type == IMG_FILE) {
+                                 auto &menuBgndFile =
+                                     opts.menuBgndImage.pixmap.file;
+-                                QString fileName(name +
++                                QString fileName(themeName +
+                                                  BGND_FILE MENU_FILE
+                                                  IMAGE_FILE +
+                                                  getExt(menuBgndFile));
+                                 saveThemeFile(tmpDir->path() + '/' +
+                                               getFileName(menuBgndFile),
+                                               BGND_FILE MENU_FILE IMAGE_FILE,
+-                                              name);
++                                              themeName);
+                                 menuBgndFile = fileName;
+                             }
+                             if (opts.bgndAppearance == APPEARANCE_FILE) {
+                                 auto &bgndFile = opts.bgndPixmap.file;
+-                                QString fileName(name + BGND_FILE +
++                                QString fileName(themeName + BGND_FILE +
+                                                  getExt(bgndFile));
+-                                bgndFile = fileName;
+                                 saveThemeFile(tmpDir->path() + '/' +
+                                               getFileName(bgndFile), BGND_FILE,
+-                                              name);
++                                              themeName);
++                                bgndFile = fileName;
+                             }
+                             if (opts.menuBgndAppearance == APPEARANCE_FILE) {
+                                 auto &menuBgndFile = opts.menuBgndPixmap.file;
+-                                QString fileName(name + BGND_FILE MENU_FILE +
++                                QString fileName(themeName +
++                                                 BGND_FILE MENU_FILE +
+                                                  getExt(menuBgndFile));
+                                 saveThemeFile(tmpDir->path() + '/' +
+                                               getFileName(menuBgndFile),
+-                                              BGND_FILE MENU_FILE, name);
++                                              BGND_FILE MENU_FILE, themeName);
+                                 menuBgndFile = fileName;
+                             }
+                         }
+ 
+                         readyForPreview = false;
+                         setWidgetOptions(opts);
+-                        savePreset(name);
+ 
+                         // Load kwin options - if present
+                         KConfig cfg(qtcFile, KConfig::SimpleConfig);
+@@ -2876,6 +2879,10 @@ void QtCurveConfig::importPreset()
+                                 kwin->load(&cfg);
+                             }
+                         }
++
++                        // savePreset() writes the decoration widgets into the
++                        // preset, so the load above runs first.
++                        savePreset(name);
+                         readyForPreview = true;
+                         updatePreview();
+                     }

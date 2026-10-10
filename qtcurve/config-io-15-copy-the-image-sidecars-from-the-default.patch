@@ -1,0 +1,37 @@
+Copy the image sidecars from the default options
+
+qtcReadConfig builds the default options, which hold the values of the
+system configuration file, and copies one field of them into the target.
+The two pixmap sidecars stay behind. An absent appearance key makes
+toAppearance answer the default appearance and leave the pixmap alone.
+An inherited appearance of APPEARANCE_FILE therefore reaches the style
+with a null pixmap. QPainter drops a null tile, and the window
+background or the menu background never paints its image.
+
+Copy bgndPixmap and menuBgndPixmap beside customGradient. A file that
+names its own image still loads that image, because the file branch of
+toAppearance writes both the path and the pixmap.
+
+The change sits on the branch work/config-io of the local tree, as commit 15 of 18.
+A new merge request on system/qtcurve takes that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/qt6/common/config_file.cpp b/qt6/common/config_file.cpp
+index 855c4136..d0d8ce01 100644
+--- a/qt6/common/config_file.cpp
++++ b/qt6/common/config_file.cpp
+@@ -1255,7 +1255,13 @@ bool qtcReadConfig(const QString &file, Options *opts, Options *defOpts, bool ch
+             Options *def=&newOpts;
+ 
+             if(opts!=def)
++            {
+                 opts->customGradient=def->customGradient;
++                /* The appearance readers leave a pixmap alone when the key is
++                   absent, so an inherited image appearance needs its image. */
++                opts->bgndPixmap=def->bgndPixmap;
++                opts->menuBgndPixmap=def->menuBgndPixmap;
++            }
+             /* Check if the config file expects old default values... */
+             if(opts->version<qtcMakeVersion(1, 6))
+             {

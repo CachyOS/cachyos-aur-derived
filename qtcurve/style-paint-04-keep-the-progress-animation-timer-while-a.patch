@@ -1,0 +1,46 @@
+Keep the progress animation timer while a bar animates
+
+Style::timerEvent() marks an animation when it repaints a bar. The stripes
+of a determinate bar move on every second step, so the loop repaints such
+a bar on an even step alone. On an odd step a window whose only bar is
+determinate reports no animation, and the timer of the animation dies. The
+restart needs a paint, and no paint comes, because the dead timer asks for
+none. The stripes therefore stand still, although the animated progress
+option asks for the movement. A busy bar in the same window hides the
+defect, because that bar reports an animation on every step.
+
+The loop now separates the two questions. A bar that wants an animation
+keeps the timer, and the repaint of a determinate bar stays on the even
+step. The timer still dies on the step where no bar wants an animation.
+
+The change sits on the branch work/style-paint of the local tree, as commit 4 of 21.
+A new merge request on system/qtcurve takes that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/qt6/style/qtcurve_api.cpp b/qt6/style/qtcurve_api.cpp
+index c67c897f..7d8d8cc6 100644
+--- a/qt6/style/qtcurve_api.cpp
++++ b/qt6/style/qtcurve_api.cpp
+@@ -1504,12 +1504,16 @@ void Style::timerEvent(QTimerEvent *event)
+         bool hasAnimation = false;
+         m_animateStep = m_timer.elapsed() / (1000 / constProgressBarFps);
+         for (QProgressBar *bar: const_(m_progressBars)) {
+-            if ((opts.animatedProgress && 0 == m_animateStep % 2 &&
+-                 bar->value() != bar->minimum() &&
+-                 bar->value() != bar->maximum()) ||
+-                (0 == bar->minimum() && 0 == bar->maximum())) {
++            bool busy = (0 == bar->minimum() && 0 == bar->maximum());
++            if (!busy && !(opts.animatedProgress &&
++                           bar->value() != bar->minimum() &&
++                           bar->value() != bar->maximum())) {
++                continue;
++            }
++            hasAnimation = true;
++            // The stripes of a determinate bar move on every second step.
++            if (busy || 0 == m_animateStep % 2) {
+                 bar->update();
+-                hasAnimation = true;
+             }
+         }
+         if (Q_UNLIKELY(!hasAnimation && m_progressBarAnimateFps == constProgressBarFps)) {

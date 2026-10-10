@@ -1,0 +1,34 @@
+Blend the menu bar and the title bar for the Agua value
+
+The style rewrites the Agua appearance of the two title bars to the
+modified Agua appearance. The value of the menu bar keeps the Agua
+appearance. The test for the blend of the menu bar and the title bar
+compares the raw values. The test therefore fails for a configuration
+that names Agua. The blend stops, although the paint of the menu bar
+makes the same modification. The decoration also loses the height of the
+menu bar.
+
+The test now compares the modified values. A configuration with Agua in
+the three appearances blends again. Every other appearance keeps the
+result of the test, because the modification changes the Agua value
+alone.
+
+The change sits on the branch work/style-paint of the local tree, as commit 10 of 21.
+A new merge request on system/qtcurve takes that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/qt6/common/common.h b/qt6/common/common.h
+index 4b642b2b..b8545972 100644
+--- a/qt6/common/common.h
++++ b/qt6/common/common.h
+@@ -97,7 +97,8 @@ enum {
+ #define SUNKEN_BEVEL_DARK_ALPHA(X)  (X.value()/800.0) // 0.25
+ #define SUNKEN_BEVEL_LIGHT_ALPHA(X) (X.value()/500.0) // 0.40
+ 
+-#define BLEND_TITLEBAR     (opts.menubarAppearance==opts.titlebarAppearance && opts.menubarAppearance==opts.inactiveTitlebarAppearance && \
++#define BLEND_TITLEBAR     (MODIFY_AGUA(opts.menubarAppearance)==MODIFY_AGUA(opts.titlebarAppearance) && \
++                           MODIFY_AGUA(opts.menubarAppearance)==MODIFY_AGUA(opts.inactiveTitlebarAppearance) && \
+                            !(opts.windowBorder&WINDOW_BORDER_BLEND_TITLEBAR) && SHADE_WINDOW_BORDER==opts.shadeMenubars && opts.windowDrag)
+ 
+ #define PBAR_BORDER        4

@@ -1,0 +1,46 @@
+Run the default preset load once per Restore Defaults press
+
+The defaults() slot sets the preset combo box to the (Default) entry.
+It then calls setPreset() and kwin->defaults() directly. A combo box
+write that changes the index already runs setPreset() through the
+currentIndexChanged connection. That run calls kwin->defaults() for
+the (Default) entry. In that case the two direct calls repeat the work
+of the connection.
+
+A combo box write that holds the index emits no signal. For a press
+that starts on the (Default) entry, the direct call is the only preset
+load.
+
+The new shape dispatches on the index. The slot calls setPreset()
+directly when the combo box already sits on the (Default) entry. The
+slot writes the combo box otherwise and lets the connection make the
+one call. Each press then runs one preset load and one kwin->defaults()
+call.
+
+The change stays inside defaults(). The body of setPreset(), the
+connection and the interactive preset path keep their behaviour.
+
+The change sits on the branch work/dialog-state of the local tree, as
+commit 13 of 13. The fork wyn/qtcurve holds that branch. Merge request !26
+on system/qtcurve holds that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/qt6/config/qtcurveconfig.cpp b/qt6/config/qtcurveconfig.cpp
+index cbdca44f..a682cf9c 100644
+--- a/qt6/config/qtcurveconfig.cpp
++++ b/qt6/config/qtcurveconfig.cpp
+@@ -1371,9 +1371,10 @@ void QtCurveConfig::defaults()
+         if(presetsCombo->itemText(i)==defaultText)
+             index=i;
+ 
+-    presetsCombo->setCurrentIndex(index);
+-    setPreset();
+-    kwin->defaults();
++    if (presetsCombo->currentIndex() == index)
++        setPreset();
++    else
++        presetsCombo->setCurrentIndex(index);
+ }
+ 
+ // Reset the options of the shown section to the values of the default

@@ -1,0 +1,44 @@
+Write the application lists in one stable order
+
+CFG_WRITE_STRING_LIST_ENTRY joins the values of a QSet. Qt seeds the
+hash of a QSet for each process, so the nine application lists reach the
+file in a different order on each start. The set the style builds does
+not change, but the stored file changes with no user edit. Two exports
+of one unchanged configuration therefore differ.
+
+Sort the list before the join. The dialog already sorts the same list
+for display, so the file now holds the order the user sees.
+
+Six processes that write one list of five names give six orders before
+the change and one order after it.
+
+The change sits on the branch work/config-io of the local tree, as commit 2 of 18.
+A new merge request on system/qtcurve takes that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/qt6/common/config_file.cpp b/qt6/common/config_file.cpp
+index ee4c4b59..17a4e735 100644
+--- a/qt6/common/config_file.cpp
++++ b/qt6/common/config_file.cpp
+@@ -2237,11 +2237,15 @@ static const char * toStr(ETBarBtn tb)
+         CFG.writeEntry(#ENTRY ".pos", (int)(opts.ENTRY.pos)); \
+     }
+ 
+-#define CFG_WRITE_STRING_LIST_ENTRY(ENTRY) \
+-    if (!exportingStyle && def.ENTRY==opts.ENTRY) \
+-        CFG.deleteEntry(#ENTRY); \
+-    else \
+-        CFG.writeEntry(#ENTRY, QStringList(opts.ENTRY.values()).join(",")); \
++#define CFG_WRITE_STRING_LIST_ENTRY(ENTRY) do {                 \
++        if (!exportingStyle && def.ENTRY==opts.ENTRY) {         \
++            CFG.deleteEntry(#ENTRY);                            \
++        } else {                                                \
++            QStringList list(opts.ENTRY.values());              \
++            list.sort();                                        \
++            CFG.writeEntry(#ENTRY, list.join(","));             \
++        }                                                       \
++    } while (0)
+ 
+ bool qtcWriteConfig(KConfig *cfg, const Options &opts, const Options &def, bool exportingStyle)
+ {

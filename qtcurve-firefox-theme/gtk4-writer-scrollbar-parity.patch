@@ -1,0 +1,805 @@
+Colour the scroll bars of the GTK sheets from the slider settings
+
+The scroll bar rules of the GTK sheets stated one case of the Qt
+style. The thumb took the button ladder under every slider key,
+and its gradient took the appearance key in place of the
+sliderAppearance key. The trough took the window ladder, and no
+groove path of the style reads that ladder.
+
+Writer::scrollBar() now reads scrollSpec(). The helper states the
+ladder of Style::sliderColors() under each slider key. It takes
+one highlight step of that ladder for the pointer, and step two
+of the Base ladder for the groove. Each border takes the border
+step of the ladder of its fill. The style passes one colour array
+to the fill and to the border of a box. A thumb tone that follows
+no colour name gives a literal under the -fixed suffix, which
+assert-pairs.sh and assert-paths.sh read. The ground of the bar
+keeps the window rule, because the style paints no ground of its
+own under the shipped keys.
+
+assert-scrollbar.sh binds the widget rules to the settings over
+fifteen arms and thirteen controls. The gradient arm of the
+checks loses the glass stops of its thumb, because its settings
+file sets no sliderAppearance key.
+
+The change sits on the branch work/gtk4-theme of the local tree, as the
+fourteenth commit. The fork wyn/qtcurve holds that branch. Merge request !15
+on system/qtcurve holds that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/gtk4/CMakeLists.txt b/gtk4/CMakeLists.txt
+index a24a7b51..f144df7a 100644
+--- a/gtk4/CMakeLists.txt
++++ b/gtk4/CMakeLists.txt
+@@ -240,8 +240,8 @@ set(qtc_follow3 375)
+ set(qtc_follow4 180)
+ set(qtc_follow_cover3 380)
+ set(qtc_follow_cover4 185)
+-set(qtc_follow_grad3 446)
+-set(qtc_follow_grad4 235)
++set(qtc_follow_grad3 442)
++set(qtc_follow_grad4 231)
+ set(qtc_follow_flat3 290)
+ set(qtc_follow_flat4 115)
+ set(qtc_follow_opt3 372)
+@@ -631,6 +631,15 @@ add_custom_command(TARGET qtcurve-gtk-theme POST_BUILD
+           "${qtc_shadow_size}" "${qtc_shadow_big}"
+   VERBATIM)
+ 
++# The scroll bar rules of the widget. The thumb and the groove of the bar read
++# the slider keys and the groove keys of the settings, and no table above binds
++# a rule of them to those keys. The check below runs the writer over each key,
++# and it reads the four rules of each arm.
++add_custom_command(TARGET qtcurve-gtk-theme POST_BUILD
++  COMMAND sh "${qtc_check}/assert-scrollbar.sh" "${qtc_writer_command}"
++          "${qtc_cover_dir}/scrollbar" "${qtc_light}" "${qtc_distinct}"
++  VERBATIM)
++
+ # Every check above reads a sheet as text. The check below reads one in GTK 3
+ # itself. It builds a menu bar with an open menu. It then reads the node path,
+ # the caption colour and the box of each state that the toolkit gives. A text
+diff --git a/gtk4/check/assert-scrollbar.sh b/gtk4/check/assert-scrollbar.sh
+new file mode 100644
+index 00000000..7448af82
+--- /dev/null
++++ b/gtk4/check/assert-scrollbar.sh
+@@ -0,0 +1,461 @@
++#!/bin/sh
++# assert-scrollbar.sh WRITER WORKDIR SCHEME DISTINCT: the scroll bar rules of
++# the widget must hold the colours that the Qt style paints. The thumb must
++# take the ladder of Style::sliderColors() under each slider key and one
++# highlight step of that ladder under the pointer. The groove must take step
++# two of the base ladder under every groove key. Each border must take the
++# border step of the ladder of its own fill. The run writes one settings file
++# and one sheet for each arm under WORKDIR, over the colour file SCHEME and
++# over the colour file DISTINCT. It then breaks one contract in a copy of an
++# arm, and it fails if the check passes the broken copy.
++set -eu
++usage='usage: assert-scrollbar.sh WRITER WORKDIR SCHEME DISTINCT'
++writer=${1:?$usage}
++work=${2:?$usage}
++scheme=${3:?$usage}
++distinct=${4:?$usage}
++
++# A relative path leaves the sheets outside the directory that the caller
++# names, because the writer runs in a directory of its own.
++case $work in
++    /*) ;;
++    *) work=$PWD/$work;;
++esac
++
++# The four rules of the scroll bar, as Writer::scrollBar() names them. A rule
++# of the widget carries no rank guard, so each selector below is the whole
++# selector line of the sheet.
++bar='scrollbar, scrollbar > range'
++trough='scrollbar > range > trough, scrollbar trough'
++thumb='scrollbar > range > trough > slider, scrollbar slider'
++grab='scrollbar > range > trough > slider:hover, scrollbar slider:hover'
++# The trough of a level bar, which holds step two of the window ladder. The
++# fix moves the scroll bar trough off that ladder, so the two rules must hold
++# two values in every sheet.
++anchor='levelbar > trough, levelbar trough'
++# The scroll bar block of the browser, which the GTK 3 sheet carries only
++# where the writer emits that block.
++moz='#MozillaGtkWidget scrollbar'
++
++# The colour names of the three roles that the rules read.
++base='@theme_base_color_breeze'
++button='@theme_button_background_normal_breeze'
++selected='@theme_selected_bg_color_breeze'
++# The border of the trough, which takes the border step of the base ladder.
++edge="1px solid shade($base, 0.750)"
++# The colour of the custom arm, which the rest row must carry byte for byte.
++custom='#ff8800'
++
++# Every arm of the light scheme, in the order that the run writes them. The
++# last two arms take no colour name. The noborder arm drops the border of the
++# trough, and the hsv arm writes a literal for every shaded tone.
++arms='none darken selected blend custom mo slapp app thin wide page corner
++      square noborder hsv'
++# The arms that hold a colour name in the trough rule.
++namearms='none darken selected blend custom mo slapp app thin wide page corner
++          square noborder'
++# The arms that hold the border of the trough on a colour name.
++edgearms='none darken selected blend custom mo slapp app thin wide page corner
++          square'
++# The arms of the distinct scheme, where no two roles share a value.
++darms='none blend hsv'
++
++rm -rf "$work"
++mkdir -p "$work/arm" "$work/broken"
++
++# settings NAME BODY: writes the settings file of the arm NAME, which holds
++# the keys of BODY over the shipped preset. BODY carries one escape of a new
++# line for each key.
++settings() {
++    printf '[Settings]\n%b' "$2" > "$work/$1.qtcurve"
++}
++
++# sheet NAME SETTINGS DIALECT COLOURS: writes the sheet of the arm NAME from
++# the settings file SETTINGS, in the dialect DIALECT, over the colour file
++# COLOURS.
++sheet() {
++    "$writer" --stdout --force --settings "$work/$2.qtcurve" \
++        --scheme "$4" --dialect "$3" --asset-base "../assets/" \
++        --out "$work/arm/$1.css"
++}
++
++# The five slider keys, one arm each. The reader takes a colour value of the
++# key as the custom colour of the slider.
++settings none 'shadeSliders=none\n'
++settings darken 'shadeSliders=darken\n'
++settings selected 'shadeSliders=origselected\n'
++settings blend 'shadeSliders=selected\n'
++settings custom "shadeSliders=$custom\\n"
++# The pointer key, which the reader keeps under the three ladder keys alone.
++settings mo 'shadeSliders=origselected\ncolorSliderMouseOver=true\n'
++# The two gradient arms. The slapp arm moves the thumb key alone and the app
++# arm moves the general key alone. A writer that reads the wrong field
++# therefore fails one of the two.
++settings slapp 'sliderAppearance=shinyglass\n'
++settings app 'appearance=shinyglass\n'
++# The five groove arms, which hold the four corners of the groove keys and the
++# square corner of no button. No one of them may move the trough of the bar.
++settings thin 'flatSbarButtons=true\nthinSbarGroove=true\n'
++settings wide 'flatSbarButtons=true\nthinSbarGroove=false\n'
++settings page 'flatSbarButtons=false\nthinSbarGroove=true\n'
++settings corner 'flatSbarButtons=false\nthinSbarGroove=true\nscrollbarType=none\n'
++settings square \
++    'flatSbarButtons=false\nthinSbarGroove=true\nscrollbarType=none\nround=none\n'
++# The border key of the groove, which drops the border of the trough.
++settings noborder 'borderSbarGroove=false\n'
++# The shading model of the sheet. The GTK function shade() computes the HSL
++# model alone, so another model gives a literal for every shaded tone. Each
++# seed then stands as a byte that a reader can measure.
++settings hsv 'shading=hsv\n'
++
++for arm in $arms; do
++    sheet "$arm" "$arm" gtk3 "$scheme"
++done
++# The GTK 4 sheets of two arms. The hsv sheet pins the form of the two rows
++# that the custom property names carry.
++sheet gtk4 none gtk4 "$scheme"
++sheet gtk4-hsv hsv gtk4 "$scheme"
++# The three arms of the distinct scheme, where the window colour, the base
++# colour and the button colour stand far apart.
++for arm in $darms; do
++    sheet "d-$arm" "$arm" gtk3 "$distinct"
++done
++
++# row DIR ARM SELECTOR PROP: prints the value of the property PROP of the rule
++# SELECTOR in the sheet of ARM under DIR. It prints nothing for a rule or a
++# property that the sheet does not hold.
++row() {
++    r_sel=$(printf '%s' "$3" | sed 's/[]\/$*.^[]/\\&/g')
++    sed -n "/^$r_sel {\$/,/^}\$/p" "$1/$2.css" |
++        sed -n "s/^  $4: \(.*\);\$/\1/p"
++}
++
++# check DIR: gives 0 while the ten contracts hold over the arm sheets of DIR.
++# It names the first contract that fails on the standard error.
++check() {
++    d=$1
++
++    # 1. Each sheet of the run holds the four rules of the scroll bar, and
++    # each rule holds a ground. This is the guard against an empty read.
++    for c_arm in $arms gtk4 gtk4-hsv d-none d-blend d-hsv; do
++        for c_sel in "$bar" "$trough" "$thumb" "$grab"; do
++            if [ -z "$(row "$d" "$c_arm" "$c_sel" background-color)" ]; then
++                echo "assert-scrollbar: $c_arm holds no rule '$c_sel'" >&2
++                return 1
++            fi
++        done
++    done
++
++    # 2. The five slider keys give five colours of their own, and each one
++    # takes the ladder that Style::sliderColors() holds.
++    c_none=$(row "$d" none "$thumb" background-color)
++    c_darken=$(row "$d" darken "$thumb" background-color)
++    c_sel=$(row "$d" selected "$thumb" background-color)
++    c_blend=$(row "$d" blend "$thumb" background-color)
++    c_custom=$(row "$d" custom "$thumb" background-color)
++    if [ "$c_none" != "$button" ]; then
++        echo "assert-scrollbar: the none arm rests on '$c_none'" >&2
++        return 1
++    fi
++    case $c_darken in
++        "shade($button, "*')') ;;
++        *) echo "assert-scrollbar: the darken arm rests on '$c_darken'" >&2
++           return 1;;
++    esac
++    if [ "$c_sel" != "$selected" ]; then
++        echo "assert-scrollbar: the selected arm rests on '$c_sel'" >&2
++        return 1
++    fi
++    case $c_blend in
++        '#'[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]) ;;
++        *) echo "assert-scrollbar: the blend arm rests on '$c_blend'" >&2
++           return 1;;
++    esac
++    if [ "$c_custom" != "$custom" ]; then
++        echo "assert-scrollbar: the custom arm rests on '$c_custom'" >&2
++        return 1
++    fi
++    if [ "$(printf '%s\n' "$c_none" "$c_darken" "$c_sel" "$c_blend" \
++            "$c_custom" | sort -u | wc -l)" -ne 5 ]; then
++        echo "assert-scrollbar: two slider keys give one colour" >&2
++        return 1
++    fi
++
++    # 3. Each arm takes a colour of its own for the pointer. A rest row that
++    # follows a colour name takes one highlight step of that name. The
++    # pointer arm of contract 4 moves that name to another ladder.
++    for c_arm in $arms; do
++        c_rest=$(row "$d" "$c_arm" "$thumb" background-color)
++        c_hover=$(row "$d" "$c_arm" "$grab" background-color)
++        if [ "$c_rest" = "$c_hover" ]; then
++            echo "assert-scrollbar: $c_arm holds one colour for two states" \
++                 >&2
++            return 1
++        fi
++        if [ "$c_arm" = mo ]; then
++            continue
++        fi
++        case $c_rest in
++            '@'*|'shade('*)
++                case $c_hover in
++                    "shade($c_rest, "*')') ;;
++                    *) echo "assert-scrollbar: $c_arm moves the pointer to" \
++                            "'$c_hover' over '$c_rest'" >&2
++                       return 1;;
++                esac;;
++        esac
++    done
++
++    # 4. The pointer key moves the rest row to the button ladder and it keeps
++    # the hover row on the slider ladder.
++    if [ "$(row "$d" mo "$thumb" background-color)" != "$c_none" ]; then
++        echo "assert-scrollbar: the pointer key holds the rest row" >&2
++        return 1
++    fi
++    if [ "$(row "$d" mo "$grab" background-color)" != \
++         "$(row "$d" selected "$grab" background-color)" ]; then
++        echo "assert-scrollbar: the pointer key moves the hover row" >&2
++        return 1
++    fi
++
++    # 5. The gradient of the thumb follows the thumb key of the settings. The
++    # general key of the appearance leaves that gradient alone.
++    c_img=$(row "$d" none "$thumb" background-image)
++    if [ "$(row "$d" slapp "$thumb" background-image)" = "$c_img" ]; then
++        echo "assert-scrollbar: the thumb key holds the gradient" >&2
++        return 1
++    fi
++    if [ "$(row "$d" app "$thumb" background-image)" != "$c_img" ]; then
++        echo "assert-scrollbar: the general key moves the gradient" >&2
++        return 1
++    fi
++
++    # 6. The trough takes one step of the base ladder under every key of the
++    # settings. It never takes the window ladder that the level bar holds.
++    for c_arm in $namearms; do
++        c_gnd=$(row "$d" "$c_arm" "$trough" background-color)
++        case $c_gnd in
++            "shade($base, "*')') ;;
++            *) echo "assert-scrollbar: $c_arm grounds the trough on" \
++                    "'$c_gnd'" >&2
++               return 1;;
++        esac
++    done
++    if [ "$(for c_arm in $namearms; do
++                row "$d" "$c_arm" "$trough" background-color
++            done | sort -u | wc -l)" -ne 1 ]; then
++        echo "assert-scrollbar: a key of the settings moves the trough" >&2
++        return 1
++    fi
++    for c_arm in $arms gtk4 gtk4-hsv d-none d-blend d-hsv; do
++        if [ "$(row "$d" "$c_arm" "$trough" background-color)" = \
++             "$(row "$d" "$c_arm" "$anchor" background-color)" ]; then
++            echo "assert-scrollbar: the trough of $c_arm holds the window" \
++                 "ladder of the level bar" >&2
++            return 1
++        fi
++    done
++    # The distinct scheme gives the window colour, the base colour and the
++    # button colour three values that stand far apart. The hsv arm writes each
++    # one as a literal, so the three seeds read as three bytes.
++    if [ "$(printf '%s\n' "$(row "$d" d-hsv "$trough" background-color)" \
++            "$(row "$d" d-hsv "$anchor" background-color)" \
++            "$(row "$d" d-hsv "$thumb" background-color)" |
++            sort -u | wc -l)" -ne 3 ]; then
++        echo "assert-scrollbar: two seeds of the distinct scheme give one" \
++             "colour" >&2
++        return 1
++    fi
++
++    # 7. The border of the trough takes the border step of the base ladder,
++    # and the border key of the groove drops it.
++    for c_arm in $edgearms; do
++        if [ "$(row "$d" "$c_arm" "$trough" border)" != "$edge" ]; then
++            echo "assert-scrollbar: the trough of $c_arm borders on" \
++                 "'$(row "$d" "$c_arm" "$trough" border)'" >&2
++            return 1
++        fi
++    done
++    if [ "$(row "$d" noborder "$trough" border)" != none ]; then
++        echo "assert-scrollbar: the noborder arm keeps the border of the" \
++             "trough" >&2
++        return 1
++    fi
++
++    # 8. The border of the thumb takes the border step of the ladder of its
++    # own fill. The style passes one colour array to the fill and to the
++    # border of a box.
++    for c_pair in "none:$button" "darken:$button" "mo:$button" \
++                  "selected:$selected"; do
++        c_arm=${c_pair%%:*}
++        c_name=${c_pair#*:}
++        if [ "$(row "$d" "$c_arm" "$thumb" border)" != \
++             "1px solid shade($c_name, 0.750)" ]; then
++            echo "assert-scrollbar: the thumb of $c_arm borders on" \
++                 "'$(row "$d" "$c_arm" "$thumb" border)'" >&2
++            return 1
++        fi
++    done
++    for c_arm in blend custom; do
++        case $(row "$d" "$c_arm" "$thumb" border) in
++            '1px solid #'[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]) ;;
++            *) echo "assert-scrollbar: the thumb of $c_arm borders on" \
++                    "'$(row "$d" "$c_arm" "$thumb" border)'" >&2
++               return 1;;
++        esac
++    done
++
++    # 9. The hsv arm follows no colour name. The sheet of GTK 4 must carry
++    # the thumb under the name of a literal and the trough under the plain
++    # name. A rewrite that drops the cover test moves the thumb row to the
++    # plain name.
++    case $(row "$d" gtk4-hsv "$thumb" background-color) in
++        'var(--qtc-sbar-slider-bg-fixed, #'[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]')') ;;
++        *) echo "assert-scrollbar: the hsv arm rests on" \
++                "'$(row "$d" gtk4-hsv "$thumb" background-color)'" >&2
++           return 1;;
++    esac
++    case $(row "$d" gtk4-hsv "$trough" background-color) in
++        'var(--qtc-sbar-trough-bg, #'[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]')') ;;
++        *) echo "assert-scrollbar: the hsv arm grounds the trough on" \
++                "'$(row "$d" gtk4-hsv "$trough" background-color)'" >&2
++           return 1;;
++    esac
++
++    # 10. The block of the browser reads the same helper. Its ground must hold
++    # the trough of the widget, and its rest row must hold the thumb of the
++    # widget. The clause holds only where the sheet carries that block, which
++    # assert-browser.sh reads. The rest clause reads the arms 1 to 14. Under
++    # the hsv arm the widget rest row writes the literal of its cover branch
++    # and the block writes the colour name. The two spellings give one colour.
++    if [ -n "$(row "$d" none "$moz" background-color)" ]; then
++        for c_arm in $arms; do
++            if [ "$(row "$d" "$c_arm" "$moz" background-color)" != \
++                 "$(row "$d" "$c_arm" "$trough" background-color)" ]; then
++                echo "assert-scrollbar: the block of $c_arm grounds apart" \
++                     "from the trough of the widget" >&2
++                return 1
++            fi
++        done
++        for c_arm in $namearms; do
++            if [ "$(row "$d" "$c_arm" "$moz slider" background-color)" != \
++                 "$(row "$d" "$c_arm" "$thumb" background-color)" ]; then
++                echo "assert-scrollbar: the block of $c_arm rests apart" \
++                     "from the thumb of the widget" >&2
++                return 1
++            fi
++        done
++    fi
++    return 0
++}
++
++if ! check "$work/arm"; then
++    echo "assert-scrollbar: the arms fail the check" >&2
++    exit 1
++fi
++
++# The controls below. Each one breaks one contract in a copy of the arms, and
++# the check must fail over that copy.
++broken=0
++
++# control NAME: the check must fail over the copy under the broken directory.
++control() {
++    if check "$work/broken" 2> "$work/control.log"; then
++        echo "assert-scrollbar: the check passed the broken copy of $1" >&2
++        exit 1
++    fi
++    broken=$((broken + 1))
++}
++
++# paste ARM SELECTOR PROP VALUE: writes the copy of the arms with the property
++# PROP of the rule SELECTOR of ARM at VALUE.
++paste() {
++    rm -rf "$work/broken"
++    cp -r "$work/arm" "$work/broken"
++    awk -v want="$2 {" -v prop="  $3: " -v val="$4" '
++        $0 == want { in_rule = 1 }
++        in_rule && index($0, prop) == 1 { print prop val ";"; next }
++        in_rule && $0 == "}" { in_rule = 0 }
++        { print }' "$work/arm/$1.css" > "$work/broken/$1.css"
++}
++
++# The thumb rule cut out of one arm, which is the sheet of a writer that
++# writes no rule of the thumb.
++rm -rf "$work/broken"
++cp -r "$work/arm" "$work/broken"
++t_sel=$(printf '%s' "$thumb" | sed 's/[]\/$*.^[]/\\&/g')
++sed "/^$t_sel {\$/,/^}\$/d" "$work/arm/none.css" > "$work/broken/none.css"
++control 'the thumb rule of an arm'
++
++# The rest row of the darken arm at the colour of the none arm, which drops
++# the darker pair of ladder steps.
++paste darken "$thumb" background-color "$button"
++control 'the ladder of the darken arm'
++
++# The rest row of the blend arm at a colour name, which is the row that the
++# tree of the defect writes.
++paste blend "$thumb" background-color "$button"
++control 'the literal of the blend arm'
++
++# The colour of the custom arm at another value, which is a doctored sheet.
++paste custom "$thumb" background-color '#ff0000'
++control 'the colour of the custom arm'
++
++# The hover row at the rest row, which drops the step of the pointer.
++paste selected "$grab" background-color "$selected"
++control 'the step of the pointer'
++
++# The rest row of the pointer arm at the slider ladder, which is the row of
++# the arm that holds the key at false.
++paste mo "$thumb" background-color "$selected"
++control 'the rest row of the pointer key'
++
++# The gradient of the thumb key arm at the gradient of the none arm. That
++# sheet comes from a writer that reads the general key of the appearance.
++paste slapp "$thumb" background-image \
++    "$(row "$work/arm" none "$thumb" background-image)"
++control 'the gradient of the thumb key'
++
++# The trough of one arm on the window ladder, which is the ladder of the tree
++# of the defect.
++paste thin "$trough" background-color 'shade(@theme_bg_color_breeze, 0.900)'
++control 'the ladder of the trough'
++
++# The trough of the hsv arm at the level bar of the same sheet, which holds
++# the window ladder as a literal.
++paste hsv "$trough" background-color \
++    "$(row "$work/arm" hsv "$anchor" background-color)"
++control 'the seed of the trough'
++
++# The border of the noborder arm at a line, which the border key drops.
++paste noborder "$trough" border "$edge"
++control 'the border key of the groove'
++
++# The border of the thumb of the selected arm on the button ladder, which is
++# the border of another fill.
++paste selected "$thumb" border "1px solid shade($button, 0.750)"
++control 'the border of the thumb'
++
++# The thumb of the hsv arm under the plain name, which is the row of a writer
++# that drops the cover test.
++paste gtk4-hsv "$thumb" background-color 'var(--qtc-sbar-slider-bg, #d6d86d)'
++control 'the name of the literal'
++
++# The ground of the block of the browser at another value. The block stands in
++# the sheet only where the writer emits it.
++if [ -n "$(row "$work/arm" none "$moz" background-color)" ]; then
++    paste none "$moz" background-color '@theme_base_color_breeze'
++    control 'the ground of the block of the browser'
++    blocked='it holds the block of the browser on the same derivation,'
++else
++    blocked='the sheets hold no block of the browser,'
++fi
++
++rm -rf "$work/broken"
++echo "assert-scrollbar: the four rules stand in $(echo $arms | wc -w) arms of" \
++     "the light scheme, in $(echo $darms | wc -w) arms of the distinct" \
++     "scheme and in 2 sheets of GTK 4, the thumb holds the five slider keys," \
++     "the pointer key and the thumb key of the gradient, the trough holds one" \
++     "step of the base ladder under every key and never the window ladder of" \
++     "the level bar, each border holds the ladder of its own fill," \
++     "$blocked and the check rejects each of the $broken control copies"
+diff --git a/gtk4/check/paths.txt b/gtk4/check/paths.txt
+index 19b58088..fbac66e4 100644
+--- a/gtk4/check/paths.txt
++++ b/gtk4/check/paths.txt
+@@ -290,7 +290,7 @@ follow | theme_bg_color_breeze | window.background levelbar trough | - |
+ follow | theme_bg_color_breeze | window.background levelbar block.empty | - |
+ follow | theme_bg_color_breeze | window.background progressbar trough | - |
+ follow | theme_bg_color_breeze | window.background scrollbar | - |
+-follow | theme_bg_color_breeze | window.background scrollbar range trough | - |
++follow | theme_base_color_breeze | window.background scrollbar range trough | - |
+ follow | theme_button_background_normal_breeze | window.background scrollbar range trough slider | - |
+ follow | theme_button_background_normal_breeze | window.background scrollbar range trough slider:hover | - |
+ follow | theme_selected_bg_color_breeze | window.background scale trough highlight | - |
+@@ -444,7 +444,7 @@ follow | theme_selected_bg_color_breeze | window.background scale trough highlig
+ follow | theme_button_background_normal_breeze | window.background scale trough slider | border:theme_button_background_normal_breeze | 
+ follow | theme_button_background_normal_breeze | window.background scale trough slider:focus | border:theme_button_background_normal_breeze | gtk3
+ follow | theme_button_background_normal_breeze | window.background scale:focus-within trough slider | border:theme_button_background_normal_breeze | gtk4
+-follow | theme_bg_color_breeze | window.background scrollbar range trough | border:theme_bg_color_breeze | 
++follow | theme_base_color_breeze | window.background scrollbar range trough | border:theme_base_color_breeze | 
+ follow | theme_button_background_normal_breeze | window.background scrollbar range trough slider | border:theme_button_background_normal_breeze | 
+ follow | theme_button_background_normal_breeze | window.background scrollbar range trough slider:hover | border:theme_button_background_normal_breeze | 
+ follow | theme_base_color_breeze | window.background scrolledwindow.frame | border:theme_bg_color_breeze | 
+diff --git a/gtk4/check/shades-grad.txt b/gtk4/check/shades-grad.txt
+index 60d45228..ae4d3f90 100644
+--- a/gtk4/check/shades-grad.txt
++++ b/gtk4/check/shades-grad.txt
+@@ -41,9 +41,9 @@
+ :root | --qtc-sbar-trough-img | 0.930 0.900 1.040 0.900 | gtk4 |
+ :root | --qtc-sbar-trough-bg | 0.900 | gtk4 |
+ :root | --qtc-sbar-trough-border | 0.750 | gtk4 |
+-:root | --qtc-sbar-slider-img | 1.200 0.984 0.900 1.060 | gtk4 |
++:root | --qtc-sbar-slider-img | 1.040 0.980 | gtk4 |
+ :root | --qtc-sbar-slider-border | 0.750 | gtk4 |
+-:root | --qtc-sbar-slider-img-hover | 1.200 1.030 0.984 1.030 0.900 1.030 1.060 1.030 | gtk4 |
++:root | --qtc-sbar-slider-img-hover | 1.040 1.030 0.980 1.030 | gtk4 |
+ :root | --qtc-sbar-slider-bg-hover | 1.030 | gtk4 |
+ :root | --qtc-sw-img | 0.930 0.900 1.040 0.900 | gtk4 |
+ :root | --qtc-sw-bg | 0.900 | gtk4 |
+@@ -127,9 +127,9 @@ levelbar block.empty | background-color | 0.900 |  |
+ scrollbar > range > trough | background-image | 0.930 0.900 1.040 0.900 |  |
+ scrollbar > range > trough | background-color | 0.900 |  |
+ scrollbar > range > trough | border | 0.750 |  |
+-scrollbar > range > trough > slider | background-image | 1.200 0.984 0.900 1.060 |  |
++scrollbar > range > trough > slider | background-image | 1.040 0.980 |  |
+ scrollbar > range > trough > slider | border | 0.750 |  |
+-scrollbar > range > trough > slider:hover | background-image | 1.200 1.030 0.984 1.030 0.900 1.030 1.060 1.030 |  |
++scrollbar > range > trough > slider:hover | background-image | 1.040 1.030 0.980 1.030 |  |
+ scrollbar > range > trough > slider:hover | background-color | 1.030 |  |
+ scrollbar > range > trough > slider:hover | border | 0.750 |  |
+ switch | background-image | 0.930 0.900 1.040 0.900 |  |
+diff --git a/gtk4/writer/palette.cpp b/gtk4/writer/palette.cpp
+index 22f14cb0..0cc4de8d 100644
+--- a/gtk4/writer/palette.cpp
++++ b/gtk4/writer/palette.cpp
+@@ -241,6 +241,80 @@ menuRole(const Options &opts)
+     return opts.lighterPopupMenuBgnd != 0 ? Role::Base : Role::Window;
+ }
+ 
++ScrollSpec
++scrollSpec(const Options &opts, const Palette &pal)
++{
++    // Style::sliderColors() holds the button ladder while the settings build
++    // no thumb ladder, and Style::getFill() takes the darker pair of steps
++    // under SHADE_DARKEN alone. Every other value of the key, such as
++    // SHADE_WINDOW_BORDER, reaches the same default arm as SHADE_NONE.
++    Role role = Role::Button;
++    QColor seed;
++    int rest = ORIGINAL_SHADE;
++    int hover = SHADE_ORIG_HIGHLIGHT;
++    switch (opts.shadeSliders) {
++    case SHADE_DARKEN:
++        rest = 2;
++        hover = SHADE_2_HIGHLIGHT;
++        break;
++    case SHADE_SELECTED:
++        role = Role::Highlight;
++        break;
++    case SHADE_BLEND_SELECTED:
++        role = Role::None;
++        seed = midColor(pal.highlight, pal.button);
++        break;
++    case SHADE_CUSTOM:
++        role = Role::None;
++        seed = opts.customSlidersColor;
++        break;
++    default:
++        break;
++    }
++
++    ScrollSpec spec;
++    spec.rest = ScrollTone { role, seed, rest };
++    spec.hover = ScrollTone { role, seed, hover };
++    // Style::sliderColors() gives the thumb ladder to the pointer alone under
++    // colorSliderMouseOver. The reader clears that key under SHADE_NONE and
++    // SHADE_DARKEN, whose ladder is the button ladder already.
++    if (opts.colorSliderMouseOver) {
++        spec.rest = ScrollTone { Role::Button, QColor(), ORIGINAL_SHADE };
++    }
++
++    // Every groove path of Style::drawComplexControl() paints the visible
++    // groove at the step 2 of a shade ladder, so the track holds that step
++    // under every setting. The ladder of the base colour carries it.
++    spec.track = ScrollTone { Role::Base, QColor(), 2 };
++    return spec;
++}
++
++QColor
++scrollColour(const Options &opts, const Palette &pal, const ScrollTone &t)
++{
++    if (t.step < 0 || t.step > TOTAL_SHADES) {
++        failUnknown("Shade", t.step);
++        return QColor();
++    }
++    switch (t.role) {
++    case Role::None: {
++        Shades own;
++        shadeLadder(opts, t.seed, own);
++        return own[t.step];
++    }
++    case Role::Base:
++        return pal.bgnd[t.step];
++    case Role::Button:
++        return pal.btn[t.step];
++    case Role::Highlight:
++        return pal.hl[t.step];
++    default:
++        break;
++    }
++    failUnknown("Role", int(t.role));
++    return QColor();
++}
++
+ /** The groups and the keys that a shipped .colors file must hold. */
+ static const struct {
+     const char *group;
+diff --git a/gtk4/writer/palette.h b/gtk4/writer/palette.h
+index d7d5a85d..a12f5cd2 100644
+--- a/gtk4/writer/palette.h
++++ b/gtk4/writer/palette.h
+@@ -116,6 +116,43 @@ QColor roleColour(const Palette &pal, Role role, const QColor &fallback);
+  */
+ Role menuRole(const Options &opts);
+ 
++/** One colour of a scroll bar: a shade ladder and one step of that ladder. */
++struct ScrollTone {
++    /** Role of the ladder, or Role::None for a ladder of the seed colour. */
++    Role role;
++    /** Seed colour of the ladder while role is Role::None. */
++    QColor seed;
++    /** Step of the ladder, from 0 to TOTAL_SHADES. */
++    int step;
++};
++
++/** The three colours that a browser reads off the scroll bar of a theme. */
++struct ScrollSpec {
++    /** Colour of the thumb while the pointer stands off it. */
++    ScrollTone rest;
++    /** Colour of the thumb under the pointer and under the button. */
++    ScrollTone hover;
++    /** Colour of the ground of the bar, which a browser takes as the track. */
++    ScrollTone track;
++};
++
++/**
++ * Returns the scroll bar colours of the settings opts and the palette pal.
++ * Style::drawSbSliderHandle() paints the thumb of Qt from the two thumb
++ * tones, and the groove arm of Style::drawComplexControl() paints the bar of
++ * Qt from the track tone.
++ */
++ScrollSpec scrollSpec(const Options &opts, const Palette &pal);
++
++/**
++ * Returns the colour of the scroll bar tone t. A tone of the role None takes
++ * the ladder that shadeLadder() builds over the seed of the tone, and a step
++ * or a role outside the contract of ScrollTone gives exit code 5 and an
++ * invalid colour.
++ */
++QColor scrollColour(const Options &opts, const Palette &pal,
++                    const ScrollTone &t);
++
+ /**
+  * Fills out with the ladder that Style::shadeColors() builds for the base
+  * colour, under the custom shades, the contrast and the shading model of opts.
+diff --git a/gtk4/writer/widgets.cpp b/gtk4/writer/widgets.cpp
+index bc0f9e1d..14b5d7f1 100644
+--- a/gtk4/writer/widgets.cpp
++++ b/gtk4/writer/widgets.cpp
+@@ -298,6 +298,15 @@ private:
+     {
+         return lad(tone(r), i);
+     }
++    /**
++     * Returns the tone of the scroll bar tone t. A tone of a seed colour
++     * gives a literal, because no colour name of the sheet carries it.
++     */
++    Tone scrollTone(const ScrollTone &t) const
++    {
++        return lad(t.role == Role::None ? fixedTone(t.seed) : tone(t.role),
++                   t.step);
++    }
+     /**
+      * Declares the custom property name with the tone t and returns the text
+      * of one use of it.
+@@ -480,6 +489,21 @@ private:
+     {
+         return col(name + QStringLiteral("-fixed"), roleColour(m_pal, r));
+     }
++    /**
++     * Declares the custom property name with the scroll bar tone t. A cover
++     * that hides the background, and a tone that follows no colour name,
++     * give the property name-fixed and the literal. assert-pairs.sh and
++     * assert-paths.sh read that property.
++     */
++    QString scrollCol(const QString &name, const ScrollTone &t,
++                      const QString &cover = QString())
++    {
++        const Tone tn = scrollTone(t);
++        if (covers(cover) || !tn.follow) {
++            return col(name + QStringLiteral("-fixed"), tn.col);
++        }
++        return m_sheet.val(name, tn.css);
++    }
+     /**
+      * Declares the custom property name with a one pixel line of the colour
+      * name of the role r, which must not be Role::None. A cover that hides the
+@@ -1613,25 +1637,30 @@ Writer::scrollBar()
+                       cover(back.image, m_winCover));
+     put(QStringLiteral("scrollbar, scrollbar > range"), back);
+ 
++    // The groove and the thumb take the tones of scrollSpec(). Each border
++    // takes the border step of the ladder of its fill.
++    const ScrollSpec spec = scrollSpec(m_opts, m_pal);
+     Box trough;
+     trough.image = tgrad(QStringLiteral("sbar-trough-img"),
+-                         m_opts.grooveAppearance, lad(Role::Window, 2));
+-    trough.bg = tv(QStringLiteral("sbar-trough-bg"), lad(Role::Window, 2));
++                         m_opts.grooveAppearance, scrollTone(spec.track));
++    trough.bg = tv(QStringLiteral("sbar-trough-bg"), scrollTone(spec.track));
+     trough.border = m_opts.borderSbarGroove ?
+         tline(QStringLiteral("sbar-trough-border"),
+-              lad(Role::Window, QTC_STD_BORDER)) :
++              lad(Role::Base, QTC_STD_BORDER)) :
+         v(QStringLiteral("sbar-trough-noborder"), QStringLiteral("none"));
+     trough.radius = rad(QStringLiteral("sbar-trough-radius"), WIDGET_TROUGH,
+                         600, 13);
+     put(QStringLiteral("scrollbar > range > trough, scrollbar trough"), trough);
+ 
++    ScrollTone edge = spec.rest;
++    edge.step = QTC_STD_BORDER;
+     Box slider;
+-    slider.image = tgrad(QStringLiteral("sbar-slider-img"), m_opts.appearance,
+-                         tone(Role::Button));
+-    slider.bg = roleCol(QStringLiteral("sbar-slider-bg"), Role::Button,
+-                        slider.image);
++    slider.image = tgrad(QStringLiteral("sbar-slider-img"),
++                         m_opts.sliderAppearance, scrollTone(spec.rest));
++    slider.bg = scrollCol(QStringLiteral("sbar-slider-bg"), spec.rest,
++                          slider.image);
+     slider.border = tline(QStringLiteral("sbar-slider-border"),
+-                          lad(Role::Button, QTC_STD_BORDER));
++                          scrollTone(edge));
+     slider.radius = rad(QStringLiteral("sbar-slider-radius"), WIDGET_SB_SLIDER,
+                         60, 13);
+     slider.more << QStringLiteral("min-width: 24px")
+@@ -1642,10 +1671,9 @@ Writer::scrollBar()
+ 
+     Box hover = slider;
+     hover.image = tgrad(QStringLiteral("sbar-slider-img-hover"),
+-                        m_opts.appearance,
+-                        lad(Role::Button, SHADE_ORIG_HIGHLIGHT));
++                        m_opts.sliderAppearance, scrollTone(spec.hover));
+     hover.bg = tv(QStringLiteral("sbar-slider-bg-hover"),
+-                  lad(Role::Button, SHADE_ORIG_HIGHLIGHT));
++                  scrollTone(spec.hover));
+     put(QStringLiteral("scrollbar > range > trough > slider:hover, "
+                        "scrollbar slider:hover"), hover);
+ }

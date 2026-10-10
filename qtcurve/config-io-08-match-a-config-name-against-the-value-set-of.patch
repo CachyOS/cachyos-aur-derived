@@ -1,0 +1,570 @@
+Match a config name against the value set of its key
+
+Twenty one readers of a name compare only the head of the text. The name
+fullscreen therefore reads as full for focus, flatten reads as flat for
+an appearance, and topmost reads as top for tabMouseOver. A name that no
+writer stores reaches a live branch, not the default. The three readers
+that reach loadValue compare the whole name and take the default, so one
+file answers the same question in two ways.
+
+One shared reader serves the four line inputs and accepts dashes for all
+four. The writer stores that name for two of them, and the dialog offers
+it for the same two. sliderThumbs=dashes paints as dots, leaves the
+combination box empty, and turns into sunken on the next save. The shade
+reader accepts wborder for every input that accepts darken, although the
+dialog holds that entry for the menu bar alone. comboBtn=wborder and
+crColor=wborder read as a value that no style path paints and that the
+save path rewrites to none.
+
+The reader of an appearance drops a file name of four characters or
+fewer. The length test asks for more than nine characters, while the
+prefix file: costs five.
+
+Compare each name whole against the names of the key. Take the two gates
+from the read site, as the write site takes them. Ask the length test
+for one character after the prefix.
+
+The change sits on the branch work/config-io of the local tree, as commit 8 of 18.
+A new merge request on system/qtcurve takes that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/qt6/common/config_file.cpp b/qt6/common/config_file.cpp
+index dba55b55..1407c220 100644
+--- a/qt6/common/config_file.cpp
++++ b/qt6/common/config_file.cpp
+@@ -89,41 +89,44 @@ static EDefBtnIndicator
+ toInd(const char *str, EDefBtnIndicator def)
+ {
+     if (str && str[0]) {
+-        if(0==strncmp(str, "fontcolor", 9) || 0==strncmp(str, "border", 6))
++        if(0==strcmp(str, "fontcolor") || 0==strcmp(str, "border"))
+             return IND_FONT_COLOR;
+-        if(0==strncmp(str, "none", 4))
++        if(0==strcmp(str, "none"))
+             return IND_NONE;
+-        if(0==strncmp(str, "corner", 6))
++        if(0==strcmp(str, "corner"))
+             return IND_CORNER;
+-        if(0==strncmp(str, "colored", 7))
++        if(0==strcmp(str, "colored"))
+             return IND_COLORED;
+-        if(0==strncmp(str, "tint", 4))
++        if(0==strcmp(str, "tint"))
+             return IND_TINT;
+-        if(0==strncmp(str, "glow", 4))
++        if(0==strcmp(str, "glow"))
+             return IND_GLOW;
+-        if(0==strncmp(str, "darken", 6))
++        if(0==strcmp(str, "darken"))
+             return IND_DARKEN;
+-        if(0==strncmp(str, "origselected", 12))
++        if(0==strcmp(str, "origselected"))
+             return IND_SELECTED;
+     }
+     return def;
+ }
+ 
++// Read one line value. The dashes flag accepts the name dashes, which the
++// writer stores for two inputs alone. An empty value and an unknown name
++// give def.
+ static ELine
+-toLine(const char *str, ELine def)
++toLine(const char *str, ELine def, bool dashes)
+ {
+     if (str && str[0]) {
+-        if(0==strncmp(str, "dashes", 6))
++        if(dashes && 0==strcmp(str, "dashes"))
+             return LINE_DASHES;
+-        if(0==strncmp(str, "none", 4))
++        if(0==strcmp(str, "none"))
+             return LINE_NONE;
+-        if(0==strncmp(str, "sunken", 6))
++        if(0==strcmp(str, "sunken"))
+             return LINE_SUNKEN;
+-        if(0==strncmp(str, "dots", 4))
++        if(0==strcmp(str, "dots"))
+             return LINE_DOTS;
+-        if(0==strncmp(str, "flat", 4))
++        if(0==strcmp(str, "flat"))
+             return LINE_FLAT;
+-        if(0==strncmp(str, "1dot", 5))
++        if(0==strcmp(str, "1dot"))
+             return LINE_1DOT;
+     }
+     return def;
+@@ -133,12 +136,16 @@ static ETBarBorder
+ toTBarBorder(const char *str, ETBarBorder def)
+ {
+     if (str && str[0]) {
+-        if(0==strncmp(str, "dark", 4))
+-            return 0==strncmp(&str[4], "-all", 4) ? TB_DARK_ALL : TB_DARK;
+-        if(0==strncmp(str, "none", 4))
++        if(0==strcmp(str, "dark"))
++            return TB_DARK;
++        if(0==strcmp(str, "dark-all"))
++            return TB_DARK_ALL;
++        if(0==strcmp(str, "none"))
+             return TB_NONE;
+-        if(0==strncmp(str, "light", 5))
+-            return 0==strncmp(&str[5], "-all", 4) ? TB_LIGHT_ALL : TB_LIGHT;
++        if(0==strcmp(str, "light"))
++            return TB_LIGHT;
++        if(0==strcmp(str, "light-all"))
++            return TB_LIGHT_ALL;
+     }
+     return def;
+ }
+@@ -147,15 +154,15 @@ static EMouseOver
+ toMouseOver(const char *str, EMouseOver def)
+ {
+     if (str && str[0]) {
+-        if(0==strncmp(str, "true", 4) || 0==strncmp(str, "colored", 7))
++        if(0==strcmp(str, "true") || 0==strcmp(str, "colored"))
+             return MO_COLORED;
+-        if(0==strncmp(str, "thickcolored", 12))
++        if(0==strcmp(str, "thickcolored"))
+             return MO_COLORED_THICK;
+-        if(0==strncmp(str, "plastik", 7))
++        if(0==strcmp(str, "plastik"))
+             return MO_PLASTIK;
+-        if(0==strncmp(str, "glow", 4))
++        if(0==strcmp(str, "glow"))
+             return MO_GLOW;
+-        if(0==strncmp(str, "false", 4) || 0==strncmp(str, "none", 4))
++        if(0==strcmp(str, "false") || 0==strcmp(str, "none"))
+             return MO_NONE;
+     }
+     return def;
+@@ -166,37 +173,37 @@ toAppearance(const char *str, EAppearance def, EAppAllow allow,
+              QtCPixmap *pix, bool checkImage)
+ {
+     if (str && str[0]) {
+-        if(0==strncmp(str, "flat", 4))
++        if(0==strcmp(str, "flat"))
+             return APPEARANCE_FLAT;
+-        if(0==strncmp(str, "raised", 6))
++        if(0==strcmp(str, "raised"))
+             return APPEARANCE_RAISED;
+-        if(0==strncmp(str, "dullglass", 9))
++        if(0==strcmp(str, "dullglass"))
+             return APPEARANCE_DULL_GLASS;
+-        if(0==strncmp(str, "glass", 5) || 0==strncmp(str, "shinyglass", 10))
++        if(0==strcmp(str, "glass") || 0==strcmp(str, "shinyglass"))
+             return APPEARANCE_SHINY_GLASS;
+-        if(0==strncmp(str, "agua", 4))
++        if(0==strcmp(str, "agua"))
+             return APPEARANCE_AGUA;
+-        if(0==strncmp(str, "soft", 4))
++        if(0==strcmp(str, "soft"))
+             return APPEARANCE_SOFT_GRADIENT;
+-        if(0==strncmp(str, "gradient", 8) || 0==strncmp(str, "lightgradient", 13))
++        if(0==strcmp(str, "gradient") || 0==strcmp(str, "lightgradient"))
+             return APPEARANCE_GRADIENT;
+-        if(0==strncmp(str, "harsh", 5))
++        if(0==strcmp(str, "harsh"))
+             return APPEARANCE_HARSH_GRADIENT;
+-        if(0==strncmp(str, "inverted", 8))
++        if(0==strcmp(str, "inverted"))
+             return APPEARANCE_INVERTED;
+-        if(0==strncmp(str, "darkinverted", 12))
++        if(0==strcmp(str, "darkinverted"))
+             return APPEARANCE_DARK_INVERTED;
+-        if(0==strncmp(str, "splitgradient", 13))
++        if(0==strcmp(str, "splitgradient"))
+             return APPEARANCE_SPLIT_GRADIENT;
+-        if(0==strncmp(str, "bevelled", 8))
++        if(0==strcmp(str, "bevelled"))
+             return APPEARANCE_BEVELLED;
+-        if(APP_ALLOW_FADE==allow && 0==strncmp(str, "fade", 4))
++        if(APP_ALLOW_FADE==allow && 0==strcmp(str, "fade"))
+             return APPEARANCE_FADE;
+-        if(APP_ALLOW_STRIPED==allow && 0==strncmp(str, "striped", 7))
++        if(APP_ALLOW_STRIPED==allow && 0==strcmp(str, "striped"))
+             return APPEARANCE_STRIPED;
+-        if(APP_ALLOW_NONE==allow && 0==strncmp(str, "none", 4))
++        if(APP_ALLOW_NONE==allow && 0==strcmp(str, "none"))
+             return APPEARANCE_NONE;
+-        if (pix && APP_ALLOW_STRIPED==allow && 0==strncmp(str, "file", 4) && strlen(str)>9)
++        if (pix && APP_ALLOW_STRIPED==allow && 0==strncmp(str, "file:", 5) && strlen(str)>5)
+             return loadImage(&str[5], pix) || !checkImage ? APPEARANCE_FILE : def;
+ 
+         if(0==strncmp(str, "customgradient", 14) && strlen(str)>14)
+@@ -211,28 +218,30 @@ toAppearance(const char *str, EAppearance def, EAppAllow allow,
+     return def;
+ }
+ 
++// Read one shade value. Only an input that holds the entry accepts its name:
++// allowDarken for darken and allowWindowBorder for wborder.
+ static EShade
+-toShade(const char *str, bool allowMenu, EShade def,
++toShade(const char *str, bool allowDarken, bool allowWindowBorder, EShade def,
+         bool menuShade, QColor *col)
+ {
+     if (str && str[0]) {
+         /* true/false is from 0.25... */
+-        if((!menuShade && 0==strncmp(str, "true", 4)) || 0==strncmp(str, "selected", 8))
++        if((!menuShade && 0==strcmp(str, "true")) || 0==strcmp(str, "selected"))
+             return SHADE_BLEND_SELECTED;
+-        if(0==strncmp(str, "origselected", 12))
++        if(0==strcmp(str, "origselected"))
+             return SHADE_SELECTED;
+-        if(allowMenu && (0==strncmp(str, "darken", 6) || (menuShade && 0==strncmp(str, "true", 4))))
++        if(allowDarken && (0==strcmp(str, "darken") || (menuShade && 0==strcmp(str, "true"))))
+             return SHADE_DARKEN;
+-        if(allowMenu && 0==strncmp(str, "wborder", 7))
++        if(allowWindowBorder && 0==strcmp(str, "wborder"))
+             return SHADE_WINDOW_BORDER;
+-        if(0==strncmp(str, "custom", 6))
++        if(0==strcmp(str, "custom"))
+             return SHADE_CUSTOM;
+         if('#'==str[0] && col)
+         {
+             qtcSetRgb(col, str);
+             return SHADE_CUSTOM;
+         }
+-        if(0==strncmp(str, "none", 4))
++        if(0==strcmp(str, "none"))
+             return SHADE_NONE;
+     }
+ 
+@@ -244,15 +253,15 @@ static ERound
+ toRound(const char *str, ERound def)
+ {
+     if (str && str[0]) {
+-        if(0==strncmp(str, "none", 4) || 0==strncmp(str, "false", 5))
++        if(0==strcmp(str, "none") || 0==strcmp(str, "false"))
+             return ROUND_NONE;
+-        if(0==strncmp(str, "slight", 6))
++        if(0==strcmp(str, "slight"))
+             return ROUND_SLIGHT;
+-        if(0==strncmp(str, "full", 4))
++        if(0==strcmp(str, "full"))
+             return ROUND_FULL;
+-        if(0==strncmp(str, "extra", 5))
++        if(0==strcmp(str, "extra"))
+             return ROUND_EXTRA;
+-        if(0==strncmp(str, "max", 3))
++        if(0==strcmp(str, "max"))
+             return ROUND_MAX;
+     }
+     return def;
+@@ -274,11 +283,11 @@ static EEffect
+ toEffect(const char *str, EEffect def)
+ {
+     if (str && str[0]) {
+-        if(0==strncmp(str, "none", 4))
++        if(0==strcmp(str, "none"))
+             return EFFECT_NONE;
+-        if(0==strncmp(str, "shadow", 6))
++        if(0==strcmp(str, "shadow"))
+             return EFFECT_SHADOW;
+-        if(0==strncmp(str, "etch", 4))
++        if(0==strcmp(str, "etch"))
+             return EFFECT_ETCH;
+     }
+ 
+@@ -295,13 +304,13 @@ static EStripe
+ toStripe(const char *str, EStripe def)
+ {
+     if (str && str[0]) {
+-        if(0==strncmp(str, "plain", 5) || 0==strncmp(str, "true", 4))
++        if(0==strcmp(str, "plain") || 0==strcmp(str, "true"))
+             return STRIPE_PLAIN;
+-        if(0==strncmp(str, "none", 4) || 0==strncmp(str, "false", 5))
++        if(0==strcmp(str, "none") || 0==strcmp(str, "false"))
+             return STRIPE_NONE;
+-        if(0==strncmp(str, "diagonal", 8))
++        if(0==strcmp(str, "diagonal"))
+             return STRIPE_DIAGONAL;
+-        if(0==strncmp(str, "fade", 4))
++        if(0==strcmp(str, "fade"))
+             return STRIPE_FADE;
+     }
+ 
+@@ -312,17 +321,17 @@ static ESliderStyle toSlider(const char *str, ESliderStyle def)
+ {
+     if(str && 0!=str[0])
+     {
+-        if(0==strncmp(str, "round", 5))
++        if(0==strcmp(str, "round"))
+             return SLIDER_ROUND;
+-        if(0==strncmp(str, "plain", 5))
++        if(0==strcmp(str, "plain"))
+             return SLIDER_PLAIN;
+-        if(0==strncmp(str, "r-round", 7))
++        if(0==strcmp(str, "r-round"))
+             return SLIDER_ROUND_ROTATED;
+-        if(0==strncmp(str, "r-plain", 7))
++        if(0==strcmp(str, "r-plain"))
+             return SLIDER_PLAIN_ROTATED;
+-        if(0==strncmp(str, "triangular", 10))
++        if(0==strcmp(str, "triangular"))
+             return SLIDER_TRIANGULAR;
+-        if(0==strncmp(str, "circular", 8))
++        if(0==strcmp(str, "circular"))
+             return SLIDER_CIRCULAR;
+     }
+ 
+@@ -333,11 +342,11 @@ static EColor toEColor(const char *str, EColor def)
+ {
+     if(str && 0!=str[0])
+     {
+-        if(0==strncmp(str, "base", 4))
++        if(0==strcmp(str, "base"))
+             return ECOLOR_BASE;
+-        if(0==strncmp(str, "dark", 4))
++        if(0==strcmp(str, "dark"))
+             return ECOLOR_DARK;
+-        if(0==strncmp(str, "background", 10))
++        if(0==strcmp(str, "background"))
+             return ECOLOR_BACKGROUND;
+     }
+ 
+@@ -348,19 +357,19 @@ static EFocus toFocus(const char *str, EFocus def)
+ {
+     if(str && 0!=str[0])
+     {
+-        if(0==strncmp(str, "standard", 8))
++        if(0==strcmp(str, "standard"))
+             return FOCUS_STANDARD;
+-        if(0==strncmp(str, "rect", 4) || 0==strncmp(str, "highlight", 9))
++        if(0==strcmp(str, "rect") || 0==strcmp(str, "highlight"))
+             return FOCUS_RECTANGLE;
+-        if(0==strncmp(str, "filled", 6))
++        if(0==strcmp(str, "filled"))
+             return FOCUS_FILLED;
+-        if(0==strncmp(str, "full", 4))
++        if(0==strcmp(str, "full"))
+             return FOCUS_FULL;
+-        if(0==strncmp(str, "line", 4))
++        if(0==strcmp(str, "line"))
+             return FOCUS_LINE;
+-        if(0==strncmp(str, "glow", 4))
++        if(0==strcmp(str, "glow"))
+             return FOCUS_GLOW;
+-        if(0==strncmp(str, "none", 4))
++        if(0==strcmp(str, "none"))
+             return FOCUS_NONE;
+     }
+ 
+@@ -371,11 +380,11 @@ static ETabMo toTabMo(const char *str, ETabMo def)
+ {
+     if(str && 0!=str[0])
+     {
+-        if(0==strncmp(str, "top", 3))
++        if(0==strcmp(str, "top"))
+             return TAB_MO_TOP;
+-        if(0==strncmp(str, "bot", 3))
++        if(0==strcmp(str, "bot"))
+             return TAB_MO_BOTTOM;
+-        if(0==strncmp(str, "glow", 4))
++        if(0==strcmp(str, "glow"))
+             return TAB_MO_GLOW;
+     }
+ 
+@@ -386,9 +395,9 @@ static EGradType toGradType(const char *str, EGradType def)
+ {
+     if(str && 0!=str[0])
+     {
+-        if(0==strncmp(str, "horiz", 5))
++        if(0==strcmp(str, "horiz"))
+             return GT_HORIZ;
+-        if(0==strncmp(str, "vert", 4))
++        if(0==strcmp(str, "vert"))
+             return GT_VERT;
+     }
+     return def;
+@@ -426,19 +435,32 @@ static bool toLvLines(const char *str, bool def)
+     return def;
+ }
+ 
++// Compare the first len characters of str against one whole name.
++static bool isName(const char *str, size_t len, const char *name)
++{
++    return strlen(name)==len && 0==strncmp(str, name, len);
++}
++
++// Read one gradient border value. The writer adds the suffix -alpha to the
++// name when a stop of the gradient holds an alpha. haveAlpha takes true for a
++// name with that suffix, and false for every other name. An empty value
++// leaves haveAlpha alone, and every unknown name gives GB_3D.
+ static EGradientBorder toGradientBorder(const char *str, bool *haveAlpha)
+ {
+     if (str && str[0]) {
+-        *haveAlpha = strstr(str, "-alpha") ? true : false;
+-        if(0==strncmp(str, "light", 5) || 0==strncmp(str, "true", 4))
++        const char  *alpha=strstr(str, "-alpha");
++        const size_t len(alpha ? size_t(alpha-str) : strlen(str));
++
++        *haveAlpha = alpha ? true : false;
++        if(isName(str, len, "light") || isName(str, len, "true"))
+             return GB_LIGHT;
+-        if(0==strncmp(str, "none", 4))
++        if(isName(str, len, "none"))
+             return GB_NONE;
+-        if(0==strncmp(str, "3dfull", 6))
++        if(isName(str, len, "3dfull"))
+             return GB_3D_FULL;
+-        if(0==strncmp(str, "3d", 2) || 0==strncmp(str, "false", 5))
++        if(isName(str, len, "3d") || isName(str, len, "false"))
+             return GB_3D;
+-        if(0==strncmp(str, "shine", 5))
++        if(isName(str, len, "shine"))
+             return GB_SHINE;
+     }
+     return GB_3D;
+@@ -448,13 +470,13 @@ static EAlign toAlign(const char *str, EAlign def)
+ {
+     if(str && 0!=str[0])
+     {
+-        if(0==strncmp(str, "left", 4))
++        if(0==strcmp(str, "left"))
+             return ALIGN_LEFT;
+-        if(0==strncmp(str, "center-full", 11))
++        if(0==strcmp(str, "center-full"))
+             return ALIGN_FULL_CENTER;
+-        if(0==strncmp(str, "center", 6))
++        if(0==strcmp(str, "center"))
+             return ALIGN_CENTER;
+-        if(0==strncmp(str, "right", 5))
++        if(0==strcmp(str, "right"))
+             return ALIGN_RIGHT;
+     }
+     return def;
+@@ -464,11 +486,11 @@ static ETitleBarIcon toTitlebarIcon(const char *str, ETitleBarIcon def)
+ {
+     if(str && 0!=str[0])
+     {
+-        if(0==strncmp(str, "none", 4))
++        if(0==strcmp(str, "none"))
+             return TITLEBAR_ICON_NONE;
+-        if(0==strncmp(str, "menu", 4))
++        if(0==strcmp(str, "menu"))
+             return TITLEBAR_ICON_MENU_BUTTON;
+-        if(0==strncmp(str, "title", 5))
++        if(0==strcmp(str, "title"))
+             return TITLEBAR_ICON_NEXT_TO_TITLE;
+     }
+     return def;
+@@ -478,15 +500,15 @@ static EImageType toImageType(const char *str, EImageType def)
+ {
+     if(str && 0!=str[0])
+     {
+-        if(0==strncmp(str, "none", 4))
++        if(0==strcmp(str, "none"))
+             return IMG_NONE;
+-        if(0==strncmp(str, "plainrings", 10))
++        if(0==strcmp(str, "plainrings"))
+             return IMG_PLAIN_RINGS;
+-        if(0==strncmp(str, "rings", 5))
++        if(0==strcmp(str, "rings"))
+             return IMG_BORDERED_RINGS;
+-        if(0==strncmp(str, "squarerings", 11))
++        if(0==strcmp(str, "squarerings"))
+             return IMG_SQUARE_RINGS;
+-        if(0==strncmp(str, "file", 4))
++        if(0==strcmp(str, "file"))
+             return IMG_FILE;
+     }
+     return def;
+@@ -496,13 +518,13 @@ static EGlow toGlow(const char *str, EGlow def)
+ {
+     if(str && 0!=str[0])
+     {
+-        if(0==strncmp(str, "none", 4))
++        if(0==strcmp(str, "none"))
+             return GLOW_NONE;
+-        if(0==strncmp(str, "start", 5))
++        if(0==strcmp(str, "start"))
+             return GLOW_START;
+-        if(0==strncmp(str, "middle", 6))
++        if(0==strcmp(str, "middle"))
+             return GLOW_MIDDLE;
+-        if(0==strncmp(str, "end", 3))
++        if(0==strcmp(str, "end"))
+             return GLOW_END;
+     }
+     return def;
+@@ -512,11 +534,11 @@ static ETBarBtn toTBarBtn(const char *str, ETBarBtn def)
+ {
+     if(str && 0!=str[0])
+     {
+-        if(0==strncmp(str, "standard", 8))
++        if(0==strcmp(str, "standard"))
+             return TBTN_STANDARD;
+-        if(0==strncmp(str, "raised", 6))
++        if(0==strcmp(str, "raised"))
+             return TBTN_RAISED;
+-        if(0==strncmp(str, "joined", 6))
++        if(0==strcmp(str, "joined"))
+             return TBTN_JOINED;
+     }
+     return def;
+@@ -867,14 +889,14 @@ static void readDoubleList(QtCConfig &cfg, const char *key, double *list, int co
+                             def->ENTRY);                                \
+     } while (0)
+ 
+-#define CFG_READ_LINE(ENTRY) do {                                       \
++#define CFG_READ_LINE(ENTRY, DASHES) do {                               \
+         opts->ENTRY = toLine(TO_LATIN1(readStringEntry(cfg, #ENTRY)),   \
+-                             def->ENTRY);                               \
++                             def->ENTRY, DASHES);                       \
+     } while (0)
+ 
+-#define CFG_READ_SHADE(ENTRY, AD, MENU_STRIPE, COL) do {                \
++#define CFG_READ_SHADE(ENTRY, AD, AWB, MENU_STRIPE, COL) do {           \
+         opts->ENTRY = toShade(TO_LATIN1(readStringEntry(cfg, #ENTRY)), AD, \
+-                              def->ENTRY, MENU_STRIPE, COL);            \
++                              AWB, def->ENTRY, MENU_STRIPE, COL);       \
+     } while (0)
+ 
+ #define CFG_READ_SCROLLBAR(ENTRY) do {                                  \
+@@ -1319,25 +1341,25 @@ bool qtcReadConfig(const QString &file, Options *opts, Options *defOpts, bool ch
+             CFG_READ_BOOL(animatedProgress);
+             CFG_READ_BOOL(embolden);
+             CFG_READ_DEF_BTN(defBtnIndicator);
+-            CFG_READ_LINE(sliderThumbs);
+-            CFG_READ_LINE(handles);
++            CFG_READ_LINE(sliderThumbs, false);
++            CFG_READ_LINE(handles, true);
+             CFG_READ_BOOL(highlightTab);
+             CFG_READ_INT_BOOL(colorSelTab, DEF_COLOR_SEL_TAB_FACTOR);
+             CFG_READ_BOOL(roundAllTabs);
+             CFG_READ_TAB_MO(tabMouseOver);
+-            CFG_READ_SHADE(shadeSliders, true, false, &opts->customSlidersColor);
+-            CFG_READ_SHADE(shadeMenubars, true, false, &opts->customMenubarsColor);
+-            CFG_READ_SHADE(shadeCheckRadio, false, false, &opts->customCheckRadioColor);
+-            CFG_READ_SHADE(sortedLv, true, false, &opts->customSortedLvColor);
+-            CFG_READ_SHADE(crColor,  true, false, &opts->customCrBgndColor);
+-            CFG_READ_SHADE(progressColor, false, false, &opts->customProgressColor);
++            CFG_READ_SHADE(shadeSliders, true, false, false, &opts->customSlidersColor);
++            CFG_READ_SHADE(shadeMenubars, true, true, false, &opts->customMenubarsColor);
++            CFG_READ_SHADE(shadeCheckRadio, false, false, false, &opts->customCheckRadioColor);
++            CFG_READ_SHADE(sortedLv, true, false, false, &opts->customSortedLvColor);
++            CFG_READ_SHADE(crColor,  true, false, false, &opts->customCrBgndColor);
++            CFG_READ_SHADE(progressColor, false, false, false, &opts->customProgressColor);
+             CFG_READ_APPEARANCE(menubarAppearance, APP_ALLOW_BASIC);
+             CFG_READ_APPEARANCE(menuitemAppearance, APP_ALLOW_FADE);
+             CFG_READ_APPEARANCE(toolbarAppearance, APP_ALLOW_BASIC);
+             CFG_READ_APPEARANCE(selectionAppearance, APP_ALLOW_BASIC);
+             CFG_READ_APPEARANCE(dwtAppearance, APP_ALLOW_BASIC);
+-            CFG_READ_LINE(toolbarSeparators);
+-            CFG_READ_LINE(splitters);
++            CFG_READ_LINE(toolbarSeparators, false);
++            CFG_READ_LINE(splitters, true);
+             CFG_READ_BOOL(customMenuTextColor);
+             CFG_READ_MOUSE_OVER(coloredMouseOver);
+             CFG_READ_BOOL(menubarMouseOver);
+@@ -1422,9 +1444,9 @@ bool qtcReadConfig(const QString &file, Options *opts, Options *defOpts, bool ch
+             CFG_READ_INT(menuBgndOpacity);
+             CFG_READ_INT(dlgOpacity);
+             CFG_READ_INT(shadowSize);
+-            CFG_READ_SHADE(menuStripe, true, true, &opts->customMenuStripeColor);
++            CFG_READ_SHADE(menuStripe, true, false, true, &opts->customMenuStripeColor);
+             CFG_READ_APPEARANCE(menuStripeAppearance, APP_ALLOW_BASIC);
+-            CFG_READ_SHADE(comboBtn, true, false, &opts->customComboBtnColor);
++            CFG_READ_SHADE(comboBtn, true, false, false, &opts->customComboBtnColor);
+             CFG_READ_BOOL(gtkScrollViews);
+             CFG_READ_BOOL(doubleGtkComboArrow);
+             CFG_READ_BOOL(stdSidebarButtons);

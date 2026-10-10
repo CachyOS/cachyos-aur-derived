@@ -1,0 +1,50 @@
+Draw a shadow for the shadowed toolbar button effect
+
+The toolbar button effect holds three entries. The plain entry gives the
+general button effect, and the two other entries name the etch and the
+shadow. The style reads that option at one place, and the place tests the
+etch alone. The shadowed entry therefore reaches the same code as the
+plain entry, and it moves no pixel of any configuration.
+
+The bevel paint now takes the effect of the widget, and gives drawEtch() a
+raised edge for the shadow. A toolbar button takes the toolbar button
+effect, and every other widget takes the general button effect. The
+decision leaves drawEtch(), because the caller holds the sunken state that
+a shadow needs. A pressed toolbar button therefore keeps its etch, as the
+general button paint demands.
+
+The change sits on the branch work/style-paint of the local tree, as commit 3 of 21.
+A new merge request on system/qtcurve takes that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/qt6/style/qtcurve.cpp b/qt6/style/qtcurve.cpp
+index 46465139..1390dab5 100644
+--- a/qt6/style/qtcurve.cpp
++++ b/qt6/style/qtcurve.cpp
+@@ -2032,7 +2032,14 @@ Style::drawLightBevelReal(QPainter *p, const QRect &rOrig,
+             drawGlow(p, rOrig, WIDGET_DEF_BUTTON==w && option->state&State_MouseOver ? WIDGET_STD_BUTTON : w,
+                      glowFocus ? m_focusCols : 0L);
+         else
+-            drawEtch(p, rOrig, widget, w, EFFECT_SHADOW==opts.buttonEffect && WIDGET_BUTTON(w) && !sunken);
++        {
++            // A toolbar button takes its own effect, and the plain entry of
++            // that effect gives the general button effect.
++            EEffect effect(WIDGET_TOOLBAR_BUTTON==w && EFFECT_NONE!=opts.tbarBtnEffect
++                           ? opts.tbarBtnEffect : opts.buttonEffect);
++
++            drawEtch(p, rOrig, widget, w, EFFECT_SHADOW==effect && WIDGET_BUTTON(w) && !sunken);
++        }
+     }
+ 
+     if(doBorder)
+@@ -2098,9 +2105,6 @@ void Style::drawEtch(QPainter *p, const QRect &r, const QWidget *widget,  EWidge
+         br;
+     QColor       col(Qt::black);
+ 
+-    if(WIDGET_TOOLBAR_BUTTON==w && EFFECT_ETCH==opts.tbarBtnEffect)
+-        raised=false;
+-
+     buildSplitPath(r, round, qtcGetRadius(&opts, r.width(), r.height(), w, RADIUS_ETCH), tl, br);
+ 
+     col.setAlphaF(USE_CUSTOM_ALPHAS(opts) ? opts.customAlphas[ALPHA_ETCH_DARK] : ETCH_TOP_ALPHA);

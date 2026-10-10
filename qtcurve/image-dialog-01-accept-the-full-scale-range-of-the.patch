@@ -1,0 +1,32 @@
+Accept the full scale range of the background image
+
+The image loader took a scale from 17 to 1023 pixels on each axis. The
+configuration dialog offers 16 to 1024 on its two spin boxes. A saved
+width or height of 16 or 1024 therefore left the background image
+unloaded. The window kept the plain colour and gave no message.
+
+Make the two bounds of the loader inclusive. The loader then takes every
+value that the dialog can write.
+
+The change sits on the branch work/image-dialog of the local tree, as commit 1 of 5.
+A new merge request on system/qtcurve takes that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/qt6/common/config_file.cpp b/qt6/common/config_file.cpp
+index bfd40ec3..813b3b4b 100644
+--- a/qt6/common/config_file.cpp
++++ b/qt6/common/config_file.cpp
+@@ -595,8 +595,11 @@ void qtcSetBarHidden(const QString &app, bool hidden, const char *prefix)
+ 
+ void qtcLoadBgndImage(QtCImage *img)
+ {
++    // The two bounds are pixels. MIN_SIZE and MAX_SIZE of
++    // qt6/config/imagepropertiesdialog.cpp hold the same pair for the two
++    // scale spin boxes.
+     if(!img->loaded &&
+-        ( (img->width>16 && img->width<1024 && img->height>16 && img->height<1024) || (0==img->width && 0==img->height)) )
++        ( (img->width>=16 && img->width<=1024 && img->height>=16 && img->height<=1024) || (0==img->width && 0==img->height)) )
+     {
+         img->loaded=true;
+         img->pixmap.img=QPixmap();
