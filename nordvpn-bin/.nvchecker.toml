@@ -1,0 +1,4 @@
+[nordvpn-bin]
+source = "regex"
+url = "https://repo.nordvpn.com/deb/nordvpn/debian/pool/main/n/nordvpn/"
+regex = ".nordvpn_([0-9.]+)"
