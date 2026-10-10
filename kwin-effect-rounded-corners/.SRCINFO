@@ -1,7 +1,7 @@
 pkgbase = kwin-effect-rounded-corners
 	pkgdesc = Rounds the corners of your windows (wayland)
 	pkgver = 0.10.0
-	pkgrel = 1
+	pkgrel = 2
 	url = https://github.com/matinlotfali/KDE-Rounded-Corners
 	arch = x86_64
 	license = GPL-3.0-only
