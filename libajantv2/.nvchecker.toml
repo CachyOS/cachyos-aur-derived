@@ -1,3 +1,6 @@
 [libajantv2]
 source = "git"
 git = "https://github.com/aja-video/libajantv2.git"
+use_max_release = true
+from_pattern = 'ntv2_(\d+)_(\d+)_(\d+)'
+to_pattern = '\1.\2.\3'
