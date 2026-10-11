@@ -1,0 +1,148 @@
+Report a colour text that does not parse
+
+qtcSetRgb read any text of more than six characters as a colour. The
+helper maps a character that is not a hexadecimal digit to zero, and the
+function reports nothing. The name cornflowerblue therefore reaches the
+menu bar as the colour #C000F0, the digits of co, rn and fl. The text
+deadbeef gives #DEADBE, and the short text #FFF gives black.
+
+The reader of a colour key holds a fallback for an empty value. That
+fallback states the intent of the reader. A value that the reader cannot
+use takes the default. A value that does not parse walked past that
+branch. Twenty nine colour rows share the parser. The rows hold the two
+menu text colours and the twenty seven titlebar button colours. The
+dialog cannot write any of the texts above.
+
+Ask for six hexadecimal digits after an optional number sign, the text
+that the writer stores, and report the result. A colour key then takes
+its default. A custom shade falls through to the default of its key. A
+titlebar button list that holds one bad colour drops its two flags, as a
+list of the wrong length already does.
+
+The change sits on the branch work/config-io of the local tree, as commit 11 of 18.
+A new merge request on system/qtcurve takes that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/qt6/common/config_file.cpp b/qt6/common/config_file.cpp
+index fa594391..49ab39c0 100644
+--- a/qt6/common/config_file.cpp
++++ b/qt6/common/config_file.cpp
+@@ -55,6 +55,12 @@ determineFileName(const QString &file)
+     return QtCurve::getConfDir() + file;
+ }
+ 
++static bool isHex(char ch)
++{
++    return ((ch >= '0' && ch <= '9') || (ch >= 'a' && ch <= 'f') ||
++            (ch >= 'A' && ch <= 'F'));
++}
++
+ static int c2h(char ch)
+ {
+     return ((ch >= '0' && ch <= '9') ? ch - '0' :
+@@ -64,16 +70,23 @@ static int c2h(char ch)
+ 
+ #define ATOH(str) ((c2h(*str) << 4) + c2h(*(str + 1)))
+ 
+-void
++bool
+ qtcSetRgb(QColor *col, const char *str)
+ {
+-    if (str && strlen(str) > 6) {
+-        int offset = '#' == str[0] ? 1 : 0;
+-        col->setRgb(ATOH(&str[offset]), ATOH(&str[offset + 2]),
+-                    ATOH(&str[offset + 4]));
+-    } else {
+-        col->setRgb(0, 0, 0);
++    if (str) {
++        const int offset = '#' == str[0] ? 1 : 0;
++        int       digits = 0;
++
++        while (digits < 6 && isHex(str[offset + digits]))
++            digits++;
++
++        if (6 == digits && !str[offset + 6]) {
++            col->setRgb(ATOH(&str[offset]), ATOH(&str[offset + 2]),
++                        ATOH(&str[offset + 4]));
++            return true;
++        }
+     }
++    return false;
+ }
+ 
+ static bool
+@@ -236,11 +249,8 @@ toShade(const char *str, bool allowDarken, bool allowWindowBorder, EShade def,
+             return SHADE_WINDOW_BORDER;
+         if(0==strcmp(str, "custom"))
+             return SHADE_CUSTOM;
+-        if('#'==str[0] && col)
+-        {
+-            qtcSetRgb(col, str);
++        if('#'==str[0] && col && qtcSetRgb(col, str))
+             return SHADE_CUSTOM;
+-        }
+         if(0==strcmp(str, "none"))
+             return SHADE_NONE;
+     }
+@@ -780,13 +790,12 @@ static void readDoubleList(QtCConfig &cfg, const char *key, double *list, int co
+         list[0]=0;
+ }
+ 
+-#define CFG_READ_COLOR(ENTRY) do {                      \
+-        QString sVal(cfg.readEntry(#ENTRY));            \
+-        if (sVal.isEmpty()) {                           \
+-            opts->ENTRY = def->ENTRY;                   \
+-        } else {                                        \
+-            qtcSetRgb(&opts->ENTRY, TO_LATIN1(sVal));   \
+-        }                                               \
++#define CFG_READ_COLOR(ENTRY) do {                              \
++        QString sVal(cfg.readEntry(#ENTRY));                    \
++        if (sVal.isEmpty() ||                                   \
++            !qtcSetRgb(&opts->ENTRY, TO_LATIN1(sVal))) {        \
++            opts->ENTRY = def->ENTRY;                           \
++        }                                                       \
+     } while (0)
+ 
+ #define CFG_READ_IMAGE(ENTRY) do {                                      \
+@@ -1493,13 +1502,19 @@ bool qtcReadConfig(const QString &file, Options *opts, Options *defOpts, bool ch
+                 cols.count() <= (NUM_TITLEBAR_BUTTONS * 3)) {
+                 QStringList::ConstIterator it(cols.begin());
+                 QStringList::ConstIterator end(cols.end());
++                bool ok(true);
+ 
+-                for (int i = 0;it != end;++it, ++i) {
++                for (int i = 0;it != end && ok;++it, ++i) {
+                     QColor col;
+-                    qtcSetRgb(&col, TO_LATIN1((*it)));
+-                    opts->titlebarButtonColors[i]=col;
++                    ok = qtcSetRgb(&col, TO_LATIN1((*it)));
++                    if (ok) {
++                        opts->titlebarButtonColors[i]=col;
++                    }
+                 }
+-                if (cols.count() < (NUM_TITLEBAR_BUTTONS + 1)) {
++                if (!ok) {
++                    opts->titlebarButtons &= ~TITLEBAR_BUTTON_COLOR;
++                    opts->titlebarButtons &= ~TITLEBAR_BUTTON_ICON_COLOR;
++                } else if (cols.count() < (NUM_TITLEBAR_BUTTONS + 1)) {
+                     opts->titlebarButtons &= ~TITLEBAR_BUTTON_ICON_COLOR;
+                 }
+             } else {
+diff --git a/qt6/common/config_file.h b/qt6/common/config_file.h
+index ae8f3f06..13fdb6b7 100644
+--- a/qt6/common/config_file.h
++++ b/qt6/common/config_file.h
+@@ -36,7 +36,11 @@
+ bool qtcBarHidden(const QString &app, const char *prefix);
+ void qtcSetBarHidden(const QString &app, bool hidden, const char *prefix);
+ void qtcLoadBgndImage(QtCImage *img);
+-void qtcSetRgb(QColor *col, const char *str);
++// Set col from the colour text of the writer, six hexadecimal digits after an
++// optional number sign. The function leaves col unchanged and reports false
++// for a null text, and for a text that does not hold exactly that. col must
++// not be a null pointer.
++bool qtcSetRgb(QColor *col, const char *str);
+ void qtcDefaultSettings(Options *opts);
+ void qtcCheckConfig(Options *opts);
+ bool qtcReadConfig(const QString &file, Options *opts, Options *defOpts=nullptr,

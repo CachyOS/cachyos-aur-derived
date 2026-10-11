@@ -1,0 +1,3541 @@
+Add a GTK theme generator that follows the QtCurve settings
+
+QtCurve ships an engine for GTK 2 and no theme for GTK 3 or GTK 4. A GTK
+application on a Plasma desktop therefore does not match the Qt
+applications. A sheet of baked colours cannot follow the settings that the
+user saves.
+
+The new program qtcurve-gtk-writer reads the settings through
+qtcReadConfig() and the colour scheme through KColorScheme, and it writes
+one sheet per dialect. It compiles common.cpp and config_file.cpp in and it
+links qtcurve-utils. The shade ladders, the gradient stop table and the
+option parser are therefore the ones of the Qt 6 style. A new option
+reaches the theme with no second parser.
+
+The build runs the program four times and installs the result, so a user
+who never opened the dialogue still gets the look. GTK 4 loses the theme
+when the dark sheet is absent, so the build writes all four sheets. A
+check compares each shipped sheet with a fresh run at build time.
+
+At run time the program writes qtcurve.css and the glyphs into the
+configuration directory of the user. It adds one import line to gtk.css
+with the idiom of kde-gtk-config, and it writes no byte when that line is
+there. That keeps every foreign line, and a lost write costs 22 characters.
+
+The style dialogue starts the program at the end of save(). A watch mode
+covers a colour scheme change and a settings change from another program.
+The program writes nothing while the GTK theme name is not QtCurve, and it
+removes its files when that name leaves. GTK 3 keeps the colour of an SVG
+file, so the GTK 3 sheet names no glyph and GTK 3 draws its own.
+
+A write reaches an application at its next start. The Qt 6 style and
+kde-gtk-config live under the same rule.
+
+The Options struct at qt6/common/common.h:716-900 declares 175 named members. Five
+are not user options: version, currentNonnativeMenubarApps, tickFont, menuTick and
+fontTickWidth. The table therefore holds 170 fields. The sheet maps 49 of them, it
+approximates 12 and it drops 109. A field counts as read when a line of gtk4/writer/
+names it. The count adds round and customGradient, which reach the sheet through
+qtcGetRadius() and qtcGetGradient().
+
+The 49 fields that map: activeTabAppearance, animatedProgress, appearance,
+bgndAppearance, bgndGrad, boldProgress, borderInactiveTab, borderMenuitems,
+borderProgress, borderSbarGroove, borderSelection, borderTab, contrast, crButton,
+customGradient, customMenubarsColor, customProgressColor, customShades, darkerBorders,
+forceAlternateLvCols, grooveAppearance, gtkScrollViews, highlightFactor, highlightTab,
+lighterPopupMenuBgnd, lvAppearance, lvButton, menuBgndAppearance, menuBgndGrad,
+menubarAppearance, menuitemAppearance, popupBorder, progressAppearance, progressColor,
+progressGrooveAppearance, progressGrooveColor, round, sbarBgndAppearance,
+selectionAppearance, shadeMenubars, shading, sliderAppearance, sliderFill, sliderWidth,
+sunkenAppearance, tabAppearance, tabBgnd, toolbarAppearance, tooltipAppearance.
+
+The 12 fields that the sheet approximates, with the loss:
+
+* focus, coloredMouseOver and buttonEffect hold five, four and three values, and the
+  sheet draws one ring, one border colour and one shadow.
+* stripedProgress holds three values, and the sheet draws one repeating gradient.
+* groupBox and toolbarBorders reach the sheet as the none case alone.
+* square reaches it through two bits, SQUARE_TOOLTIPS and SQUARE_POPUP_MENUS, and
+  gbLabel through the bold bit.
+* customAlphas reaches it through ALPHA_ETCH_DARK alone.
+* titlebarAppearance paints the headerbar node, which is not the window decoration.
+* etchEntry gates the fade of the lower border of an entry, of a spin button and of a
+  list view. The sheet draws no etch ring around those nodes.
+* sliderStyle holds five values and reaches the sheet through the tick offset alone,
+  and the sheet draws one handle shape.
+
+The 109 fields that the sheet drops fall into eight groups. Each group names the CSS
+limit that blocks it, so no option leaves the scope without a reason.
+
+1. The window decoration, 12 fields. GTK 4 has no decoration node, and the shadow of a
+   Wayland toplevel belongs to the compositor. dwtAppearance, dwtSettings,
+   inactiveTitlebarAppearance, shadowSize, titlebarAlignment, titlebarButtonAppearance,
+   titlebarButtonColors, titlebarButtons, titlebarEffect, titlebarIcon, windowBorder,
+   windowDrag.
+2. The lists of application names, 11 fields. CSS cannot read the name of a process.
+   menubarApps, noBgndGradientApps, noBgndImageApps, noBgndOpacityApps,
+   noMenuBgndOpacityApps, noMenuStripeApps, nonnativeMenubarApps, statusbarApps,
+   useQtFileDialogApps, windowDragBlackList, windowDragWhiteList.
+3. A setting of the toolkit and not of the sheet, 18 fields. buttonStyleMenuSections,
+   drawStatusBarFrames, embolden, gtkButtonOrder, gtkComboMenus, hideShortcutUnderline,
+   mapKdeIcons, menuCloseDelay, menuDelay, menuIcons, menubarHiding, onlyTicksInMenu,
+   passwordChar, reorderGtkButtons, statusbarHiding, stdBtnSizes, stdSidebarButtons,
+   toolbarTabs.
+4. A node, a layer or a shape that the sheet does not draw, 31 fields. coloredTbarMo,
+   comboSplitter, customMenuStripeColor, defBtnIndicator, doubleGtkComboArrow,
+   expanderHighlight, fadeLines, fillProgress, fillSlider, flatSbarButtons,
+   glowProgress, handles, highlightScrollViews, lvLines, menuStripe,
+   menuStripeAppearance, scrollbarType, shadePopupMenu, sliderThumbs, splitters,
+   stripedSbar, tbarBtnAppearance, tbarBtnEffect, tbarBtns, thinSbarGroove,
+   toolbarSeparators, unifyCombo, unifySpin, unifySpinBtns, vArrows, xCheck.
+5. A state that CSS cannot reach, or a property that the emitter does not write, 13
+   fields. centerTabText, colorMenubarMouseOver, colorSelTab, colorSliderMouseOver,
+   crHighlight, invertBotTab, menubarMouseOver, roundAllTabs, roundMbTopOnly,
+   shadeMenubarOnlyWhenActive, splitterHighlight, tabMouseOver, useHighlightForMenu.
+6. A size branch, 4 fields. CAN_EXTRA_ROUND at qt6/common/common.cpp:192 needs a
+   measured width and a measured height, and CSS has no branch on a size. crSize,
+   gbFactor, smallRadio, thin.
+7. The opacity and the background images, 7 fields. A theme cannot make a window
+   translucent, and the writer copies no pixmap. bgndImage, bgndOpacity, bgndPixmap,
+   dlgOpacity, menuBgndImage, menuBgndOpacity, menuBgndPixmap.
+8. A colour of a node that group 4 already drops, 13 fields. comboBtn, crColor,
+   customCheckRadioColor, customComboBtnColor, customCrBgndColor,
+   customMenuNormTextColor, customMenuSelTextColor, customMenuTextColor,
+   customSlidersColor, customSortedLvColor, shadeCheckRadio, shadeSliders, sortedLv.
+
+The design panel scored three candidates against the six criteria of plan section 3.2.
+The static theme won on points, with 46 of 60, against 44 for the split theme and 41
+for the runtime generator. The user then set a binding constraint: the GTK theme must
+follow the QtCurve settings of the user. A GTK application then looks fluent beside the
+Qt applications. The constraint outranks the totals, and the runtime generator became
+the base.
+
+The split theme gave this work the cooperation mechanics for every file that the daemon
+owns. It also gave the neutral value idiom, the gate for name completeness and the gate
+for dead selectors. The static theme gave the fallback that ships in the package, so the
+theme name works for a user who never saved. Both outputs come from one emitter, and a
+byte compare guards against drift. The header table names every option that the theme
+drops, with the CSS limit that blocks it.
+
+The change sits on the branch work/gtk4-theme of the local tree, as the first
+commit. The fork wyn/qtcurve holds that branch. Merge request !15 on
+system/qtcurve holds that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 66e2dbfe..5a27792a 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -45,6 +45,7 @@ qtc_option(ENABLE_QT4 "Building Qt4 theme." On)
+ qtc_option(ENABLE_QT5 "Building Qt5 theme." On)
+ qtc_option(ENABLE_QT6 "Building Qt6 theme." On)
+ qtc_option(ENABLE_GTK2 "Building Gtk2 theme." On)
++qtc_option(ENABLE_GTK4 "Building Gtk4 and Gtk3 theme." On)
+ qtc_option(QTC_QT6_ENABLE_KDE "Building Qt6 style with KDE Frameworks 6 support." Off)
+ # option(ENABLE_GTK3 "Building Gtk3 theme." On)
+ option(BUILD_TESTING "Enable testing." On)
+@@ -203,6 +204,17 @@ if(ENABLE_GTK2 AND NOT ENABLE_GTK2_DEFINED)
+   endif()
+ endif()
+ 
++if(ENABLE_GTK4 AND NOT ENABLE_GTK4_DEFINED)
++  find_package(ECM 1.2.0 QUIET NO_MODULE)
++  set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${ECM_MODULE_PATH})
++  find_package(Qt6 QUIET COMPONENTS Core Gui Widgets Svg DBus)
++  find_package(KF6 QUIET COMPONENTS ColorScheme Config CoreAddons)
++  if(NOT Qt6_FOUND OR NOT KF6_FOUND)
++    message(WARNING "Qt6 or KF6 not found, disable Gtk4 build.")
++    set(ENABLE_GTK4 Off)
++  endif()
++endif()
++
+ if(ENABLE_GTK2)
+   find_package(PkgConfig REQUIRED)
+   unset(__pkg_config_checked_GTK2 CACHE)
+@@ -227,7 +239,7 @@ cmake_c_fix_include_path(lib/cairo qtcurve-cairo)
+ add_definitions("-D_GNU_SOURCE -pthread")
+ 
+ cmake_c_include_fix_path()
+-if(ENABLE_QT4 OR ENABLE_QT5 OR ENABLE_QT6 OR ENABLE_GTK2)
++if(ENABLE_QT4 OR ENABLE_QT5 OR ENABLE_QT6 OR ENABLE_GTK2 OR ENABLE_GTK4)
+   add_subdirectory(lib)
+   add_subdirectory(tools)
+ endif()
+@@ -244,6 +256,9 @@ endif()
+ if(ENABLE_GTK2)
+   add_subdirectory(gtk2)
+ endif()
++if(ENABLE_GTK4)
++  add_subdirectory(gtk4)
++endif()
+ if(BUILD_TESTING)
+   enable_testing()
+   add_subdirectory(test)
+diff --git a/gtk4/CMakeLists.txt b/gtk4/CMakeLists.txt
+new file mode 100644
+index 00000000..9aecee7a
+--- /dev/null
++++ b/gtk4/CMakeLists.txt
+@@ -0,0 +1,117 @@
++# The GTK theme generator, the four sheets of the fallback theme and the
++# glyphs that both dialects name.
++
++set(CMAKE_AUTOMOC True)
++
++set(QTC_GTK_THEME_DIR "${CMAKE_INSTALL_FULL_DATADIR}/themes/QtCurve")
++set(QTC_GTK_WRITER_PATH "${CMAKE_INSTALL_FULL_BINDIR}/qtcurve-gtk-writer")
++
++find_package(ECM 1.2.0 REQUIRED NO_MODULE)
++set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${ECM_MODULE_PATH})
++find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Svg DBus)
++find_package(KF6 REQUIRED COMPONENTS ColorScheme Config CoreAddons)
++
++set(qtcurve_gtk_writer_SRCS
++  writer/main.cpp
++  writer/palette.cpp
++  writer/emit.cpp
++  writer/widgets.cpp
++  writer/dialect.cpp
++  writer/userfile.cpp
++  writer/watch.cpp
++  "${CMAKE_CURRENT_SOURCE_DIR}/../qt6/common/common.cpp"
++  "${CMAKE_CURRENT_SOURCE_DIR}/../qt6/common/config_file.cpp")
++
++add_executable(qtcurve-gtk-writer ${qtcurve_gtk_writer_SRCS})
++target_compile_definitions(qtcurve-gtk-writer PRIVATE
++  QTC_UTILS_QT6 QTC_UTILS_QT
++  "QTC_GTK_THEME_DIR=\"${QTC_GTK_THEME_DIR}\"")
++# qt6/common/common.h includes QApplication, so the writer needs the QtWidgets
++# headers. It calls no function of the library and it links none.
++target_include_directories(qtcurve-gtk-writer PRIVATE
++  "${CMAKE_CURRENT_SOURCE_DIR}/writer"
++  "${CMAKE_CURRENT_SOURCE_DIR}/../qt6/common"
++  "${CMAKE_BINARY_DIR}"
++  ${Qt6Widgets_INCLUDE_DIRS})
++target_link_libraries(qtcurve-gtk-writer
++  Qt6::Core Qt6::Gui Qt6::Svg Qt6::DBus
++  KF6::ColorScheme KF6::ConfigCore KF6::CoreAddons
++  qtcurve-utils)
++
++# A cross build cannot run a host tool. A silent skip would install a theme
++# directory with no sheet, so the configure step fails instead.
++if(CMAKE_CROSSCOMPILING AND NOT QTC_GTK4_WRITER)
++  message(FATAL_ERROR
++    "A cross build needs -DQTC_GTK4_WRITER=<path of a host qtcurve-gtk-writer>")
++endif()
++if(QTC_GTK4_WRITER)
++  set(qtc_writer_command "${QTC_GTK4_WRITER}")
++  set(qtc_writer_depends "${QTC_GTK4_WRITER}")
++else()
++  set(qtc_writer_command "$<TARGET_FILE:qtcurve-gtk-writer>")
++  set(qtc_writer_depends qtcurve-gtk-writer)
++endif()
++
++set(qtc_theme_dir "${CMAKE_CURRENT_BINARY_DIR}/themes/QtCurve")
++set(qtc_light "${CMAKE_CURRENT_SOURCE_DIR}/schemes/QtCurveLight.colors")
++set(qtc_dark "${CMAKE_CURRENT_SOURCE_DIR}/schemes/QtCurveDark.colors")
++
++# Four build time runs of the same emitter, one per shipped sheet.
++function(qtc_gtk_sheet out scheme dialect)
++  add_custom_command(OUTPUT "${out}"
++    COMMAND "${qtc_writer_command}" --stdout --default --force
++            --scheme "${scheme}" --dialect "${dialect}"
++            --asset-base "../assets/" --out "${out}" ${ARGN}
++    DEPENDS ${qtc_writer_depends} "${scheme}"
++    COMMENT "Writing ${out}"
++    VERBATIM)
++endfunction()
++
++qtc_gtk_sheet("${qtc_theme_dir}/gtk-4.0/gtk.css" "${qtc_light}" gtk4)
++qtc_gtk_sheet("${qtc_theme_dir}/gtk-4.0/gtk-dark.css" "${qtc_dark}" gtk4 --root)
++qtc_gtk_sheet("${qtc_theme_dir}/gtk-3.0/gtk.css" "${qtc_light}" gtk3)
++qtc_gtk_sheet("${qtc_theme_dir}/gtk-3.0/gtk-dark.css" "${qtc_dark}" gtk3)
++
++add_custom_target(qtcurve-gtk-theme ALL DEPENDS
++  "${qtc_theme_dir}/gtk-4.0/gtk.css"
++  "${qtc_theme_dir}/gtk-4.0/gtk-dark.css"
++  "${qtc_theme_dir}/gtk-3.0/gtk.css"
++  "${qtc_theme_dir}/gtk-3.0/gtk-dark.css")
++
++# GTK drops a rule with an unknown name or an unknown node in silence. The
++# checks therefore run at build time and not at review time.
++set(qtc_check "${CMAKE_CURRENT_SOURCE_DIR}/check")
++add_custom_command(TARGET qtcurve-gtk-theme POST_BUILD
++  COMMAND sh "${qtc_check}/assert-varnames.sh"
++          "${qtc_theme_dir}/gtk-4.0/gtk.css"
++  COMMAND sh "${qtc_check}/assert-varnames.sh"
++          "${qtc_theme_dir}/gtk-4.0/gtk.css"
++          "${qtc_theme_dir}/gtk-4.0/gtk-dark.css"
++  COMMAND sh "${qtc_check}/assert-nodes.sh"
++          "${qtc_theme_dir}/gtk-4.0/gtk.css" gtk4
++  COMMAND sh "${qtc_check}/assert-nodes.sh"
++          "${qtc_theme_dir}/gtk-4.0/gtk-dark.css" gtk4
++  COMMAND sh "${qtc_check}/assert-nodes.sh"
++          "${qtc_theme_dir}/gtk-3.0/gtk.css" gtk3
++  COMMAND sh "${qtc_check}/assert-nodes.sh"
++          "${qtc_theme_dir}/gtk-3.0/gtk-dark.css" gtk3
++  COMMAND sh "${qtc_check}/assert-agree.sh" "${qtc_writer_command}"
++          "${qtc_theme_dir}" "${CMAKE_CURRENT_SOURCE_DIR}/schemes"
++  VERBATIM)
++
++configure_file(autostart/qtcurve-gtk-writer.desktop.in
++  "${CMAKE_CURRENT_BINARY_DIR}/qtcurve-gtk-writer.desktop" @ONLY)
++
++install(TARGETS qtcurve-gtk-writer DESTINATION "${CMAKE_INSTALL_FULL_BINDIR}")
++install(FILES
++  "${qtc_theme_dir}/gtk-4.0/gtk.css"
++  "${qtc_theme_dir}/gtk-4.0/gtk-dark.css"
++  DESTINATION "${QTC_GTK_THEME_DIR}/gtk-4.0")
++install(FILES
++  "${qtc_theme_dir}/gtk-3.0/gtk.css"
++  "${qtc_theme_dir}/gtk-3.0/gtk-dark.css"
++  DESTINATION "${QTC_GTK_THEME_DIR}/gtk-3.0")
++install(DIRECTORY assets/ DESTINATION "${QTC_GTK_THEME_DIR}/assets"
++  FILES_MATCHING PATTERN "*.svg")
++install(FILES "${CMAKE_CURRENT_BINARY_DIR}/qtcurve-gtk-writer.desktop"
++  DESTINATION "${CMAKE_INSTALL_FULL_SYSCONFDIR}/xdg/autostart")
+diff --git a/gtk4/assets/qtc-arrow-down.svg b/gtk4/assets/qtc-arrow-down.svg
+new file mode 100644
+index 00000000..0ef246a5
+--- /dev/null
++++ b/gtk4/assets/qtc-arrow-down.svg
+@@ -0,0 +1,4 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
++  <path d="M 4 6.5 L 8 10.5 L 12 6.5 Z" fill="#232629"/>
++</svg>
+diff --git a/gtk4/assets/qtc-arrow-left.svg b/gtk4/assets/qtc-arrow-left.svg
+new file mode 100644
+index 00000000..a8facdf2
+--- /dev/null
++++ b/gtk4/assets/qtc-arrow-left.svg
+@@ -0,0 +1,4 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
++  <path d="M 9.5 4 L 5.5 8 L 9.5 12 Z" fill="#232629"/>
++</svg>
+diff --git a/gtk4/assets/qtc-arrow-right.svg b/gtk4/assets/qtc-arrow-right.svg
+new file mode 100644
+index 00000000..a6948ae6
+--- /dev/null
++++ b/gtk4/assets/qtc-arrow-right.svg
+@@ -0,0 +1,4 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
++  <path d="M 6.5 4 L 10.5 8 L 6.5 12 Z" fill="#232629"/>
++</svg>
+diff --git a/gtk4/assets/qtc-arrow-up.svg b/gtk4/assets/qtc-arrow-up.svg
+new file mode 100644
+index 00000000..f4aa38cd
+--- /dev/null
++++ b/gtk4/assets/qtc-arrow-up.svg
+@@ -0,0 +1,4 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
++  <path d="M 4 9.5 L 8 5.5 L 12 9.5 Z" fill="#232629"/>
++</svg>
+diff --git a/gtk4/assets/qtc-bullet.svg b/gtk4/assets/qtc-bullet.svg
+new file mode 100644
+index 00000000..efadcd4d
+--- /dev/null
++++ b/gtk4/assets/qtc-bullet.svg
+@@ -0,0 +1,4 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 13 13">
++  <circle cx="6.5" cy="6.5" r="2.5" fill="#232629"/>
++</svg>
+diff --git a/gtk4/assets/qtc-check.svg b/gtk4/assets/qtc-check.svg
+new file mode 100644
+index 00000000..a9f75a11
+--- /dev/null
++++ b/gtk4/assets/qtc-check.svg
+@@ -0,0 +1,4 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 13 13">
++  <path d="M 2.27 5.97 L 5.82 10.77 L 10.74 3.53 L 8.84 2.23 L 5.75 6.79 L 4.11 4.59 Z" fill="#232629"/>
++</svg>
+diff --git a/gtk4/assets/qtc-dash.svg b/gtk4/assets/qtc-dash.svg
+new file mode 100644
+index 00000000..162c6b08
+--- /dev/null
++++ b/gtk4/assets/qtc-dash.svg
+@@ -0,0 +1,4 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 13 13">
++  <rect x="2" y="5.6" width="9" height="1.8" fill="#232629"/>
++</svg>
+diff --git a/gtk4/autostart/qtcurve-gtk-writer.desktop.in b/gtk4/autostart/qtcurve-gtk-writer.desktop.in
+new file mode 100644
+index 00000000..11b644f0
+--- /dev/null
++++ b/gtk4/autostart/qtcurve-gtk-writer.desktop.in
+@@ -0,0 +1,9 @@
++[Desktop Entry]
++Type=Application
++Name=QtCurve GTK theme
++Comment=Keeps the GTK theme in step with the QtCurve settings
++Exec=@QTC_GTK_WRITER_PATH@ --watch
++Terminal=false
++NoDisplay=true
++X-KDE-autostart-phase=1
++OnlyShowIn=KDE;
+diff --git a/gtk4/check/assert-agree.sh b/gtk4/check/assert-agree.sh
+new file mode 100755
+index 00000000..513260c8
+--- /dev/null
++++ b/gtk4/check/assert-agree.sh
+@@ -0,0 +1,25 @@
++#!/bin/sh
++# assert-agree.sh WRITER THEMEDIR SCHEMEDIR: the fallback theme and the
++# emitter must not drift. Every shipped sheet must equal a fresh run of the
++# writer with the shipped preset and the shipped colour scheme.
++set -eu
++writer=${1:?usage: assert-agree.sh WRITER THEMEDIR SCHEMEDIR}
++theme=${2:?}
++schemes=${3:?}
++tmp=$(mktemp -d)
++trap 'rm -rf "$tmp"' EXIT
++status=0
++check() {
++    "$writer" --stdout --default --force --scheme "$3" --dialect "$2" \
++        --asset-base ../assets/ ${4:-} > "$tmp/out.css"
++    if ! cmp -s "$tmp/out.css" "$theme/$1"; then
++        echo "assert-agree: $1 differs from a fresh run" >&2
++        status=1
++    fi
++}
++check gtk-4.0/gtk.css      gtk4 "$schemes/QtCurveLight.colors"
++check gtk-4.0/gtk-dark.css gtk4 "$schemes/QtCurveDark.colors"  --root
++check gtk-3.0/gtk.css      gtk3 "$schemes/QtCurveLight.colors"
++check gtk-3.0/gtk-dark.css gtk3 "$schemes/QtCurveDark.colors"
++[ $status -eq 0 ] && echo "assert-agree: the four sheets agree"
++exit $status
+diff --git a/gtk4/check/assert-nodes.sh b/gtk4/check/assert-nodes.sh
+new file mode 100755
+index 00000000..d3c26298
+--- /dev/null
++++ b/gtk4/check/assert-nodes.sh
+@@ -0,0 +1,29 @@
++#!/bin/sh
++# assert-nodes.sh SHEET DIALECT: the sheet holds no selector that matches
++# nothing. DIALECT is gtk3 or gtk4. Six selectors of breeze-gtk are dead
++# under GTK 4.22.4, and a GTK 4 sheet must hold no GTK 3 node name.
++set -eu
++sheet=${1:?usage: assert-nodes.sh SHEET DIALECT}
++dialect=${2:?usage: assert-nodes.sh SHEET DIALECT}
++status=0
++if [ "$dialect" = gtk4 ]; then
++    for dead in "frame > border" "radiobutton" "tooltip decoration" \
++                "tooltip.window-frame.csd" "menu menuitem check"; do
++        if grep -qF "$dead" "$sheet"; then
++            echo "assert-nodes: $sheet holds the dead selector '$dead'" >&2
++            status=1
++        fi
++    done
++    for old in "menuitem" "titlebutton" "decoration"; do
++        if grep -qE "(^|[ ,>])$old([ ,.:{]|$)" "$sheet"; then
++            echo "assert-nodes: $sheet holds the GTK 3 node '$old'" >&2
++            status=1
++        fi
++    done
++fi
++if grep -qE "(^|[ ,>])toolbar([ ,.:{]|$)" "$sheet" && [ "$dialect" = gtk4 ]; then
++    echo "assert-nodes: $sheet holds the dead element 'toolbar'" >&2
++    status=1
++fi
++[ $status -eq 0 ] && echo "assert-nodes: $sheet ok for $dialect"
++exit $status
+diff --git a/gtk4/check/assert-varnames.sh b/gtk4/check/assert-varnames.sh
+new file mode 100755
+index 00000000..1e2a9d60
+--- /dev/null
++++ b/gtk4/check/assert-varnames.sh
+@@ -0,0 +1,21 @@
++#!/bin/sh
++# assert-varnames.sh SHEET [ROOTSHEET]: every var() name that SHEET uses must
++# have a declaration. The optional second file holds the :root block, for the
++# dark sheet of the shipped theme. GTK drops a declaration with an undeclared
++# name in silence, so a miss must fail the build.
++set -eu
++sheet=${1:?usage: assert-varnames.sh SHEET [ROOTSHEET]}
++root=${2:-$1}
++tmp=$(mktemp -d)
++trap 'rm -rf "$tmp"' EXIT
++grep -o -- "var(--qtc-[A-Za-z0-9-]*" "$sheet" | sed 's/^var(//' | sort -u > "$tmp/used"
++grep -o -- "--qtc-[A-Za-z0-9-]*:" "$root" | sed 's/:$//' | sort -u > "$tmp/declared"
++if ! comm -23 "$tmp/used" "$tmp/declared" > "$tmp/missing"; then
++    exit 1
++fi
++if [ -s "$tmp/missing" ]; then
++    echo "assert-varnames: $sheet uses names with no declaration:" >&2
++    cat "$tmp/missing" >&2
++    exit 1
++fi
++echo "assert-varnames: $sheet ok, $(wc -l < "$tmp/used") names"
+diff --git a/gtk4/schemes/QtCurveDark.colors b/gtk4/schemes/QtCurveDark.colors
+new file mode 100644
+index 00000000..ae218f8b
+--- /dev/null
++++ b/gtk4/schemes/QtCurveDark.colors
+@@ -0,0 +1,106 @@
++# The colour scheme of the shipped QtCurve GTK theme.
++# The values are the KDE default scheme, so a GTK application that
++# runs under the shipped theme matches a Qt application that runs
++# under the same scheme.
++
++[ColorEffects:Disabled]
++Color=56,56,56
++ColorAmount=0
++ColorEffect=0
++ContrastAmount=0.65
++ContrastEffect=1
++IntensityAmount=0.1
++IntensityEffect=2
++
++[ColorEffects:Inactive]
++ChangeSelectionColor=true
++Color=112,111,110
++ColorAmount=0.025
++ColorEffect=2
++ContrastAmount=0.1
++ContrastEffect=2
++Enable=false
++IntensityAmount=0
++IntensityEffect=0
++
++[Colors:Button]
++BackgroundAlternate=30,87,116
++BackgroundNormal=41,44,48
++DecorationFocus=61,174,233
++DecorationHover=61,174,233
++ForegroundActive=61,174,233
++ForegroundInactive=161,169,177
++ForegroundLink=29,153,243
++ForegroundNegative=218,68,83
++ForegroundNeutral=246,116,0
++ForegroundNormal=252,252,252
++ForegroundPositive=39,174,96
++ForegroundVisited=155,89,182
++
++[Colors:Selection]
++BackgroundAlternate=30,87,116
++BackgroundNormal=61,174,233
++DecorationFocus=61,174,233
++DecorationHover=61,174,233
++ForegroundActive=252,252,252
++ForegroundInactive=161,169,177
++ForegroundLink=253,188,75
++ForegroundNegative=176,55,69
++ForegroundNeutral=198,92,0
++ForegroundNormal=252,252,252
++ForegroundPositive=23,104,57
++ForegroundVisited=155,89,182
++
++[Colors:Tooltip]
++BackgroundAlternate=32,35,38
++BackgroundNormal=41,44,48
++DecorationFocus=61,174,233
++DecorationHover=61,174,233
++ForegroundActive=61,174,233
++ForegroundInactive=161,169,177
++ForegroundLink=29,153,243
++ForegroundNegative=218,68,83
++ForegroundNeutral=246,116,0
++ForegroundNormal=252,252,252
++ForegroundPositive=39,174,96
++ForegroundVisited=155,89,182
++
++[Colors:View]
++BackgroundAlternate=29,31,34
++BackgroundNormal=20,22,24
++DecorationFocus=61,174,233
++DecorationHover=61,174,233
++ForegroundActive=61,174,233
++ForegroundInactive=161,169,177
++ForegroundLink=29,153,243
++ForegroundNegative=218,68,83
++ForegroundNeutral=246,116,0
++ForegroundNormal=252,252,252
++ForegroundPositive=39,174,96
++ForegroundVisited=155,89,182
++
++[Colors:Window]
++BackgroundAlternate=41,44,48
++BackgroundNormal=32,35,38
++DecorationFocus=61,174,233
++DecorationHover=61,174,233
++ForegroundActive=61,174,233
++ForegroundInactive=161,169,177
++ForegroundLink=29,153,243
++ForegroundNegative=218,68,83
++ForegroundNeutral=246,116,0
++ForegroundNormal=252,252,252
++ForegroundPositive=39,174,96
++ForegroundVisited=155,89,182
++
++[WM]
++activeBackground=39,44,49
++activeBlend=252,252,252
++activeForeground=252,252,252
++inactiveBackground=32,36,40
++inactiveBlend=161,169,177
++inactiveForeground=161,169,177
++
++[General]
++Name=QtCurve Dark
++shadeSortColumn=true
+diff --git a/gtk4/schemes/QtCurveLight.colors b/gtk4/schemes/QtCurveLight.colors
+new file mode 100644
+index 00000000..f47f5c44
+--- /dev/null
++++ b/gtk4/schemes/QtCurveLight.colors
+@@ -0,0 +1,106 @@
++# The colour scheme of the shipped QtCurve GTK theme.
++# The values are the KDE default scheme, so a GTK application that
++# runs under the shipped theme matches a Qt application that runs
++# under the same scheme.
++
++[ColorEffects:Disabled]
++Color=56,56,56
++ColorAmount=0
++ColorEffect=0
++ContrastAmount=0.65
++ContrastEffect=1
++IntensityAmount=0.1
++IntensityEffect=2
++
++[ColorEffects:Inactive]
++ChangeSelectionColor=true
++Color=112,111,110
++ColorAmount=0.025
++ColorEffect=2
++ContrastAmount=0.1
++ContrastEffect=2
++Enable=false
++IntensityAmount=0
++IntensityEffect=0
++
++[Colors:Button]
++BackgroundAlternate=163,212,250
++BackgroundNormal=252,252,252
++DecorationFocus=61,174,233
++DecorationHover=61,174,233
++ForegroundActive=61,174,233
++ForegroundInactive=112,125,138
++ForegroundLink=41,128,185
++ForegroundNegative=218,68,83
++ForegroundNeutral=246,116,0
++ForegroundNormal=35,38,41
++ForegroundPositive=39,174,96
++ForegroundVisited=155,89,182
++
++[Colors:Selection]
++BackgroundAlternate=163,212,250
++BackgroundNormal=61,174,233
++DecorationFocus=61,174,233
++DecorationHover=61,174,233
++ForegroundActive=255,255,255
++ForegroundInactive=112,125,138
++ForegroundLink=253,188,75
++ForegroundNegative=176,55,69
++ForegroundNeutral=198,92,0
++ForegroundNormal=255,255,255
++ForegroundPositive=23,104,57
++ForegroundVisited=155,89,182
++
++[Colors:Tooltip]
++BackgroundAlternate=239,240,241
++BackgroundNormal=247,247,247
++DecorationFocus=61,174,233
++DecorationHover=61,174,233
++ForegroundActive=61,174,233
++ForegroundInactive=112,125,138
++ForegroundLink=41,128,185
++ForegroundNegative=218,68,83
++ForegroundNeutral=246,116,0
++ForegroundNormal=35,38,41
++ForegroundPositive=39,174,96
++ForegroundVisited=155,89,182
++
++[Colors:View]
++BackgroundAlternate=247,247,247
++BackgroundNormal=255,255,255
++DecorationFocus=61,174,233
++DecorationHover=61,174,233
++ForegroundActive=61,174,233
++ForegroundInactive=112,125,138
++ForegroundLink=41,128,185
++ForegroundNegative=218,68,83
++ForegroundNeutral=246,116,0
++ForegroundNormal=35,38,41
++ForegroundPositive=39,174,96
++ForegroundVisited=155,89,182
++
++[Colors:Window]
++BackgroundAlternate=227,229,231
++BackgroundNormal=239,240,241
++DecorationFocus=61,174,233
++DecorationHover=61,174,233
++ForegroundActive=61,174,233
++ForegroundInactive=112,125,138
++ForegroundLink=41,128,185
++ForegroundNegative=218,68,83
++ForegroundNeutral=246,116,0
++ForegroundNormal=35,38,41
++ForegroundPositive=39,174,96
++ForegroundVisited=155,89,182
++
++[WM]
++activeBackground=227,229,231
++activeBlend=227,229,231
++activeForeground=35,38,41
++inactiveBackground=239,240,241
++inactiveBlend=239,240,241
++inactiveForeground=112,125,138
++
++[General]
++Name=QtCurve Light
++shadeSortColumn=true
+diff --git a/gtk4/writer/dialect.cpp b/gtk4/writer/dialect.cpp
+new file mode 100644
+index 00000000..250b1348
+--- /dev/null
++++ b/gtk4/writer/dialect.cpp
+@@ -0,0 +1,58 @@
++/*****************************************************************************
++ *   Copyright 2026 QtCurve authors                                          *
++ *                                                                           *
++ *   This program is free software; you can redistribute it and/or modify    *
++ *   it under the terms of the GNU Lesser General Public License as          *
++ *   published by the Free Software Foundation; either version 2.1 of the    *
++ *   License, or (at your option) version 3, or any later version accepted   *
++ *   by the membership of KDE e.V. (or its successor approved by the         *
++ *   membership of KDE e.V.), which shall act as a proxy defined in          *
++ *   Section 6 of version 3 of the license.                                  *
++ *                                                                           *
++ *   This program is distributed in the hope that it will be useful,         *
++ *   but WITHOUT ANY WARRANTY; without even the implied warranty of          *
++ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU       *
++ *   Lesser General Public License for more details.                         *
++ *                                                                           *
++ *   You should have received a copy of the GNU Lesser General Public        *
++ *   License along with this library. If not,                                *
++ *   see <http://www.gnu.org/licenses/>.                                     *
++ *****************************************************************************/
++
++#include "dialect.h"
++
++namespace QtCurve {
++namespace Gtk {
++
++Nodes
++nodesFor(Dialect dialect)
++{
++    Nodes n;
++    if (dialect == Dialect::Gtk4) {
++        n.menu = QStringLiteral("popover.menu > contents");
++        n.menuItem = QStringLiteral("modelbutton");
++        n.scaleFocusSlider = QStringLiteral("scale:focus-within slider");
++        n.titleButton = QStringLiteral("windowcontrols button");
++        n.menuBarItem = QStringLiteral("menubar > item");
++        n.frameNode = QStringLiteral("frame, .frame");
++        n.toolbarNode = QStringLiteral(".toolbar");
++        n.iconSize = true;
++        n.glyphAsset = true;
++        n.decorationNode = false;
++    } else {
++        n.menu = QStringLiteral("menu");
++        n.menuItem = QStringLiteral("menuitem");
++        n.scaleFocusSlider = QStringLiteral("scale slider:focus");
++        n.titleButton = QStringLiteral("titlebutton");
++        n.menuBarItem = QStringLiteral("menubar > menuitem");
++        n.frameNode = QStringLiteral("frame, .frame, frame > border");
++        n.toolbarNode = QStringLiteral(".toolbar, toolbar");
++        n.iconSize = false;
++        n.glyphAsset = false;
++        n.decorationNode = true;
++    }
++    return n;
++}
++
++}
++}
+diff --git a/gtk4/writer/dialect.h b/gtk4/writer/dialect.h
+new file mode 100644
+index 00000000..8eac7d12
+--- /dev/null
++++ b/gtk4/writer/dialect.h
+@@ -0,0 +1,80 @@
++/*****************************************************************************
++ *   Copyright 2026 QtCurve authors                                          *
++ *                                                                           *
++ *   This program is free software; you can redistribute it and/or modify    *
++ *   it under the terms of the GNU Lesser General Public License as          *
++ *   published by the Free Software Foundation; either version 2.1 of the    *
++ *   License, or (at your option) version 3, or any later version accepted   *
++ *   by the membership of KDE e.V. (or its successor approved by the         *
++ *   membership of KDE e.V.), which shall act as a proxy defined in          *
++ *   Section 6 of version 3 of the license.                                  *
++ *                                                                           *
++ *   This program is distributed in the hope that it will be useful,         *
++ *   but WITHOUT ANY WARRANTY; without even the implied warranty of          *
++ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU       *
++ *   Lesser General Public License for more details.                         *
++ *                                                                           *
++ *   You should have received a copy of the GNU Lesser General Public        *
++ *   License along with this library. If not,                                *
++ *   see <http://www.gnu.org/licenses/>.                                     *
++ *****************************************************************************/
++
++#ifndef QTC_GTK4_DIALECT_H
++#define QTC_GTK4_DIALECT_H
++
++#include "emit.h"
++
++namespace QtCurve {
++namespace Gtk {
++
++/**
++ * The node names and the properties that the two dialects do not share. The
++ * GTK 3 column comes from the five differences of the breeze-gtk source trees.
++ */
++struct Nodes {
++    /** Selector of the popup menu body. */
++    QString menu;
++    /** Selector of one item of a popup menu. */
++    QString menuItem;
++    /** Selector of the slider of a scale that holds the focus. */
++    QString scaleFocusSlider;
++    /** Selector of one button of the title bar. */
++    QString titleButton;
++    /** Selector of one item of the menu bar. */
++    QString menuBarItem;
++    /** Selector of the frame node, with the border child of GTK 3. */
++    QString frameNode;
++    /** Selector of the tool bar. GTK 4 has the style class alone. */
++    QString toolbarNode;
++    /** True while the dialect accepts the property -gtk-icon-size. */
++    bool iconSize;
++    /**
++     * True while the dialect gives an SVG glyph the colour of the node. A
++     * false value writes no -gtk-icon-source, and the toolkit draws its own.
++     */
++    bool glyphAsset;
++    /** True while the dialect draws the window border on a decoration node. */
++    bool decorationNode;
++};
++
++/** Returns the node names of the dialect dialect. */
++Nodes nodesFor(Dialect dialect);
++
++/**
++ * Writes the whole sheet for one dialect, one settings set and one palette.
++ * The asset base is the directory prefix of every url() of the sheet.
++ */
++QString buildSheet(const Options &opts, const Palette &pal, Dialect dialect,
++                   const QString &assetBase);
++
++/**
++ * Writes the :root block of the GTK 4 sheet alone. The dark sheet of the
++ * shipped theme holds one import and this block.
++ */
++QString buildRoot(const Options &opts, const Palette &pal,
++                  const QString &assetBase);
++
++}
++}
++
++#endif
+diff --git a/gtk4/writer/emit.cpp b/gtk4/writer/emit.cpp
+new file mode 100644
+index 00000000..5baaa7a1
+--- /dev/null
++++ b/gtk4/writer/emit.cpp
+@@ -0,0 +1,172 @@
++/*****************************************************************************
++ *   Copyright 2026 QtCurve authors                                          *
++ *                                                                           *
++ *   This program is free software; you can redistribute it and/or modify    *
++ *   it under the terms of the GNU Lesser General Public License as          *
++ *   published by the Free Software Foundation; either version 2.1 of the    *
++ *   License, or (at your option) version 3, or any later version accepted   *
++ *   by the membership of KDE e.V. (or its successor approved by the         *
++ *   membership of KDE e.V.), which shall act as a proxy defined in          *
++ *   Section 6 of version 3 of the license.                                  *
++ *                                                                           *
++ *   This program is distributed in the hope that it will be useful,         *
++ *   but WITHOUT ANY WARRANTY; without even the implied warranty of          *
++ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU       *
++ *   Lesser General Public License for more details.                         *
++ *                                                                           *
++ *   You should have received a copy of the GNU Lesser General Public        *
++ *   License along with this library. If not,                                *
++ *   see <http://www.gnu.org/licenses/>.                                     *
++ *****************************************************************************/
++
++#include "emit.h"
++
++#include <qtcurve-utils/color.h>
++
++#include <QTextStream>
++#include <stdio.h>
++
++namespace QtCurve {
++namespace Gtk {
++
++Sheet::Sheet(Dialect dialect, const QString &assetBase)
++    : m_dialect(dialect), m_assetBase(assetBase)
++{
++}
++
++QString
++Sheet::val(const QString &name, const QString &value)
++{
++    if (!m_values.contains(name)) {
++        m_values.insert(name, value);
++        m_order.append(name);
++    } else if (m_values.value(name) != value) {
++        failDuplicate(name, m_values.value(name), value);
++    }
++    if (m_dialect == Dialect::Gtk3) {
++        return value;
++    }
++    return QStringLiteral("var(--qtc-%1, %2)").arg(name, m_values.value(name));
++}
++
++void
++Sheet::rule(const QString &selector, const QString &body)
++{
++    m_body += selector;
++    m_body += QStringLiteral(" {\n");
++    m_body += body;
++    m_body += QStringLiteral("}\n");
++}
++
++void
++Sheet::raw(const QString &text)
++{
++    m_body += text;
++}
++
++QString
++Sheet::url(const QString &name) const
++{
++    return QStringLiteral("url(\"%1%2\")").arg(m_assetBase, name);
++}
++
++QString
++Sheet::rootBlock() const
++{
++    if (m_dialect == Dialect::Gtk3 || m_order.isEmpty()) {
++        return QString();
++    }
++    QString out = QStringLiteral(":root {\n");
++    for (const QString &name : m_order) {
++        out += QStringLiteral("  --qtc-%1: %2;\n").arg(name,
++                                                       m_values.value(name));
++    }
++    out += QStringLiteral("}\n");
++    return out;
++}
++
++QString
++Sheet::text() const
++{
++    return rootBlock() + m_body;
++}
++
++/** The exit code of the first enumeration value that had no case. */
++static int emit_error = 0;
++
++void
++failUnknown(const char *enumName, int value)
++{
++    fprintf(stderr, "qtcurve-gtk-writer: %s value %d has no case\n",
++            enumName, value);
++    emit_error = 5;
++}
++
++void
++failDuplicate(const QString &name, const QString &held, const QString &value)
++{
++    fprintf(stderr, "qtcurve-gtk-writer: name %s holds '%s' and gets '%s'\n",
++            name.toLocal8Bit().constData(), held.toLocal8Bit().constData(),
++            value.toLocal8Bit().constData());
++    emit_error = 5;
++}
++
++int
++emitError()
++{
++    return emit_error;
++}
++
++/** Returns the colour of one gradient stop, from the base colour and the stop. */
++static QString
++stopColour(const Options &opts, const QColor &base, const GradientStop &stop)
++{
++    QColor col;
++    qtcShade(&base, &col, stop.val, opts.shading);
++    if (stop.alpha < 0.999) {
++        return rgba(col, stop.alpha);
++    }
++    return hex(col);
++}
++
++QString
++gradientImage(const Options &opts, EAppearance app, const QColor &base,
++              bool horiz)
++{
++    if (app == APPEARANCE_FILE) {
++        return QStringLiteral("none");
++    }
++    if (qtcIsFlat(app)) {
++        return QStringLiteral("none");
++    }
++    if (app > APPEARANCE_LV_AGUA || app < APPEARANCE_CUSTOM1) {
++        failUnknown("EAppearance", app);
++        return QStringLiteral("none");
++    }
++
++    const Gradient *grad = qtcGetGradient(app, &opts);
++    const GradientStopCont stops = grad->stops.fix();
++    if (stops.empty()) {
++        return QStringLiteral("none");
++    }
++
++    QString out = QStringLiteral("linear-gradient(to %1")
++        .arg(horiz ? QStringLiteral("bottom") : QStringLiteral("right"));
++    for (const GradientStop &stop : stops) {
++        out += QStringLiteral(", %1 %2%")
++            .arg(stopColour(opts, base, stop))
++            .arg(stop.pos * 100.0, 0, 'f', 1);
++    }
++    out += QLatin1Char(')');
++    return out;
++}
++
++QString
++radius(const Options &opts, int w, int h, EWidget widget)
++{
++    const double r = qtcGetRadius(&opts, w, h, widget, RADIUS_EXTERNAL);
++    return QStringLiteral("%1px").arg(r, 0, 'f', 1);
++}
++
++}
++}
+diff --git a/gtk4/writer/emit.h b/gtk4/writer/emit.h
+new file mode 100644
+index 00000000..6e32c1a5
+--- /dev/null
++++ b/gtk4/writer/emit.h
+@@ -0,0 +1,115 @@
++/*****************************************************************************
++ *   Copyright 2026 QtCurve authors                                          *
++ *                                                                           *
++ *   This program is free software; you can redistribute it and/or modify    *
++ *   it under the terms of the GNU Lesser General Public License as          *
++ *   published by the Free Software Foundation; either version 2.1 of the    *
++ *   License, or (at your option) version 3, or any later version accepted   *
++ *   by the membership of KDE e.V. (or its successor approved by the         *
++ *   membership of KDE e.V.), which shall act as a proxy defined in          *
++ *   Section 6 of version 3 of the license.                                  *
++ *                                                                           *
++ *   This program is distributed in the hope that it will be useful,         *
++ *   but WITHOUT ANY WARRANTY; without even the implied warranty of          *
++ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU       *
++ *   Lesser General Public License for more details.                         *
++ *                                                                           *
++ *   You should have received a copy of the GNU Lesser General Public        *
++ *   License along with this library. If not,                                *
++ *   see <http://www.gnu.org/licenses/>.                                     *
++ *****************************************************************************/
++
++#ifndef QTC_GTK4_EMIT_H
++#define QTC_GTK4_EMIT_H
++
++#include "palette.h"
++
++#include <QList>
++#include <QMap>
++#include <QString>
++
++namespace QtCurve {
++namespace Gtk {
++
++/** The two CSS dialects that the one emitter writes. */
++enum class Dialect {
++    Gtk4,
++    Gtk3
++};
++
++/**
++ * One CSS sheet under construction. The GTK 4 dialect collects every value
++ * into the :root block, and the GTK 3 dialect writes the literal alone.
++ */
++class Sheet {
++public:
++    Sheet(Dialect dialect, const QString &assetBase);
++
++    /**
++     * Declares the custom property name with the value value and returns the
++     * text of one use of it. A second value for one name gives exit code 5,
++     * and the first value stays in the sheet.
++     */
++    QString val(const QString &name, const QString &value);
++
++    /** Appends one rule of the selector selector and the body body. */
++    void rule(const QString &selector, const QString &body);
++
++    /** Appends text to the body of the sheet without a change. */
++    void raw(const QString &text);
++
++    /** Returns the url() of the asset name against the asset base of the run. */
++    QString url(const QString &name) const;
++
++    /** Returns the whole sheet, with the :root block and the body. */
++    QString text() const;
++
++    /** Returns the :root block alone, with no rule of the body. */
++    QString rootBlock() const;
++
++    Dialect dialect() const { return m_dialect; }
++
++private:
++    Dialect m_dialect;
++    QString m_assetBase;
++    QMap<QString, QString> m_values;
++    QList<QString> m_order;
++    QString m_body;
++};
++
++/**
++ * Returns the background-image of the appearance app over the base colour
++ * base, from the stop table of qtcGetGradient(). A flat appearance gives none.
++ *
++ * \param horiz  true marks a horizontal widget, and the gradient then runs to
++ *               the bottom. A vertical widget takes the gradient to the right.
++ */
++QString gradientImage(const Options &opts, EAppearance app, const QColor &base,
++                      bool horiz = true);
++
++/**
++ * Returns the border-radius of the widget widget at the size w by h pixels,
++ * in the CSS pixel form.
++ */
++QString radius(const Options &opts, int w, int h, EWidget widget);
++
++/**
++ * Records exit code 5 and prints the enumeration name and the value. The
++ * emitter has no default branch, so a new upstream value stops the build.
++ */
++void failUnknown(const char *enumName, int value);
++
++/**
++ * Records exit code 5 and prints the name of a custom property, the value
++ * that it holds and the second value.
++ */
++void failDuplicate(const QString &name, const QString &held,
++                   const QString &value);
++
++/** Returns 5 after a failure call, and 0 while the emitter is sound. */
++int emitError();
++
++}
++}
++
++#endif
+diff --git a/gtk4/writer/main.cpp b/gtk4/writer/main.cpp
+new file mode 100644
+index 00000000..8655900b
+--- /dev/null
++++ b/gtk4/writer/main.cpp
+@@ -0,0 +1,397 @@
++/*****************************************************************************
++ *   Copyright 2026 QtCurve authors                                          *
++ *                                                                           *
++ *   This program is free software; you can redistribute it and/or modify    *
++ *   it under the terms of the GNU Lesser General Public License as          *
++ *   published by the Free Software Foundation; either version 2.1 of the    *
++ *   License, or (at your option) version 3, or any later version accepted   *
++ *   by the membership of KDE e.V. (or its successor approved by the         *
++ *   membership of KDE e.V.), which shall act as a proxy defined in          *
++ *   Section 6 of version 3 of the license.                                  *
++ *                                                                           *
++ *   This program is distributed in the hope that it will be useful,         *
++ *   but WITHOUT ANY WARRANTY; without even the implied warranty of          *
++ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU       *
++ *   Lesser General Public License for more details.                         *
++ *                                                                           *
++ *   You should have received a copy of the GNU Lesser General Public        *
++ *   License along with this library. If not,                                *
++ *   see <http://www.gnu.org/licenses/>.                                     *
++ *****************************************************************************/
++
++#include "dialect.h"
++#include "userfile.h"
++#include "watch.h"
++
++#include <config_file.h>
++#include <qtcurve-utils/dirs.h>
++
++#include <QCoreApplication>
++#include <QDBusConnection>
++#include <QDBusInterface>
++#include <QDBusReply>
++#include <QDir>
++#include <QFile>
++#include <QTextStream>
++
++using namespace QtCurve;
++using namespace QtCurve::Gtk;
++
++namespace {
++
++/** The name that the GTK theme setting must hold before the writer writes. */
++const char *const themeName = "QtCurve";
++
++/** One parsed command line. */
++struct Args {
++    QString mode = QStringLiteral("--write");
++    QString settings;
++    QString scheme;
++    QString assetBase;
++    QString out;
++    Dialect dialect = Dialect::Gtk4;
++    bool useDefaults = false;
++    bool rootOnly = false;
++    bool force = false;
++};
++
++void
++usage()
++{
++    fprintf(stderr,
++            "usage: qtcurve-gtk-writer [--write|--remove-gtk|--remove-qt|\n"
++            "                           --purge-settings|--watch|--stdout]\n"
++            "  --remove-gtk      delete the GTK files of the writer\n"
++            "  --remove-qt       delete the QtCurve settings, then write the\n"
++            "                    GTK files again\n"
++            "  --purge-settings  delete the settings and the GTK files\n"
++            "  --settings FILE   read the QtCurve settings from FILE\n"
++            "  --default         use the shipped preset\n"
++            "  --scheme FILE     read the colours from a KDE .colors file\n"
++            "  --dialect gtk3|gtk4\n"
++            "  --asset-base DIR  prefix of every url() of the sheet\n"
++            "  --out FILE        write the sheet to FILE and not to stdout\n"
++            "  --root            write the :root block alone\n"
++            "  --force           skip the theme name gate\n");
++}
++
++/** Returns the GTK theme name of the session, or an empty string. */
++QString
++sessionThemeName()
++{
++    const QByteArray env = qgetenv("GTK_THEME");
++    if (!env.isEmpty()) {
++        return QString::fromLocal8Bit(env).section(QLatin1Char(':'), 0, 0);
++    }
++    QDBusInterface portal(QStringLiteral("org.freedesktop.portal.Desktop"),
++                          QStringLiteral("/org/freedesktop/portal/desktop"),
++                          QStringLiteral("org.freedesktop.portal.Settings"),
++                          QDBusConnection::sessionBus());
++    const QDBusReply<QDBusVariant> reply =
++        portal.call(QStringLiteral("ReadOne"),
++                    QStringLiteral("org.gnome.desktop.interface"),
++                    QStringLiteral("gtk-theme"));
++    if (reply.isValid()) {
++        return reply.value().variant().toString();
++    }
++    return QString();
++}
++
++/** Returns the directory that holds the shipped SVG assets. */
++QString
++installedAssets()
++{
++    return QStringLiteral(QTC_GTK_THEME_DIR "/assets");
++}
++
++/** Returns the user configuration directory of the dialect dialect. */
++QString
++userDir(Dialect dialect)
++{
++    return QString::fromLocal8Bit(getXDGConfigHome()) +
++        (dialect == Dialect::Gtk4 ? QStringLiteral("gtk-4.0") :
++         QStringLiteral("gtk-3.0"));
++}
++
++/**
++ * Returns the settings directory of QtCurve, with a trailing separator. The
++ * function makes no directory, and getConfDir() of the library makes one.
++ */
++QString
++settingsDir()
++{
++    const QByteArray env = qgetenv("QTCURVE_CONFIG_DIR");
++    if (env.startsWith('/')) {
++        return QString::fromLocal8Bit(env) + QLatin1Char('/');
++    }
++    return QString::fromLocal8Bit(getXDGConfigHome()) +
++        QStringLiteral("qtcurve/");
++}
++
++/** Prints the path of one file or one directory that the writer deleted. */
++void
++printGone(const QString &path)
++{
++    printf("qtcurve-gtk-writer: removed %s\n", path.toLocal8Bit().constData());
++}
++
++/** Reads the settings of args into opts, and returns the exit code. */
++int
++readOptions(const Args &args, Options &opts)
++{
++    qtcDefaultSettings(&opts);
++    if (args.useDefaults) {
++        return 0;
++    }
++    if (!args.settings.isEmpty()) {
++        QFile file(args.settings);
++        if (!file.open(QIODevice::ReadOnly)) {
++            fprintf(stderr, "qtcurve-gtk-writer: cannot read %s\n",
++                    args.settings.toLocal8Bit().constData());
++            return 2;
++        }
++    }
++    Options def;
++    qtcDefaultSettings(&def);
++    if (!qtcReadConfig(args.settings, &opts, &def, false)) {
++        if (!args.settings.isEmpty()) {
++            fprintf(stderr, "qtcurve-gtk-writer: cannot read %s\n",
++                    args.settings.toLocal8Bit().constData());
++            return 2;
++        }
++    }
++    return 0;
++}
++
++/** Writes the owned files of one dialect, and returns the exit code. */
++int
++writeDialect(const Options &opts, const Palette &pal, Dialect dialect)
++{
++    const QString dir = userDir(dialect);
++    const QString sheet = buildSheet(opts, pal, dialect,
++                                     QStringLiteral("qtcurve-assets/"));
++    if (emitError() != 0) {
++        return emitError();
++    }
++    const int copied = copyAssets(installedAssets(),
++                                  dir + QStringLiteral("/qtcurve-assets"));
++    if (copied != 0) {
++        return copied;
++    }
++    const QString path = dir + QStringLiteral("/qtcurve.css");
++    const QByteArray content = sheet.toUtf8();
++    QFile old(path);
++    if (old.open(QIODevice::ReadOnly) && old.readAll() == content) {
++        old.close();
++        return mergeImport(dir + QStringLiteral("/gtk.css"));
++    }
++    const int written = writeOwned(path, content);
++    if (written != 0) {
++        return written;
++    }
++    return mergeImport(dir + QStringLiteral("/gtk.css"));
++}
++
++/**
++ * Deletes the owned files of one dialect and prints each path that it
++ * deletes. A file that is absent is no error.
++ *
++ * \return 0 on success, and 6 when gtk.css does not open.
++ */
++int
++removeDialect(Dialect dialect)
++{
++    const QString dir = userDir(dialect);
++    const QString sheet = dir + QStringLiteral("/qtcurve.css");
++    const QString assets = dir + QStringLiteral("/qtcurve-assets");
++    const QString shared = dir + QStringLiteral("/gtk.css");
++    if (removeOwned(sheet)) {
++        printGone(sheet);
++    }
++    if (removeDir(assets)) {
++        printGone(assets);
++    }
++    bool changed = false;
++    const int code = removeImport(shared, &changed);
++    if (changed) {
++        printf("qtcurve-gtk-writer: removed the import line of %s\n",
++               shared.toLocal8Bit().constData());
++    }
++    return code;
++}
++
++/** Deletes the owned files of both dialects, and returns the exit code. */
++int
++removeBoth()
++{
++    const int four = removeDialect(Dialect::Gtk4);
++    const int three = removeDialect(Dialect::Gtk3);
++    return four != 0 ? four : three;
++}
++
++/**
++ * Deletes the settings of the user and prints each path that it deletes. The
++ * settings are the configuration directory of QtCurve and kwinqtcurverc.
++ */
++void
++removeSettings()
++{
++    const QString dir = settingsDir();
++    if (removeDir(dir)) {
++        printGone(dir);
++    }
++    const QString kwin = QString::fromLocal8Bit(getXDGConfigHome()) +
++        QStringLiteral("kwinqtcurverc");
++    if (removeOwned(kwin)) {
++        printGone(kwin);
++    }
++}
++
++/** Runs one write pass over both dialects, and returns the exit code. */
++int
++runWrite(const Args &args)
++{
++    if (!args.force && sessionThemeName() != QLatin1String(themeName)) {
++        removeDialect(Dialect::Gtk4);
++        removeDialect(Dialect::Gtk3);
++        return 0;
++    }
++    Options opts;
++    const int read = readOptions(args, opts);
++    if (read != 0) {
++        return read;
++    }
++    Palette pal;
++    QString err;
++    const int bad = readPalette(args.scheme, opts, pal, err);
++    if (bad != 0) {
++        fprintf(stderr, "qtcurve-gtk-writer: %s\n", err.toLocal8Bit().constData());
++        return bad;
++    }
++    const int four = writeDialect(opts, pal, Dialect::Gtk4);
++    if (four != 0) {
++        return four;
++    }
++    return writeDialect(opts, pal, Dialect::Gtk3);
++}
++
++/** Prints one sheet to standard output, and returns the exit code. */
++int
++runStdout(const Args &args)
++{
++    Options opts;
++    const int read = readOptions(args, opts);
++    if (read != 0) {
++        return read;
++    }
++    Palette pal;
++    QString err;
++    const int bad = readPalette(args.scheme, opts, pal, err);
++    if (bad != 0) {
++        fprintf(stderr, "qtcurve-gtk-writer: %s\n", err.toLocal8Bit().constData());
++        return bad;
++    }
++    const QString base = args.assetBase.isEmpty() ?
++        QStringLiteral("../assets/") : args.assetBase;
++    const QString text = args.rootOnly ?
++        QStringLiteral("@import \"gtk.css\";\n") + buildRoot(opts, pal, base) :
++        buildSheet(opts, pal, args.dialect, base);
++    if (emitError() != 0) {
++        return emitError();
++    }
++    if (!args.out.isEmpty()) {
++        return writeOwned(args.out, text.toUtf8());
++    }
++    QTextStream stream(stdout);
++    stream << text;
++    return 0;
++}
++
++/** Parses the command line into args, and returns false on a bad switch. */
++bool
++parse(const QStringList &argv, Args &args)
++{
++    for (int i = 1;i < argv.size();++i) {
++        const QString &arg = argv.at(i);
++        if (arg == QLatin1String("--write") ||
++            arg == QLatin1String("--remove-gtk") ||
++            arg == QLatin1String("--remove-qt") ||
++            arg == QLatin1String("--purge-settings") ||
++            arg == QLatin1String("--watch") ||
++            arg == QLatin1String("--stdout")) {
++            args.mode = arg;
++        } else if (arg == QLatin1String("--default")) {
++            args.useDefaults = true;
++        } else if (arg == QLatin1String("--force")) {
++            args.force = true;
++        } else if (arg == QLatin1String("--root")) {
++            args.rootOnly = true;
++        } else if (arg == QLatin1String("--settings") && i + 1 < argv.size()) {
++            args.settings = argv.at(++i);
++        } else if (arg == QLatin1String("--scheme") && i + 1 < argv.size()) {
++            args.scheme = argv.at(++i);
++        } else if (arg == QLatin1String("--asset-base") && i + 1 < argv.size()) {
++            args.assetBase = argv.at(++i);
++        } else if (arg == QLatin1String("--out") && i + 1 < argv.size()) {
++            args.out = argv.at(++i);
++        } else if (arg == QLatin1String("--dialect") && i + 1 < argv.size()) {
++            const QString value = argv.at(++i);
++            if (value == QLatin1String("gtk3")) {
++                args.dialect = Dialect::Gtk3;
++            } else if (value == QLatin1String("gtk4")) {
++                args.dialect = Dialect::Gtk4;
++            } else {
++                return false;
++            }
++        } else {
++            return false;
++        }
++    }
++    return true;
++}
++
++}
++
++int
++main(int argc, char **argv)
++{
++    QCoreApplication app(argc, argv);
++    QCoreApplication::setApplicationName(QStringLiteral("qtcurve-gtk-writer"));
++
++    Args args;
++    if (!parse(QCoreApplication::arguments(), args)) {
++        usage();
++        return 1;
++    }
++
++    if (args.mode == QLatin1String("--stdout")) {
++        return runStdout(args);
++    }
++    if (args.mode == QLatin1String("--remove-gtk")) {
++        return removeBoth();
++    }
++    if (args.mode == QLatin1String("--remove-qt")) {
++        removeSettings();
++        args.useDefaults = true;
++        return runWrite(args);
++    }
++    if (args.mode == QLatin1String("--purge-settings")) {
++        removeSettings();
++        return removeBoth();
++    }
++    if (args.mode == QLatin1String("--watch")) {
++        const int first = runWrite(args);
++        if (first > 1) {
++            return first;
++        }
++        QStringList paths;
++        paths << QString::fromLocal8Bit(getConfDir()) + QStringLiteral("stylerc");
++        for (Dialect dialect : { Dialect::Gtk4, Dialect::Gtk3 }) {
++            paths << userDir(dialect) + QStringLiteral("/settings.ini");
++            paths << userDir(dialect) + QStringLiteral("/gtk.css");
++        }
++        Watcher watcher([&args] { return runWrite(args); }, paths);
++        return QCoreApplication::exec();
++    }
++    return runWrite(args);
++}
+diff --git a/gtk4/writer/palette.cpp b/gtk4/writer/palette.cpp
+new file mode 100644
+index 00000000..6ca0b875
+--- /dev/null
++++ b/gtk4/writer/palette.cpp
+@@ -0,0 +1,177 @@
++/*****************************************************************************
++ *   Copyright 2026 QtCurve authors                                          *
++ *                                                                           *
++ *   This program is free software; you can redistribute it and/or modify    *
++ *   it under the terms of the GNU Lesser General Public License as          *
++ *   published by the Free Software Foundation; either version 2.1 of the    *
++ *   License, or (at your option) version 3, or any later version accepted   *
++ *   by the membership of KDE e.V. (or its successor approved by the         *
++ *   membership of KDE e.V.), which shall act as a proxy defined in          *
++ *   Section 6 of version 3 of the license.                                  *
++ *                                                                           *
++ *   This program is distributed in the hope that it will be useful,         *
++ *   but WITHOUT ANY WARRANTY; without even the implied warranty of          *
++ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU       *
++ *   Lesser General Public License for more details.                         *
++ *                                                                           *
++ *   You should have received a copy of the GNU Lesser General Public        *
++ *   License along with this library. If not,                                *
++ *   see <http://www.gnu.org/licenses/>.                                     *
++ *****************************************************************************/
++
++#include "palette.h"
++
++#include <qtcurve-utils/color.h>
++
++#include <KColorScheme>
++#include <KConfigGroup>
++#include <KSharedConfig>
++
++#include <QFile>
++#include <QRegularExpression>
++
++namespace QtCurve {
++namespace Gtk {
++
++QString
++hex(const QColor &col)
++{
++    return QString::asprintf("#%02x%02x%02x", col.red(), col.green(),
++                             col.blue());
++}
++
++QString
++rgba(const QColor &col, double alpha)
++{
++    return QString::asprintf("rgba(%d,%d,%d,%.3f)", col.red(), col.green(),
++                             col.blue(), alpha);
++}
++
++void
++shadeLadder(const Options &opts, const QColor &base, Shades &out)
++{
++    const bool custom = USE_CUSTOM_SHADES(opts);
++    const double hl = TO_FACTOR(opts.highlightFactor);
++
++    for (int i = 0;i < QTC_NUM_STD_SHADES;++i) {
++        const double k = (custom ? opts.customShades[i] :
++                          qtcShadeGetIntern(opts.contrast, i,
++                                            opts.darkerBorders, opts.shading));
++        qtcShade(&base, &out.col[i], k, opts.shading);
++    }
++    qtcShade(&base, &out.col[SHADE_ORIG_HIGHLIGHT], hl, opts.shading);
++    qtcShade(&out.col[4], &out.col[SHADE_4_HIGHLIGHT], hl, opts.shading);
++    qtcShade(&out.col[2], &out.col[SHADE_2_HIGHLIGHT], hl, opts.shading);
++    out.col[ORIGINAL_SHADE] = base;
++}
++
++/** The groups and the keys that a shipped .colors file must hold. */
++static const struct {
++    const char *group;
++    const char *key;
++} requiredEntries[] = {
++    { "Colors:Window", "BackgroundNormal" },
++    { "Colors:Window", "ForegroundNormal" },
++    { "Colors:Button", "BackgroundNormal" },
++    { "Colors:Button", "ForegroundNormal" },
++    { "Colors:View", "BackgroundNormal" },
++    { "Colors:View", "ForegroundNormal" },
++    { "Colors:Selection", "BackgroundNormal" },
++    { "Colors:Selection", "ForegroundNormal" },
++    { "Colors:Tooltip", "BackgroundNormal" },
++    { "Colors:Tooltip", "ForegroundNormal" },
++    { "WM", "activeBackground" },
++    { "WM", "activeForeground" },
++};
++
++static int
++checkFile(const QString &file, KSharedConfigPtr cfg, QString &err)
++{
++    static const QRegularExpression triple(
++        QStringLiteral("^\\s*\\d+\\s*,\\s*\\d+\\s*,\\s*\\d+\\s*$"));
++
++    for (const auto &entry : requiredEntries) {
++        KConfigGroup group(cfg, QLatin1String(entry.group));
++        if (!group.exists() || !group.hasKey(entry.key)) {
++            err = QStringLiteral("%1: group [%2] key %3")
++                .arg(file, QLatin1String(entry.group),
++                     QLatin1String(entry.key));
++            return 3;
++        }
++        const QString value = group.readEntry(entry.key, QString());
++        if (!triple.match(value).hasMatch()) {
++            err = QStringLiteral("%1: group [%2] key %3 value '%4'")
++                .arg(file, QLatin1String(entry.group),
++                     QLatin1String(entry.key), value);
++            return 4;
++        }
++    }
++    return 0;
++}
++
++int
++readPalette(const QString &file, const Options &opts, Palette &pal,
++            QString &err)
++{
++    KSharedConfigPtr cfg;
++    if (file.isEmpty()) {
++        cfg = KSharedConfig::openConfig(QStringLiteral("kdeglobals"));
++    } else {
++        if (!QFile::exists(file)) {
++            err = file;
++            return 3;
++        }
++        cfg = KSharedConfig::openConfig(file, KConfig::SimpleConfig);
++        const int bad = checkFile(file, cfg, err);
++        if (bad != 0) {
++            return bad;
++        }
++    }
++
++    const KColorScheme win(QPalette::Active, KColorScheme::Window, cfg);
++    const KColorScheme btn(QPalette::Active, KColorScheme::Button, cfg);
++    const KColorScheme view(QPalette::Active, KColorScheme::View, cfg);
++    const KColorScheme sel(QPalette::Active, KColorScheme::Selection, cfg);
++    const KColorScheme tip(QPalette::Active, KColorScheme::Tooltip, cfg);
++    const KColorScheme winOff(QPalette::Disabled, KColorScheme::Window, cfg);
++    const KColorScheme btnOff(QPalette::Disabled, KColorScheme::Button, cfg);
++    const KColorScheme viewOff(QPalette::Disabled, KColorScheme::View, cfg);
++
++    pal.window = win.background().color();
++    pal.windowText = win.foreground().color();
++    pal.windowTextDisabled = winOff.foreground().color();
++    pal.button = btn.background().color();
++    pal.buttonText = btn.foreground().color();
++    pal.buttonTextDisabled = btnOff.foreground().color();
++    pal.buttonDisabled = btnOff.background().color();
++    pal.base = view.background().color();
++    pal.baseAlternate =
++        view.background(KColorScheme::AlternateBackground).color();
++    pal.text = view.foreground().color();
++    pal.textDisabled = viewOff.foreground().color();
++    pal.highlight = sel.background().color();
++    pal.highlightText = sel.foreground().color();
++    pal.tooltip = tip.background().color();
++    pal.tooltipText = tip.foreground().color();
++    pal.link = view.foreground(KColorScheme::LinkText).color();
++    pal.negative = view.foreground(KColorScheme::NegativeText).color();
++    pal.neutral = view.foreground(KColorScheme::NeutralText).color();
++    pal.positive = view.foreground(KColorScheme::PositiveText).color();
++
++    const KConfigGroup wm(cfg, QStringLiteral("WM"));
++    pal.titlebar = wm.readEntry("activeBackground", pal.window);
++    pal.titlebarText = wm.readEntry("activeForeground", pal.windowText);
++
++    shadeLadder(opts, pal.button, pal.btn);
++    shadeLadder(opts, pal.base, pal.bgnd);
++    shadeLadder(opts, pal.window, pal.win);
++    shadeLadder(opts, pal.highlight, pal.hl);
++    shadeLadder(opts, opts.lighterPopupMenuBgnd != 0 ?
++                pal.base : pal.window, pal.menu);
++
++    pal.dark = qtcColorLuma(&pal.window) < 0.5;
++    return 0;
++}
++
++}
++}
+diff --git a/gtk4/writer/palette.h b/gtk4/writer/palette.h
+new file mode 100644
+index 00000000..97a7dc16
+--- /dev/null
++++ b/gtk4/writer/palette.h
+@@ -0,0 +1,87 @@
++/*****************************************************************************
++ *   Copyright 2026 QtCurve authors                                          *
++ *                                                                           *
++ *   This program is free software; you can redistribute it and/or modify    *
++ *   it under the terms of the GNU Lesser General Public License as          *
++ *   published by the Free Software Foundation; either version 2.1 of the    *
++ *   License, or (at your option) version 3, or any later version accepted   *
++ *   by the membership of KDE e.V. (or its successor approved by the         *
++ *   membership of KDE e.V.), which shall act as a proxy defined in          *
++ *   Section 6 of version 3 of the license.                                  *
++ *                                                                           *
++ *   This program is distributed in the hope that it will be useful,         *
++ *   but WITHOUT ANY WARRANTY; without even the implied warranty of          *
++ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU       *
++ *   Lesser General Public License for more details.                         *
++ *                                                                           *
++ *   You should have received a copy of the GNU Lesser General Public        *
++ *   License along with this library. If not,                                *
++ *   see <http://www.gnu.org/licenses/>.                                     *
++ *****************************************************************************/
++
++#ifndef QTC_GTK4_PALETTE_H
++#define QTC_GTK4_PALETTE_H
++
++#include <common.h>
++
++#include <QColor>
++#include <QString>
++
++namespace QtCurve {
++namespace Gtk {
++
++/**
++ * One QtCurve shade ladder. Index 0 to 5 are the standard shades, 6 to 8 are
++ * the highlight shades, and index 9 is the base colour.
++ */
++struct Shades {
++    QColor col[TOTAL_SHADES + 1];
++    const QColor &operator[](int i) const { return col[i]; }
++};
++
++/**
++ * The colour roles and the shade ladders that the emitter reads. The polarity
++ * flag is true when the luminance of the window background is below 0.5.
++ */
++struct Palette {
++    QColor window, windowText, windowTextDisabled;
++    QColor button, buttonText, buttonTextDisabled, buttonDisabled;
++    QColor base, baseAlternate, text, textDisabled;
++    QColor highlight, highlightText;
++    QColor tooltip, tooltipText;
++    QColor link, negative, neutral, positive;
++    QColor titlebar, titlebarText;
++    Shades btn, bgnd, win, hl, menu;
++    bool dark = false;
++};
++
++/**
++ * Fills out with the ladder that Style::shadeColors() builds for the base
++ * colour, under the custom shades, the contrast and the shading model of opts.
++ */
++void shadeLadder(const Options &opts, const QColor &base, Shades &out);
++
++/**
++ * Reads the colour scheme and builds every role and ladder of pal. An empty
++ * file name takes the live scheme from kdeglobals, which the function must
++ * name because KConfig reads a configuration name off the command line.
++ *
++ * \param file  path of a KDE .colors file, or an empty string for the live scheme.
++ * \param opts  the QtCurve settings that give the contrast and the shading model.
++ * \param pal   receives the roles and the ladders.
++ * \param err   receives the file, the group and the key of a failure.
++ * \return 0 on success, 3 for a missing group or key, and 4 for a bad colour value.
++ */
++int readPalette(const QString &file, const Options &opts, Palette &pal,
++                QString &err);
++
++/** Returns the CSS hexadecimal form of col, such as #eff0f1. */
++QString hex(const QColor &col);
++
++/** Returns the CSS rgba() form of col with the alpha alpha, from 0.0 to 1.0. */
++QString rgba(const QColor &col, double alpha);
++
++}
++}
++
++#endif
+diff --git a/gtk4/writer/userfile.cpp b/gtk4/writer/userfile.cpp
+new file mode 100644
+index 00000000..d3dc55e8
+--- /dev/null
++++ b/gtk4/writer/userfile.cpp
+@@ -0,0 +1,169 @@
++/*****************************************************************************
++ *   Copyright 2026 QtCurve authors                                          *
++ *                                                                           *
++ *   This program is free software; you can redistribute it and/or modify    *
++ *   it under the terms of the GNU Lesser General Public License as          *
++ *   published by the Free Software Foundation; either version 2.1 of the    *
++ *   License, or (at your option) version 3, or any later version accepted   *
++ *   by the membership of KDE e.V. (or its successor approved by the         *
++ *   membership of KDE e.V.), which shall act as a proxy defined in          *
++ *   Section 6 of version 3 of the license.                                  *
++ *                                                                           *
++ *   This program is distributed in the hope that it will be useful,         *
++ *   but WITHOUT ANY WARRANTY; without even the implied warranty of          *
++ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU       *
++ *   Lesser General Public License for more details.                         *
++ *                                                                           *
++ *   You should have received a copy of the GNU Lesser General Public        *
++ *   License along with this library. If not,                                *
++ *   see <http://www.gnu.org/licenses/>.                                     *
++ *****************************************************************************/
++
++#include "userfile.h"
++
++#include <QDir>
++#include <QFile>
++#include <QFileInfo>
++#include <QSaveFile>
++
++namespace QtCurve {
++namespace Gtk {
++
++const char *const importStatement = "@import 'qtcurve.css';";
++
++int
++writeOwned(const QString &path, const QByteArray &content)
++{
++    const QString dir = QFileInfo(path).absolutePath();
++    if (!QDir().mkpath(dir)) {
++        fprintf(stderr, "qtcurve-gtk-writer: cannot make %s\n",
++                dir.toLocal8Bit().constData());
++        return 1;
++    }
++    QSaveFile file(path);
++    if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
++        fprintf(stderr, "qtcurve-gtk-writer: cannot write %s\n",
++                path.toLocal8Bit().constData());
++        return 1;
++    }
++    if (file.write(content) != content.size() || !file.commit()) {
++        fprintf(stderr, "qtcurve-gtk-writer: cannot write %s\n",
++                path.toLocal8Bit().constData());
++        return 1;
++    }
++    return 0;
++}
++
++int
++copyAssets(const QString &srcDir, const QString &dstDir)
++{
++    if (!QDir().mkpath(dstDir)) {
++        fprintf(stderr, "qtcurve-gtk-writer: cannot make %s\n",
++                dstDir.toLocal8Bit().constData());
++        return 1;
++    }
++    const QDir src(srcDir);
++    const QStringList files =
++        src.entryList(QStringList() << QStringLiteral("*.svg"), QDir::Files);
++    if (files.isEmpty()) {
++        fprintf(stderr, "qtcurve-gtk-writer: no SVG file in %s\n",
++                srcDir.toLocal8Bit().constData());
++        return 1;
++    }
++    for (const QString &name : files) {
++        const QString target = dstDir + QLatin1Char('/') + name;
++        QFile::remove(target);
++        if (!QFile::copy(src.filePath(name), target)) {
++            fprintf(stderr, "qtcurve-gtk-writer: cannot copy %s\n",
++                    target.toLocal8Bit().constData());
++            return 1;
++        }
++    }
++    return 0;
++}
++
++int
++mergeImport(const QString &path)
++{
++    if (!QDir().mkpath(QFileInfo(path).absolutePath())) {
++        return 6;
++    }
++    QFile gtkCss(path);
++    if (!gtkCss.open(QIODevice::ReadWrite)) {
++        fprintf(stderr, "qtcurve-gtk-writer: cannot merge %s\n",
++                path.toLocal8Bit().constData());
++        return 6;
++    }
++    QByteArray contents = gtkCss.readAll().trimmed();
++    const QByteArray statement(importStatement);
++    if (contents.contains(statement)) {
++        return 0;
++    }
++    if (!contents.isEmpty()) {
++        contents.append('\n');
++    }
++    contents.append(statement);
++    contents.append('\n');
++    gtkCss.remove();
++    if (!gtkCss.open(QIODevice::WriteOnly | QIODevice::Text)) {
++        return 6;
++    }
++    gtkCss.write(contents);
++    return 0;
++}
++
++int
++removeImport(const QString &path, bool *changed)
++{
++    if (!QFile::exists(path)) {
++        return 0;
++    }
++    QFile gtkCss(path);
++    if (!gtkCss.open(QIODevice::ReadWrite)) {
++        fprintf(stderr, "qtcurve-gtk-writer: cannot merge %s\n",
++                path.toLocal8Bit().constData());
++        return 6;
++    }
++    const QByteArray contents = gtkCss.readAll().trimmed();
++    QList<QByteArray> kept;
++    const QList<QByteArray> lines = contents.split('\n');
++    for (const QByteArray &one : lines) {
++        if (one.trimmed() != QByteArray(importStatement)) {
++            kept.append(one);
++        }
++    }
++    if (kept.size() == lines.size()) {
++        return 0;
++    }
++    QByteArray out = kept.join('\n').trimmed();
++    if (!out.isEmpty()) {
++        out.append('\n');
++    }
++    gtkCss.remove();
++    if (!gtkCss.open(QIODevice::WriteOnly | QIODevice::Text)) {
++        return 6;
++    }
++    gtkCss.write(out);
++    if (changed) {
++        *changed = true;
++    }
++    return 0;
++}
++
++bool
++removeOwned(const QString &path)
++{
++    return QFile::remove(path);
++}
++
++bool
++removeDir(const QString &dir)
++{
++    if (!QDir(dir).exists()) {
++        return false;
++    }
++    return QDir(dir).removeRecursively();
++}
++
++}
++}
+diff --git a/gtk4/writer/userfile.h b/gtk4/writer/userfile.h
+new file mode 100644
+index 00000000..72ffb7dd
+--- /dev/null
++++ b/gtk4/writer/userfile.h
+@@ -0,0 +1,85 @@
++/*****************************************************************************
++ *   Copyright 2026 QtCurve authors                                          *
++ *                                                                           *
++ *   This program is free software; you can redistribute it and/or modify    *
++ *   it under the terms of the GNU Lesser General Public License as          *
++ *   published by the Free Software Foundation; either version 2.1 of the    *
++ *   License, or (at your option) version 3, or any later version accepted   *
++ *   by the membership of KDE e.V. (or its successor approved by the         *
++ *   membership of KDE e.V.), which shall act as a proxy defined in          *
++ *   Section 6 of version 3 of the license.                                  *
++ *                                                                           *
++ *   This program is distributed in the hope that it will be useful,         *
++ *   but WITHOUT ANY WARRANTY; without even the implied warranty of          *
++ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU       *
++ *   Lesser General Public License for more details.                         *
++ *                                                                           *
++ *   You should have received a copy of the GNU Lesser General Public        *
++ *   License along with this library. If not,                                *
++ *   see <http://www.gnu.org/licenses/>.                                     *
++ *****************************************************************************/
++
++#ifndef QTC_GTK4_USERFILE_H
++#define QTC_GTK4_USERFILE_H
++
++#include <QString>
++#include <QStringList>
++
++namespace QtCurve {
++namespace Gtk {
++
++/** The one line of the shared gtk.css file that QtCurve owns. */
++extern const char *const importStatement;
++
++/**
++ * Writes content to path through a temporary name in the same directory.
++ * One rename() replaces the target, so a reader sees the old file or the
++ * new file.
++ *
++ * \return 0 on success, and 1 when the file does not open for writing.
++ */
++int writeOwned(const QString &path, const QByteArray &content);
++
++/**
++ * Copies every SVG file of srcDir into dstDir and makes dstDir. The copy
++ * replaces a file that exists in dstDir.
++ *
++ * \return 0 on success, and 1 when srcDir holds no SVG file or a copy fails.
++ */
++int copyAssets(const QString &srcDir, const QString &dstDir);
++
++/**
++ * Appends the QtCurve import line to path when the trimmed content of the
++ * file does not hold it. The function writes no byte when the line is there.
++ *
++ * \return 0 on success, and 6 when the file does not open.
++ */
++int mergeImport(const QString &path);
++
++/**
++ * Removes the QtCurve import line from path and keeps every other line. The
++ * function writes no byte when no line matches.
++ *
++ * \param changed  the call sets it to true when the file loses the line.
++ * \return 0 on success or on a missing file, and 6 when the file does not open.
++ */
++int removeImport(const QString &path, bool *changed = nullptr);
++
++/**
++ * Deletes path and gives no error when the file is already gone.
++ *
++ * \return true when the call deleted the file.
++ */
++bool removeOwned(const QString &path);
++
++/**
++ * Deletes dir and every file in it, and gives no error when it is gone.
++ *
++ * \return true when the call deleted the directory.
++ */
++bool removeDir(const QString &dir);
++
++}
++}
++
++#endif
+diff --git a/gtk4/writer/watch.cpp b/gtk4/writer/watch.cpp
+new file mode 100644
+index 00000000..c0f52b5e
+--- /dev/null
++++ b/gtk4/writer/watch.cpp
+@@ -0,0 +1,100 @@
++/*****************************************************************************
++ *   Copyright 2026 QtCurve authors                                          *
++ *                                                                           *
++ *   This program is free software; you can redistribute it and/or modify    *
++ *   it under the terms of the GNU Lesser General Public License as          *
++ *   published by the Free Software Foundation; either version 2.1 of the    *
++ *   License, or (at your option) version 3, or any later version accepted   *
++ *   by the membership of KDE e.V. (or its successor approved by the         *
++ *   membership of KDE e.V.), which shall act as a proxy defined in          *
++ *   Section 6 of version 3 of the license.                                  *
++ *                                                                           *
++ *   This program is distributed in the hope that it will be useful,         *
++ *   but WITHOUT ANY WARRANTY; without even the implied warranty of          *
++ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU       *
++ *   Lesser General Public License for more details.                         *
++ *                                                                           *
++ *   You should have received a copy of the GNU Lesser General Public        *
++ *   License along with this library. If not,                                *
++ *   see <http://www.gnu.org/licenses/>.                                     *
++ *****************************************************************************/
++
++#include "watch.h"
++
++#include <KConfigGroup>
++#include <KConfigWatcher>
++#include <KSharedConfig>
++
++#include <QFileInfo>
++#include <QFileSystemWatcher>
++
++namespace QtCurve {
++namespace Gtk {
++
++/**
++ * The debounce of the watch mode, in milliseconds. The value lands after the
++ * 200 ms defer of kde-gtk-config, so the QtCurve line goes on the file that
++ * the daemon already rewrote.
++ */
++static const int debounceMs = 500;
++
++Watcher::Watcher(const std::function<int()> &write, const QStringList &paths,
++                 QObject *parent)
++    : QObject(parent), m_write(write), m_paths(paths),
++      m_files(new QFileSystemWatcher(this))
++{
++    m_timer.setSingleShot(true);
++    m_timer.setInterval(debounceMs);
++    connect(&m_timer, &QTimer::timeout, this, &Watcher::fire);
++
++    addPaths();
++    connect(m_files, &QFileSystemWatcher::fileChanged,
++            this, &Watcher::schedule);
++    connect(m_files, &QFileSystemWatcher::directoryChanged,
++            this, &Watcher::schedule);
++
++    m_config = KConfigWatcher::create(
++        KSharedConfig::openConfig(QStringLiteral("kdeglobals")));
++    connect(m_config.get(), &KConfigWatcher::configChanged, this,
++            [this] (const KConfigGroup &group, const QByteArrayList &names) {
++                if (group.name() != QLatin1String("General")) {
++                    return;
++                }
++                if (names.contains(QByteArrayLiteral("ColorScheme")) ||
++                    names.contains(QByteArrayLiteral("AccentColor"))) {
++                    schedule();
++                }
++            });
++}
++
++void
++Watcher::addPaths()
++{
++    const QStringList files = m_files->files();
++    const QStringList dirs = m_files->directories();
++    for (const QString &path : m_paths) {
++        const QString dir = QFileInfo(path).absolutePath();
++        if (!dirs.contains(dir) && QFileInfo::exists(dir)) {
++            m_files->addPath(dir);
++        }
++        if (!files.contains(path) && QFileInfo::exists(path)) {
++            m_files->addPath(path);
++        }
++    }
++}
++
++void
++Watcher::schedule()
++{
++    addPaths();
++    m_timer.start();
++}
++
++void
++Watcher::fire()
++{
++    m_write();
++}
++
++}
++}
+diff --git a/gtk4/writer/watch.h b/gtk4/writer/watch.h
+new file mode 100644
+index 00000000..dd9765db
+--- /dev/null
++++ b/gtk4/writer/watch.h
+@@ -0,0 +1,76 @@
++/*****************************************************************************
++ *   Copyright 2026 QtCurve authors                                          *
++ *                                                                           *
++ *   This program is free software; you can redistribute it and/or modify    *
++ *   it under the terms of the GNU Lesser General Public License as          *
++ *   published by the Free Software Foundation; either version 2.1 of the    *
++ *   License, or (at your option) version 3, or any later version accepted   *
++ *   by the membership of KDE e.V. (or its successor approved by the         *
++ *   membership of KDE e.V.), which shall act as a proxy defined in          *
++ *   Section 6 of version 3 of the license.                                  *
++ *                                                                           *
++ *   This program is distributed in the hope that it will be useful,         *
++ *   but WITHOUT ANY WARRANTY; without even the implied warranty of          *
++ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU       *
++ *   Lesser General Public License for more details.                         *
++ *                                                                           *
++ *   You should have received a copy of the GNU Lesser General Public        *
++ *   License along with this library. If not,                                *
++ *   see <http://www.gnu.org/licenses/>.                                     *
++ *****************************************************************************/
++
++#ifndef QTC_GTK4_WATCH_H
++#define QTC_GTK4_WATCH_H
++
++#include <KConfigWatcher>
++
++#include <QObject>
++#include <QStringList>
++#include <QTimer>
++
++#include <functional>
++
++class QFileSystemWatcher;
++
++namespace QtCurve {
++namespace Gtk {
++
++/**
++ * The resident half of the writer. It holds one KConfigWatcher over kdeglobals
++ * and one QFileSystemWatcher over the five watched paths and their holding
++ * directories.
++ */
++class Watcher : public QObject {
++    Q_OBJECT
++public:
++    /**
++     * Builds the watcher over the paths paths and the colour scheme keys.
++     * The function write runs one pass, and the caller owns its state.
++     */
++    Watcher(const std::function<int()> &write, const QStringList &paths,
++            QObject *parent = nullptr);
++
++private Q_SLOTS:
++    /** Starts the debounce timer and adds every lost watch path again. */
++    void schedule();
++    /** Runs the write function once, after the debounce. */
++    void fire();
++
++private:
++    /**
++     * Adds every path and every holding directory that the watcher does not
++     * hold. A watch on the directory covers a file that is absent at start.
++     */
++    void addPaths();
++
++    std::function<int()> m_write;
++    QStringList m_paths;
++    QFileSystemWatcher *m_files;
++    KConfigWatcher::Ptr m_config;
++    QTimer m_timer;
++};
++
++}
++}
++
++#endif
+diff --git a/gtk4/writer/widgets.cpp b/gtk4/writer/widgets.cpp
+new file mode 100644
+index 00000000..1887426c
+--- /dev/null
++++ b/gtk4/writer/widgets.cpp
+@@ -0,0 +1,1236 @@
++/*****************************************************************************
++ *   Copyright 2026 QtCurve authors                                          *
++ *                                                                           *
++ *   This program is free software; you can redistribute it and/or modify    *
++ *   it under the terms of the GNU Lesser General Public License as          *
++ *   published by the Free Software Foundation; either version 2.1 of the    *
++ *   License, or (at your option) version 3, or any later version accepted   *
++ *   by the membership of KDE e.V. (or its successor approved by the         *
++ *   membership of KDE e.V.), which shall act as a proxy defined in          *
++ *   Section 6 of version 3 of the license.                                  *
++ *                                                                           *
++ *   This program is distributed in the hope that it will be useful,         *
++ *   but WITHOUT ANY WARRANTY; without even the implied warranty of          *
++ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU       *
++ *   Lesser General Public License for more details.                         *
++ *                                                                           *
++ *   You should have received a copy of the GNU Lesser General Public        *
++ *   License along with this library. If not,                                *
++ *   see <http://www.gnu.org/licenses/>.                                     *
++ *****************************************************************************/
++
++#include "dialect.h"
++
++#include <qtcurve-utils/color.h>
++
++namespace QtCurve {
++namespace Gtk {
++
++namespace {
++
++/** The seven properties of the full box reset of every generated rule. */
++struct Box {
++    QString image = QStringLiteral("none");
++    QString bg = QStringLiteral("transparent");
++    QString border = QStringLiteral("none");
++    QString radius = QStringLiteral("0");
++    QString shadow = QStringLiteral("none");
++    QString fg;
++    QString outline = QStringLiteral("none");
++    QStringList more;
++};
++
++/** Holds one emitter run: the settings, the palette, the sheet and the nodes. */
++class Writer {
++public:
++    Writer(const Options &opts, const Palette &pal, Sheet &sheet,
++           const Nodes &nodes)
++        : m_opts(opts), m_pal(pal), m_sheet(sheet), m_nodes(nodes)
++    {
++    }
++
++    void run();
++    void colourNames();
++
++private:
++    QString v(const QString &name, const QString &value)
++    {
++        return m_sheet.val(name, value);
++    }
++    QString col(const QString &name, const QColor &c)
++    {
++        return m_sheet.val(name, hex(c));
++    }
++    QString grad(const QString &name, EAppearance app, const QColor &base,
++                 bool horiz = true)
++    {
++        return m_sheet.val(name, gradientImage(m_opts, app, base, horiz));
++    }
++    QString rad(const QString &name, EWidget w, int width, int height)
++    {
++        return m_sheet.val(name, radius(m_opts, width, height, w));
++    }
++    QString line(const QString &name, const QColor &c, int width = 1)
++    {
++        return m_sheet.val(name, QStringLiteral("%1px solid %2")
++                           .arg(width).arg(hex(c)));
++    }
++    QString glowLine(const QString &name, const QColor &c, double alpha)
++    {
++        return m_sheet.val(name, QStringLiteral("1px solid %1")
++                           .arg(rgba(c, alpha)));
++    }
++    /**
++     * Returns the box-shadow of the button effect of the settings. The etch
++     * draws a ring and the shadow draws the line under the button.
++     */
++    QString etchShadow() const
++    {
++        if (m_opts.buttonEffect == EFFECT_NONE) {
++            return QStringLiteral("none");
++        }
++        const double alpha = USE_CUSTOM_ALPHAS(m_opts) ?
++            m_opts.customAlphas[ALPHA_ETCH_DARK] : ETCH_TOP_ALPHA;
++        return QStringLiteral("%1 %2")
++            .arg(m_opts.buttonEffect == EFFECT_ETCH ?
++                 QStringLiteral("0 0 0 1px") : QStringLiteral("1px 1px 0"),
++                 rgba(QColor(0, 0, 0), alpha));
++    }
++    /**
++     * Returns the two lines that fade the lower half of a sunken border. The
++     * list is empty while etchEntry is on, because the Qt style then draws
++     * one colour on the whole border.
++     */
++    QStringList lowBorderLines()
++    {
++        if (m_opts.etchEntry) {
++            return QStringList();
++        }
++        const QString low =
++            col(QStringLiteral("entry-border-low"),
++                qtcColorMix(&m_pal.window, &m_pal.win[QTC_STD_BORDER],
++                            LOWER_BORDER_ALPHA));
++        return QStringList()
++            << QStringLiteral("border-bottom-color: %1").arg(low)
++            << QStringLiteral("border-right-color: %1").arg(low);
++    }
++    QString glyph(const QString &name, const QString &file)
++    {
++        return QStringLiteral("-gtk-icon-source: %1")
++            .arg(m_sheet.val(name, QStringLiteral("-gtk-recolor(%1)")
++                             .arg(m_sheet.url(file))));
++    }
++    void put(const QString &selector, const Box &box);
++
++    void reset();
++    void window();
++    void button();
++    void entry();
++    void spinButton();
++    void dropDown();
++    void checkRadio();
++    void scale();
++    void progressBar();
++    void levelBar();
++    void scrollBar();
++    void toggleSwitch();
++    void separator();
++    void toolBar();
++    void headerBar();
++    void menuBar();
++    void frame();
++    void decoration();
++    void notebook();
++    void lists();
++    void infoBar();
++    void tooltip();
++    void popoverMenu();
++    void focusRing();
++    void progressAnimation();
++
++    const Options &m_opts;
++    const Palette &m_pal;
++    Sheet &m_sheet;
++    const Nodes &m_nodes;
++};
++
++void
++Writer::put(const QString &selector, const Box &box)
++{
++    QString body;
++    body += QStringLiteral("  background-image: %1;\n").arg(box.image);
++    body += QStringLiteral("  background-color: %1;\n").arg(box.bg);
++    body += QStringLiteral("  border: %1;\n").arg(box.border);
++    body += QStringLiteral("  border-radius: %1;\n").arg(box.radius);
++    body += QStringLiteral("  box-shadow: %1;\n").arg(box.shadow);
++    if (!box.fg.isEmpty()) {
++        body += QStringLiteral("  color: %1;\n").arg(box.fg);
++    }
++    body += QStringLiteral("  outline: %1;\n").arg(box.outline);
++    for (const QString &extra : box.more) {
++        body += QStringLiteral("  %1;\n").arg(extra);
++    }
++    m_sheet.rule(selector, body);
++}
++
++/** Returns the colour of a widget that the user cannot use, from the style. */
++static QColor
++disabledMix(const QColor &fg, const QColor &bg)
++{
++    return qtcColorMix(&fg, &bg, 0.5);
++}
++
++void
++Writer::reset()
++{
++    m_sheet.rule(QStringLiteral("*"),
++                 QStringLiteral("  outline: none;\n"
++                                "  -gtk-secondary-caret-color: initial;\n"));
++    m_sheet.rule(QStringLiteral("label"),
++                 QStringLiteral("  color: %1;\n")
++                 .arg(col(QStringLiteral("fg"), m_pal.windowText)));
++    m_sheet.rule(QStringLiteral("label:disabled"),
++                 QStringLiteral("  color: %1;\n")
++                 .arg(col(QStringLiteral("fg-off"), m_pal.windowTextDisabled)));
++}
++
++void
++Writer::window()
++{
++    Box box;
++    box.image = grad(QStringLiteral("win-img"), m_opts.bgndAppearance,
++                     m_pal.window, m_opts.bgndGrad == GT_HORIZ);
++    box.bg = col(QStringLiteral("win-bg"), m_pal.window);
++    box.fg = col(QStringLiteral("fg"), m_pal.windowText);
++    put(QStringLiteral("window, window.background, .background, "
++                       "headerbar > windowhandle, popover > contents"), box);
++
++    // A container that paints the window colour hides the sheet of a popover
++    // or of a list under it, so every container node stays clear.
++    Box clear;
++    put(QStringLiteral("box, grid, paned, stack, viewport, scrolledwindow, "
++                       "widget, revealer, overlay, dropdown, "
++                       "columnview > listview.view, notebook > header > tabs"),
++        clear);
++}
++
++void
++Writer::button()
++{
++    const QColor border = m_pal.btn[QTC_STD_BORDER];
++    const QString border0 = line(QStringLiteral("btn-border"), border);
++    const QString r = rad(QStringLiteral("btn-radius"), WIDGET_STD_BUTTON,
++                          100, 25);
++    const bool effect = m_opts.buttonEffect != EFFECT_NONE;
++    const QString pad = effect ?
++        QStringLiteral("padding: 3px 10px 2px 10px") :
++        QStringLiteral("padding: 4px 10px 3px 10px");
++    const QString space = effect ? QStringLiteral("margin: 1px") :
++        QStringLiteral("margin: 0");
++    const QString minSize = QStringLiteral("min-height: 15px");
++    const QString minWidth = QStringLiteral("min-width: 58px");
++
++    Box box;
++    box.image = grad(QStringLiteral("btn-img"), m_opts.appearance,
++                     m_pal.button);
++    box.bg = col(QStringLiteral("btn-bg"), m_pal.button);
++    box.border = line(QStringLiteral("btn-border"), border);
++    box.radius = r;
++    box.fg = col(QStringLiteral("btn-fg"), m_pal.buttonText);
++    box.shadow = v(QStringLiteral("btn-etch"), etchShadow());
++    box.more << pad << space << minSize << minWidth
++             << QStringLiteral("transition: none");
++    put(QStringLiteral("button, button.text-button, button.image-button, "
++                       "dropdown > button, combobox button.combo, "
++                       "spinbutton button, %1").arg(m_nodes.titleButton), box);
++
++    Box hover = box;
++    hover.image = grad(QStringLiteral("btn-img-hover"), m_opts.appearance,
++                       m_pal.btn[SHADE_ORIG_HIGHLIGHT]);
++    hover.bg = col(QStringLiteral("btn-bg-hover"),
++                   m_pal.btn[SHADE_ORIG_HIGHLIGHT]);
++    hover.border = m_opts.coloredMouseOver == MO_GLOW ?
++        glowLine(QStringLiteral("btn-border-mo"), m_pal.highlight, 0.65) :
++        m_opts.coloredMouseOver == MO_NONE ? border0 :
++        line(QStringLiteral("btn-border-hover"), m_pal.hl[QTC_STD_BORDER]);
++    hover.more.clear();
++    hover.more << pad << space << minSize << minWidth;
++    put(QStringLiteral("button:hover, dropdown > button:hover, "
++                       "combobox button.combo:hover, "
++                       "spinbutton button:hover, %1:hover")
++        .arg(m_nodes.titleButton), hover);
++
++    Box active = box;
++    active.image = grad(QStringLiteral("btn-img-active"),
++                        m_opts.sunkenAppearance, m_pal.btn[2]);
++    active.bg = col(QStringLiteral("btn-bg-active"), m_pal.btn[2]);
++    active.more.clear();
++    active.more << pad << space << minSize << minWidth;
++    put(QStringLiteral("button:active, button:checked, "
++                       "button.toggle:checked, dropdown > button:active, "
++                       "spinbutton button:active"), active);
++
++    Box off = box;
++    off.image = grad(QStringLiteral("btn-img-off"), m_opts.appearance,
++                     m_pal.buttonDisabled);
++    off.bg = col(QStringLiteral("btn-bg-off"), m_pal.buttonDisabled);
++    off.fg = col(QStringLiteral("btn-fg-off"), m_pal.buttonTextDisabled);
++    off.more.clear();
++    off.more << pad << space << minSize << minWidth;
++    put(QStringLiteral("button:disabled, dropdown > button:disabled, "
++                       "combobox button.combo:disabled, "
++                       "spinbutton button:disabled"), off);
++
++    Box focus = box;
++    focus.border = m_opts.focus == FOCUS_NONE ? border0 :
++        line(QStringLiteral("btn-border-focus"), m_pal.hl[QTC_STD_BORDER]);
++    if (m_opts.focus != FOCUS_NONE) {
++        focus.shadow = v(QStringLiteral("btn-focus-ring"),
++                         QStringLiteral("0 0 0 1px %1")
++                         .arg(rgba(m_pal.hl[GLOW_MO], GLOW_ALPHA(false))));
++    }
++    focus.more.clear();
++    focus.more << pad << space << minSize << minWidth;
++    put(QStringLiteral("button:focus-visible, button:focus, "
++                       "dropdown > button:focus-visible"), focus);
++
++    Box accent = box;
++    accent.image = grad(QStringLiteral("btn-img-accent"), m_opts.appearance,
++                        m_pal.highlight);
++    accent.bg = col(QStringLiteral("btn-bg-accent"), m_pal.highlight);
++    accent.border = line(QStringLiteral("btn-border-accent"),
++                         m_pal.hl[QTC_STD_BORDER]);
++    accent.fg = col(QStringLiteral("btn-fg-accent"), m_pal.highlightText);
++    put(QStringLiteral("button.suggested-action"), accent);
++
++    Box danger = accent;
++    danger.image = grad(QStringLiteral("btn-img-danger"), m_opts.appearance,
++                        m_pal.negative);
++    danger.bg = col(QStringLiteral("btn-bg-danger"), m_pal.negative);
++    danger.border = line(QStringLiteral("btn-border-danger"), m_pal.negative);
++    put(QStringLiteral("button.destructive-action"), danger);
++
++    Box flat;
++    flat.fg = col(QStringLiteral("btn-fg"), m_pal.buttonText);
++    flat.radius = r;
++    flat.more << QStringLiteral("padding: 3px 10px")
++              << QStringLiteral("margin: 0")
++              << QStringLiteral("min-width: 0")
++              << QStringLiteral("min-height: 0");
++    put(QStringLiteral("button.flat, .toolbar button"), flat);
++
++    Box link;
++    link.fg = col(QStringLiteral("link-fg"), m_pal.link);
++    link.radius = r;
++    link.more << QStringLiteral("padding: 0")
++              << QStringLiteral("margin: 0")
++              << QStringLiteral("min-width: 0")
++              << QStringLiteral("min-height: 0");
++    put(QStringLiteral("button.link"), link);
++
++    Box linkLabel;
++    linkLabel.fg = col(QStringLiteral("link-fg"), m_pal.link);
++    linkLabel.more << QStringLiteral("text-decoration: underline");
++    put(QStringLiteral("button.link label, .link"), linkLabel);
++}
++
++void
++Writer::entry()
++{
++    const QColor border = m_pal.win[QTC_STD_BORDER];
++    Box box;
++    box.bg = col(QStringLiteral("entry-bg"), m_pal.base);
++    box.border = line(QStringLiteral("entry-border"), border);
++    box.radius = rad(QStringLiteral("entry-radius"), WIDGET_ENTRY, 150, 21);
++    box.fg = col(QStringLiteral("entry-fg"), m_pal.text);
++    box.more << QStringLiteral("padding: 2px 6px 1px 6px")
++             << QStringLiteral("min-height: 15px")
++             << lowBorderLines()
++             << QStringLiteral("caret-color: %1")
++                .arg(col(QStringLiteral("entry-fg"), m_pal.text));
++    put(QStringLiteral("entry, entry.search"), box);
++
++    Box text;
++    text.fg = col(QStringLiteral("entry-fg"), m_pal.text);
++    put(QStringLiteral("entry > text, spinbutton > text, textview > text"),
++        text);
++
++    Box focus = box;
++    focus.border = line(QStringLiteral("entry-border-focus"),
++                        m_pal.hl[QTC_STD_BORDER]);
++    focus.shadow = v(QStringLiteral("entry-glow"),
++                     m_opts.focus == FOCUS_NONE ? QStringLiteral("none") :
++                     QStringLiteral("inset 0 0 0 1px %1")
++                     .arg(rgba(m_pal.highlight, 0.5)));
++    focus.more.clear();
++    focus.more << QStringLiteral("padding: 2px 6px 1px 6px")
++               << QStringLiteral("min-height: 15px");
++    put(QStringLiteral("entry:focus-within, entry:focus, "
++                       "spinbutton:not(.vertical):focus-within"), focus);
++
++    Box off = box;
++    off.bg = col(QStringLiteral("entry-bg-off"), m_pal.window);
++    off.fg = col(QStringLiteral("entry-fg-off"), m_pal.textDisabled);
++    off.more.clear();
++    off.more << QStringLiteral("padding: 2px 6px 1px 6px")
++             << QStringLiteral("min-height: 15px");
++    put(QStringLiteral("entry:disabled, "
++                       "spinbutton:not(.vertical):disabled"), off);
++}
++
++void
++Writer::spinButton()
++{
++    Box box;
++    box.bg = col(QStringLiteral("entry-bg"), m_pal.base);
++    box.border = line(QStringLiteral("entry-border"),
++                      m_pal.win[QTC_STD_BORDER]);
++    box.radius = rad(QStringLiteral("entry-radius"), WIDGET_ENTRY, 150, 21);
++    box.fg = col(QStringLiteral("entry-fg"), m_pal.text);
++    box.more << lowBorderLines();
++    put(QStringLiteral("spinbutton:not(.vertical)"), box);
++
++    Box up;
++    up.image = grad(QStringLiteral("btn-img"), m_opts.appearance,
++                    m_pal.button);
++    up.bg = col(QStringLiteral("btn-bg"), m_pal.button);
++    up.border = line(QStringLiteral("btn-border"), m_pal.btn[QTC_STD_BORDER]);
++    up.radius = QStringLiteral("0");
++    up.fg = col(QStringLiteral("btn-fg"), m_pal.buttonText);
++    up.more << QStringLiteral("min-width: 8px")
++            << QStringLiteral("min-height: 15px")
++            << QStringLiteral("margin: 0")
++            << QStringLiteral("padding: 0 2px");
++    put(QStringLiteral("spinbutton:not(.vertical) button.up, "
++                       "spinbutton:not(.vertical) button.down"), up);
++}
++
++void
++Writer::dropDown()
++{
++    Box arrow;
++    arrow.fg = col(QStringLiteral("btn-fg"), m_pal.buttonText);
++    if (m_nodes.glyphAsset) {
++        arrow.more << glyph(QStringLiteral("arrow-down"),
++                            QStringLiteral("qtc-arrow-down.svg"));
++        if (m_nodes.iconSize) {
++            arrow.more << QStringLiteral("-gtk-icon-size: 16px");
++        }
++    }
++    put(QStringLiteral("dropdown arrow, combobox arrow, "
++                       "spinbutton button.down"), arrow);
++
++    Box up = arrow;
++    up.more.clear();
++    if (m_nodes.glyphAsset) {
++        up.more << glyph(QStringLiteral("arrow-up"),
++                         QStringLiteral("qtc-arrow-up.svg"));
++        if (m_nodes.iconSize) {
++            up.more << QStringLiteral("-gtk-icon-size: 16px");
++        }
++    }
++    put(QStringLiteral("spinbutton button.up"), up);
++
++    // The drop down button holds a taller child than a plain button, so its
++    // padding alone follows the button rules of every state.
++    m_sheet.rule(QStringLiteral("dropdown > button, dropdown > button:hover, "
++                                "dropdown > button:active, "
++                                "dropdown > button:disabled, "
++                                "dropdown > button:focus-visible, "
++                                "combobox button.combo, "
++                                "combobox button.combo:hover, "
++                                "combobox button.combo:disabled"),
++                 QStringLiteral("  padding: 1px 9px 0px 9px;\n"));
++
++    Box list;
++    list.bg = col(QStringLiteral("menu-bg"), m_pal.menu[ORIGINAL_SHADE]);
++    list.border = line(QStringLiteral("menu-border"),
++                       m_pal.menu[QTC_STD_BORDER]);
++    list.fg = col(QStringLiteral("menu-fg"), m_pal.text);
++    put(QStringLiteral("dropdown > popover > contents, "
++                       "dropdown listview, dropdown listview > row"), list);
++}
++
++void
++Writer::checkRadio()
++{
++    // The drawn frame of the Qt indicator is 15 pixels for a check box and
++    // 14 for a radio button. The etch effect takes one pixel of margin.
++    const int checkSide = 13;
++    const int radioSide = 13;
++    const QColor face = m_opts.crButton ? m_pal.button : m_pal.base;
++    const QColor mark = m_opts.crButton ? m_pal.buttonText : m_pal.text;
++    const Shades &ladder = m_opts.crButton ? m_pal.btn : m_pal.bgnd;
++
++    Box box;
++    box.image = grad(QStringLiteral("cr-img"), m_opts.appearance, face);
++    box.bg = col(QStringLiteral("cr-bg"), face);
++    box.border = line(QStringLiteral("cr-border"), ladder[QTC_STD_BORDER]);
++    box.radius = rad(QStringLiteral("cr-radius"), WIDGET_CHECKBOX, 18, 18);
++    box.shadow = v(QStringLiteral("cr-etch"), etchShadow());
++    box.fg = col(QStringLiteral("cr-fg"), mark);
++    box.more << QStringLiteral("min-width: %1px").arg(checkSide)
++             << QStringLiteral("min-height: %1px").arg(checkSide)
++             << QStringLiteral("margin: 2px")
++             << QStringLiteral("padding: 0");
++    if (m_nodes.iconSize) {
++        box.more << QStringLiteral("-gtk-icon-size: %1px").arg(checkSide);
++    }
++    put(QStringLiteral("check, checkbutton > check"), box);
++
++    Box radio = box;
++    radio.radius = QStringLiteral("50%");
++    radio.more.clear();
++    radio.more << QStringLiteral("min-width: %1px").arg(radioSide)
++               << QStringLiteral("min-height: %1px").arg(radioSide)
++               << QStringLiteral("margin: 2px")
++               << QStringLiteral("padding: 0");
++    if (m_nodes.iconSize) {
++        radio.more << QStringLiteral("-gtk-icon-size: %1px").arg(radioSide);
++    }
++    put(QStringLiteral("radio, checkbutton > radio"), radio);
++
++    if (m_nodes.glyphAsset) {
++        Box on = box;
++        on.more.clear();
++        on.more << glyph(QStringLiteral("check-mark"),
++                         QStringLiteral("qtc-check.svg"));
++        put(QStringLiteral("check:checked, checkbutton > check:checked"), on);
++
++        Box mixed = on;
++        mixed.more.clear();
++        mixed.more << glyph(QStringLiteral("check-dash"),
++                            QStringLiteral("qtc-dash.svg"));
++        put(QStringLiteral("check:indeterminate, "
++                           "checkbutton > check:indeterminate"), mixed);
++
++        Box bullet = radio;
++        bullet.more.clear();
++        bullet.more << glyph(QStringLiteral("radio-bullet"),
++                             QStringLiteral("qtc-bullet.svg"));
++        put(QStringLiteral("radio:checked, checkbutton > radio:checked"),
++            bullet);
++    }
++
++    Box off = box;
++    off.image = QStringLiteral("none");
++    off.bg = col(QStringLiteral("cr-bg-off"), m_pal.window);
++    off.fg = col(QStringLiteral("cr-fg-off"), m_pal.windowTextDisabled);
++    off.more.clear();
++    put(QStringLiteral("check:disabled, radio:disabled"), off);
++}
++
++void
++Writer::scale()
++{
++    // The rows come from the slider metrics of the Qt style. That style draws
++    // a groove of five pixels and it keeps the tick marks below the groove.
++    const int glow = (m_opts.buttonEffect != EFFECT_NONE &&
++                      m_opts.coloredMouseOver == MO_GLOW ? 2 : 0);
++    const int sliderSize = (m_opts.sliderWidth < DEFAULT_SLIDER_WIDTH ?
++                            DEFAULT_SLIDER_WIDTH - 2 : m_opts.sliderWidth);
++    const int thickness = sliderSize + glow - 2;
++    const int tickOffset = (m_opts.sliderStyle == SLIDER_TRIANGULAR ? 5 : 4);
++    const int grooveBox = 5;
++    const int markBox = 3;
++    const int handleBox = thickness - 1;
++    const int handleWide = m_opts.sliderWidth + 5;
++    // The rows between the top of the groove rectangle and the drawn groove.
++    const int inset = (thickness - grooveBox) / 2;
++    const int scaleHeight = sliderSize + glow + 6 + markBox + 2;
++    const QColor troughBase = m_pal.win[2];
++    Box trough;
++    trough.image = grad(QStringLiteral("scale-trough-img"),
++                        m_opts.grooveAppearance, troughBase, true);
++    trough.bg = col(QStringLiteral("scale-trough-bg"), troughBase);
++    trough.border = line(QStringLiteral("scale-trough-border"),
++                         m_pal.win[QTC_STD_BORDER]);
++    trough.radius = rad(QStringLiteral("scale-trough-radius"),
++                        WIDGET_SLIDER_TROUGH, 600, 7);
++    trough.more << QStringLiteral("min-height: %1px").arg(grooveBox - 2)
++                << QStringLiteral("margin: %1px 0 0").arg(tickOffset + inset);
++    put(QStringLiteral("scale > trough, scale trough"), trough);
++
++    Box fill;
++    fill.image = grad(QStringLiteral("scale-fill-img"), m_opts.sliderFill,
++                      m_pal.highlight, true);
++    fill.bg = col(QStringLiteral("scale-fill-bg"), m_pal.highlight);
++    fill.border = line(QStringLiteral("scale-fill-border"),
++                       m_pal.hl[QTC_STD_BORDER]);
++    fill.radius = rad(QStringLiteral("scale-trough-radius"),
++                      WIDGET_SLIDER_TROUGH, 600, 7);
++    // The fill lies over the border of the groove. The Qt style draws one
++    // groove of five pixels and it fills the same rows.
++    fill.more << QStringLiteral("min-height: %1px").arg(grooveBox - 4)
++              << QStringLiteral("margin: -1px");
++    put(QStringLiteral("scale > trough > highlight, scale highlight, "
++                       "scale > trough > fill"), fill);
++
++    Box slider;
++    slider.image = grad(QStringLiteral("slider-img"), m_opts.sliderAppearance,
++                        m_pal.button);
++    slider.bg = col(QStringLiteral("slider-bg"), m_pal.button);
++    slider.border = line(QStringLiteral("slider-border"),
++                         m_pal.btn[QTC_STD_BORDER]);
++    slider.radius = rad(QStringLiteral("slider-radius"), WIDGET_SLIDER,
++                        handleWide, handleBox);
++    // The handle keeps the centre of the groove, and the Qt style adds the
++    // etch of the button effect under it.
++    slider.more << QStringLiteral("min-width: %1px").arg(handleWide - 2)
++                << QStringLiteral("min-height: %1px").arg(handleBox - 2)
++                << QStringLiteral("margin: -%1px 0 -%2px")
++                   .arg(inset).arg(handleBox + 2 - inset - grooveBox);
++    put(QStringLiteral("scale > trough > slider, scale slider"), slider);
++    put(m_nodes.scaleFocusSlider, slider);
++
++    Box mark;
++    mark.bg = col(QStringLiteral("scale-mark"), m_pal.win[QTC_STD_BORDER]);
++    mark.more << QStringLiteral("min-width: 1px")
++              << QStringLiteral("min-height: %1px").arg(markBox);
++    put(QStringLiteral("scale > marks > mark > indicator, "
++                       "scale marks indicator"), mark);
++
++    Box marks;
++    marks.more << QStringLiteral("margin: %1px 0 2px")
++                  .arg(scaleHeight - tickOffset - inset - grooveBox -
++                       markBox - 2);
++    put(QStringLiteral("scale > marks.bottom, scale marks.bottom"), marks);
++
++    Box row;
++    row.more << QStringLiteral("min-height: %1px").arg(scaleHeight);
++    put(QStringLiteral("scale"), row);
++}
++
++void
++Writer::progressBar()
++{
++    const QColor troughBase = m_opts.progressGrooveColor == ECOLOR_BACKGROUND ?
++        m_pal.window : m_opts.progressGrooveColor == ECOLOR_BASE ?
++        m_pal.base : m_pal.win[2];
++    Box trough;
++    trough.image = grad(QStringLiteral("pbar-trough-img"),
++                        m_opts.progressGrooveAppearance, troughBase, true);
++    trough.bg = col(QStringLiteral("pbar-trough-bg"), troughBase);
++    trough.border = m_opts.borderProgress ?
++        line(QStringLiteral("pbar-trough-border"), m_pal.win[QTC_STD_BORDER]) :
++        v(QStringLiteral("pbar-trough-noborder"), QStringLiteral("none"));
++    trough.radius = rad(QStringLiteral("pbar-trough-radius"),
++                        WIDGET_PBAR_TROUGH, 300, 14);
++    // The Qt style draws an etch ring outside the trough, so the trough
++    // takes one pixel of margin.
++    trough.more << QStringLiteral("min-height: 19px")
++                << QStringLiteral("margin: 1px");
++    put(QStringLiteral("progressbar > trough, progressbar trough"), trough);
++
++    const QColor fillBase = m_opts.progressColor == SHADE_SELECTED ?
++        m_pal.highlight : m_opts.progressColor == SHADE_CUSTOM ?
++        m_opts.customProgressColor : m_pal.button;
++    Box fill;
++    fill.image = grad(QStringLiteral("pbar-fill-img"),
++                      m_opts.progressAppearance, fillBase, true);
++    fill.bg = col(QStringLiteral("pbar-fill-bg"), fillBase);
++    fill.border = m_opts.borderProgress ?
++        line(QStringLiteral("pbar-fill-border"), m_pal.hl[QTC_STD_BORDER]) :
++        v(QStringLiteral("pbar-fill-noborder"), QStringLiteral("none"));
++    fill.radius = rad(QStringLiteral("pbar-fill-radius"), WIDGET_PROGRESSBAR,
++                      300, 14);
++    // The Qt fill covers the border of the trough, so the fill takes a
++    // negative margin.
++    fill.more << QStringLiteral("min-height: 19px")
++              << QStringLiteral("margin: -1px");
++    const bool striped = m_opts.stripedProgress != STRIPE_NONE;
++    if (striped) {
++        fill.image = v(QStringLiteral("pbar-stripe"),
++                       QStringLiteral("repeating-linear-gradient(to right, "
++                                      "%1 0px, %1 10px, %2 10px, %2 20px)")
++                       .arg(hex(m_pal.hl[1]), hex(m_pal.hl[0])));
++        fill.more << QStringLiteral("background-size: 20px 100%")
++                  << QStringLiteral("background-repeat: repeat");
++    }
++    fill.more << QStringLiteral("animation: %1")
++                 .arg(v(QStringLiteral("pbar-anim"),
++                        (m_opts.animatedProgress && striped) ?
++                        QStringLiteral("qtc-progress-stripe 2s "
++                                       "steps(20, start) infinite") :
++                        QStringLiteral("none")));
++    put(QStringLiteral("progressbar > trough > progress, "
++                       "progressbar progress"), fill);
++
++    Box text;
++    text.fg = col(QStringLiteral("fg"), m_pal.windowText);
++    if (m_opts.boldProgress) {
++        text.more << QStringLiteral("font-weight: bold");
++    }
++    put(QStringLiteral("progressbar > text"), text);
++}
++
++void
++Writer::levelBar()
++{
++    Box trough;
++    trough.bg = col(QStringLiteral("lbar-trough-bg"), m_pal.win[2]);
++    trough.border = line(QStringLiteral("lbar-trough-border"),
++                         m_pal.win[QTC_STD_BORDER]);
++    trough.radius = rad(QStringLiteral("lbar-trough-radius"),
++                        WIDGET_PBAR_TROUGH, 300, 14);
++    trough.more << QStringLiteral("min-height: 10px");
++    put(QStringLiteral("levelbar > trough, levelbar trough"), trough);
++
++    Box block;
++    block.image = grad(QStringLiteral("lbar-block-img"),
++                       m_opts.progressAppearance, m_pal.highlight, true);
++    block.bg = col(QStringLiteral("lbar-block-bg"), m_pal.highlight);
++    block.radius = rad(QStringLiteral("lbar-block-radius"), WIDGET_PROGRESSBAR,
++                       300, 14);
++    block.more << QStringLiteral("min-height: 10px");
++    put(QStringLiteral("levelbar block, levelbar block.filled"), block);
++
++    Box empty;
++    empty.bg = col(QStringLiteral("lbar-trough-bg"), m_pal.win[2]);
++    put(QStringLiteral("levelbar block.empty"), empty);
++}
++
++void
++Writer::scrollBar()
++{
++    Box back;
++    back.image = grad(QStringLiteral("sbar-bgnd-img"),
++                      m_opts.sbarBgndAppearance, m_pal.window);
++    back.bg = col(QStringLiteral("sbar-bgnd-bg"), m_pal.window);
++    put(QStringLiteral("scrollbar, scrollbar > range"), back);
++
++    Box trough;
++    trough.image = grad(QStringLiteral("sbar-trough-img"),
++                        m_opts.grooveAppearance, m_pal.win[2]);
++    trough.bg = col(QStringLiteral("sbar-trough-bg"), m_pal.win[2]);
++    trough.border = m_opts.borderSbarGroove ?
++        line(QStringLiteral("sbar-trough-border"), m_pal.win[QTC_STD_BORDER]) :
++        v(QStringLiteral("sbar-trough-noborder"), QStringLiteral("none"));
++    trough.radius = rad(QStringLiteral("sbar-trough-radius"), WIDGET_TROUGH,
++                        600, 13);
++    put(QStringLiteral("scrollbar > range > trough, scrollbar trough"), trough);
++
++    Box slider;
++    slider.image = grad(QStringLiteral("sbar-slider-img"), m_opts.appearance,
++                        m_pal.button);
++    slider.bg = col(QStringLiteral("sbar-slider-bg"), m_pal.button);
++    slider.border = line(QStringLiteral("sbar-slider-border"),
++                         m_pal.btn[QTC_STD_BORDER]);
++    slider.radius = rad(QStringLiteral("sbar-slider-radius"), WIDGET_SB_SLIDER,
++                        60, 13);
++    slider.more << QStringLiteral("min-width: 24px")
++                << QStringLiteral("min-height: 8px")
++                << QStringLiteral("margin: 0");
++    put(QStringLiteral("scrollbar > range > trough > slider, "
++                       "scrollbar slider"), slider);
++
++    Box hover = slider;
++    hover.image = grad(QStringLiteral("sbar-slider-img-hover"),
++                       m_opts.appearance, m_pal.btn[SHADE_ORIG_HIGHLIGHT]);
++    hover.bg = col(QStringLiteral("sbar-slider-bg-hover"),
++                   m_pal.btn[SHADE_ORIG_HIGHLIGHT]);
++    put(QStringLiteral("scrollbar > range > trough > slider:hover, "
++                       "scrollbar slider:hover"), hover);
++}
++
++void
++Writer::toggleSwitch()
++{
++    Box off;
++    off.image = grad(QStringLiteral("sw-img"), m_opts.grooveAppearance,
++                     m_pal.win[2], true);
++    off.bg = col(QStringLiteral("sw-bg"), m_pal.win[2]);
++    off.border = line(QStringLiteral("sw-border"), m_pal.win[QTC_STD_BORDER]);
++    off.radius = rad(QStringLiteral("sw-radius"), WIDGET_TROUGH, 40, 20);
++    off.more << QStringLiteral("min-width: 40px")
++             << QStringLiteral("min-height: 18px");
++    put(QStringLiteral("switch"), off);
++
++    Box on = off;
++    on.image = grad(QStringLiteral("sw-img-on"), m_opts.sliderFill,
++                    m_pal.highlight, true);
++    on.bg = col(QStringLiteral("sw-bg-on"), m_pal.highlight);
++    on.border = line(QStringLiteral("sw-border-on"), m_pal.hl[QTC_STD_BORDER]);
++    put(QStringLiteral("switch:checked"), on);
++
++    Box slider;
++    slider.image = grad(QStringLiteral("slider-img"), m_opts.sliderAppearance,
++                        m_pal.button);
++    slider.bg = col(QStringLiteral("slider-bg"), m_pal.button);
++    slider.border = line(QStringLiteral("slider-border"),
++                         m_pal.btn[QTC_STD_BORDER]);
++    slider.radius = rad(QStringLiteral("sw-slider-radius"), WIDGET_SLIDER,
++                        16, 16);
++    slider.more << QStringLiteral("min-width: 16px")
++                << QStringLiteral("min-height: 16px");
++    put(QStringLiteral("switch > slider, switch slider"), slider);
++}
++
++void
++Writer::separator()
++{
++    Box box;
++    box.bg = col(QStringLiteral("sep"), m_pal.win[QTC_STD_BORDER]);
++    box.more << QStringLiteral("min-width: 1px")
++             << QStringLiteral("min-height: 1px");
++    put(QStringLiteral("separator, separator.horizontal, separator.vertical"),
++        box);
++}
++
++void
++Writer::toolBar()
++{
++    Box box;
++    box.image = grad(QStringLiteral("tbar-img"), m_opts.toolbarAppearance,
++                     m_pal.window);
++    box.bg = col(QStringLiteral("tbar-bg"), m_pal.window);
++    box.fg = col(QStringLiteral("fg"), m_pal.windowText);
++    if (m_opts.toolbarBorders != TB_NONE) {
++        box.border = line(QStringLiteral("tbar-border"),
++                          m_pal.win[QTC_STD_BORDER]);
++    }
++    box.more << QStringLiteral("padding: 2px");
++    put(m_nodes.toolbarNode, box);
++}
++
++void
++Writer::headerBar()
++{
++    Box box;
++    box.image = grad(QStringLiteral("title-img"), m_opts.titlebarAppearance,
++                     m_pal.titlebar);
++    box.bg = col(QStringLiteral("title-bg"), m_pal.titlebar);
++    box.border = line(QStringLiteral("title-border"),
++                      m_pal.win[QTC_STD_BORDER]);
++    box.fg = col(QStringLiteral("title-fg"), m_pal.titlebarText);
++    box.more << QStringLiteral("padding: 0 6px")
++             << QStringLiteral("min-height: 24px");
++    put(QStringLiteral("headerbar"), box);
++
++    Box title;
++    title.fg = col(QStringLiteral("title-fg"), m_pal.titlebarText);
++    title.more << QStringLiteral("font-weight: bold");
++    put(QStringLiteral("headerbar label.title"), title);
++}
++
++void
++Writer::menuBar()
++{
++    const QColor bar = m_opts.shadeMenubars == SHADE_SELECTED ?
++        m_pal.highlight : m_opts.shadeMenubars == SHADE_CUSTOM ?
++        m_opts.customMenubarsColor : m_pal.window;
++    Box box;
++    box.image = grad(QStringLiteral("mbar-img"), m_opts.menubarAppearance, bar);
++    box.bg = col(QStringLiteral("mbar-bg"), bar);
++    box.fg = col(QStringLiteral("mbar-fg"), m_pal.windowText);
++    put(QStringLiteral("menubar, .menubar"), box);
++
++    Box item;
++    item.fg = col(QStringLiteral("mbar-fg"), m_pal.windowText);
++    item.radius = rad(QStringLiteral("mitem-radius"), WIDGET_MENU_ITEM,
++                      60, 20);
++    item.more << QStringLiteral("padding: 3px 8px");
++    put(m_nodes.menuBarItem, item);
++
++    Box hover = item;
++    hover.image = grad(QStringLiteral("mitem-img"), m_opts.menuitemAppearance,
++                       m_pal.highlight);
++    hover.bg = col(QStringLiteral("mitem-bg"), m_pal.highlight);
++    hover.fg = col(QStringLiteral("mitem-fg"), m_pal.highlightText);
++    put(QStringLiteral("%1:hover, %1:selected").arg(m_nodes.menuBarItem),
++        hover);
++}
++
++void
++Writer::frame()
++{
++    Box box;
++    box.border = m_opts.groupBox == FRAME_NONE ?
++        v(QStringLiteral("frame-noborder"), QStringLiteral("none")) :
++        line(QStringLiteral("frame-border"), m_pal.win[QTC_STD_BORDER]);
++    box.radius = rad(QStringLiteral("frame-radius"), WIDGET_FRAME, 600, 40);
++    box.fg = col(QStringLiteral("fg"), m_pal.windowText);
++    put(m_nodes.frameNode, box);
++
++    Box label;
++    label.fg = col(QStringLiteral("fg"), m_pal.windowText);
++    if (m_opts.gbLabel & GB_LBL_BOLD) {
++        label.more << QStringLiteral("font-weight: bold");
++    }
++    put(QStringLiteral("frame > label, frame > label > label"), label);
++
++    Box view;
++    view.bg = col(QStringLiteral("entry-bg"), m_pal.base);
++    view.border = line(QStringLiteral("entry-border"),
++                       m_pal.win[QTC_STD_BORDER]);
++    view.radius = rad(QStringLiteral("view-radius"), WIDGET_SCROLLVIEW,
++                      600, 80);
++    view.fg = col(QStringLiteral("entry-fg"), m_pal.text);
++    put(QStringLiteral("scrolledwindow.frame, .view.frame"), view);
++}
++
++void
++Writer::decoration()
++{
++    if (!m_nodes.decorationNode) {
++        return;
++    }
++    Box box;
++    box.bg = col(QStringLiteral("win-bg"), m_pal.window);
++    box.radius = rad(QStringLiteral("deco-radius"), WIDGET_OTHER, 600, 400);
++    box.shadow = v(QStringLiteral("deco-shadow"),
++                   QStringLiteral("0 2px 6px %1")
++                   .arg(rgba(QColor(0, 0, 0), 0.35)));
++    box.more << QStringLiteral("margin: 10px");
++    put(QStringLiteral("decoration"), box);
++}
++
++void
++Writer::notebook()
++{
++    Box header;
++    header.image = grad(QStringLiteral("nb-header-img"), m_opts.bgndAppearance,
++                        m_pal.window);
++    header.bg = col(QStringLiteral("nb-header-bg"), m_pal.window);
++    put(QStringLiteral("notebook > header, notebook header"), header);
++
++    Box body;
++    body.bg = col(QStringLiteral("nb-body-bg"), m_pal.window);
++    body.border = line(QStringLiteral("nb-border"), m_pal.win[QTC_STD_BORDER]);
++    body.radius = rad(QStringLiteral("nb-radius"), WIDGET_TAB_TOP, 600, 40);
++    put(QStringLiteral("notebook > stack"), body);
++
++    // The frame of a Qt tab widget encloses the body alone.
++    Box outer;
++    outer.bg = col(QStringLiteral("nb-body-bg"), m_pal.window);
++    put(QStringLiteral("notebook.frame"), outer);
++
++    Box tab;
++    tab.image = grad(QStringLiteral("tab-img"), m_opts.tabAppearance,
++                     m_pal.win[m_opts.tabBgnd == 0 ? ORIGINAL_SHADE : 2]);
++    tab.bg = col(QStringLiteral("tab-bg"), m_pal.window);
++    tab.border = m_opts.borderInactiveTab ?
++        line(QStringLiteral("tab-border"), m_pal.win[QTC_STD_BORDER]) :
++        v(QStringLiteral("tab-noborder"), QStringLiteral("none"));
++    tab.radius = rad(QStringLiteral("tab-radius"), WIDGET_TAB_TOP, 80, 26);
++    tab.fg = col(QStringLiteral("fg"), m_pal.windowText);
++    // The pad is the horizontal space of a tab of the Qt style, less the
++    // border. That style sets the label under the top of the tab row.
++    const int tabSpace = 14;
++    tab.more << QStringLiteral("padding: 3px %1px 0").arg(tabSpace / 2 - 1);
++    put(QStringLiteral("notebook > header > tabs > tab, notebook tab"), tab);
++
++    Box active = tab;
++    active.image = grad(QStringLiteral("tab-img-on"),
++                        m_opts.activeTabAppearance, m_pal.window);
++    active.border = m_opts.borderTab ?
++        line(QStringLiteral("tab-border"), m_pal.win[QTC_STD_BORDER]) :
++        v(QStringLiteral("tab-noborder"), QStringLiteral("none"));
++    active.shadow = v(QStringLiteral("tab-shadow"), m_opts.highlightTab ?
++                      QStringLiteral("inset 0 2px 0 0 %1")
++                      .arg(hex(m_pal.highlight)) : QStringLiteral("none"));
++    put(QStringLiteral("notebook > header > tabs > tab:checked, "
++                       "notebook tab:checked"), active);
++}
++
++void
++Writer::lists()
++{
++    Box view;
++    view.bg = col(QStringLiteral("view-bg"), m_pal.base);
++    view.fg = col(QStringLiteral("view-fg"), m_pal.text);
++    view.border = m_opts.gtkScrollViews ?
++        line(QStringLiteral("entry-border"), m_pal.win[QTC_STD_BORDER]) :
++        v(QStringLiteral("view-noborder"), QStringLiteral("none"));
++    view.radius = rad(QStringLiteral("view-radius"), WIDGET_SCROLLVIEW,
++                      600, 80);
++    if (m_opts.gtkScrollViews) {
++        view.more << lowBorderLines();
++    }
++    put(QStringLiteral("columnview, listview, list, treeview.view, "
++                       "gridview, .view"), view);
++
++    Box row;
++    row.fg = col(QStringLiteral("view-fg"), m_pal.text);
++    row.more << QStringLiteral("min-height: 19px");
++    put(QStringLiteral("row, row.activatable, listview > row, list > row"),
++        row);
++
++    if (m_opts.forceAlternateLvCols) {
++        Box alt;
++        alt.bg = col(QStringLiteral("view-bg-alt"), m_pal.baseAlternate);
++        put(QStringLiteral("row:nth-child(even), "
++                           "treeview.view:nth-child(even)"), alt);
++    }
++
++    Box sel;
++    sel.image = grad(QStringLiteral("sel-img"), m_opts.selectionAppearance,
++                     m_pal.highlight);
++    sel.bg = col(QStringLiteral("sel-bg"), m_pal.highlight);
++    sel.fg = col(QStringLiteral("sel-fg"), m_pal.highlightText);
++    sel.radius = rad(QStringLiteral("sel-radius"), WIDGET_SELECTION, 200, 20);
++    sel.border = m_opts.borderSelection ?
++        line(QStringLiteral("sel-border"), m_pal.hl[QTC_STD_BORDER]) :
++        v(QStringLiteral("sel-noborder"), QStringLiteral("none"));
++    put(QStringLiteral("row:selected, listview > row:selected, "
++                       "list > row:selected, treeview.view:selected, "
++                       "columnview > listview > row:selected"), sel);
++
++    // The Qt style halves the alpha of the band of a window that is not
++    // active, at common.h INACTIVE_SEL_ALPHA.
++    Box backdrop = sel;
++    backdrop.image = v(QStringLiteral("sel-img-off"), QStringLiteral("none"));
++    backdrop.bg = v(QStringLiteral("sel-bg-off"),
++                    rgba(m_pal.highlight, INACTIVE_SEL_ALPHA));
++    backdrop.border = v(QStringLiteral("sel-border-off"),
++                        QStringLiteral("none"));
++    put(QStringLiteral("row:selected:backdrop, "
++                       "listview > row:selected:backdrop, "
++                       "list > row:selected:backdrop, "
++                       "treeview.view:selected:backdrop"), backdrop);
++
++    const QColor headerBase = m_opts.lvButton ? m_pal.button : m_pal.window;
++    // The Qt style swaps the bevelled appearance for the list view form.
++    // That style draws the border of a header section at the foot alone.
++    const EAppearance headerApp =
++        (m_opts.lvAppearance == APPEARANCE_BEVELLED ? APPEARANCE_LV_BEVELLED :
++         m_opts.lvAppearance);
++    Box header;
++    header.image = grad(QStringLiteral("lv-header-img"), headerApp,
++                        headerBase);
++    header.bg = col(QStringLiteral("lv-header-bg"), headerBase);
++    header.border = v(QStringLiteral("lv-header-noborder"),
++                      QStringLiteral("none"));
++    header.fg = col(QStringLiteral("fg"), m_pal.windowText);
++    header.more << QStringLiteral("border-bottom: %1")
++                   .arg(line(QStringLiteral("lv-header-border"),
++                             m_pal.win[QTC_STD_BORDER]))
++                << QStringLiteral("padding: 2px 6px 3px")
++                << QStringLiteral("min-height: 15px");
++    put(QStringLiteral("columnview > header > button, "
++                       "treeview.view > header > button, "
++                       "columnview header button, treeview header button"),
++        header);
++}
++
++void
++Writer::infoBar()
++{
++    Box box;
++    box.image = grad(QStringLiteral("info-img"), m_opts.appearance,
++                     m_pal.window);
++    box.bg = col(QStringLiteral("info-bg"), m_pal.window);
++    box.border = line(QStringLiteral("info-border"),
++                      m_pal.win[QTC_STD_BORDER]);
++    box.radius = rad(QStringLiteral("frame-radius"), WIDGET_FRAME, 600, 40);
++    box.fg = col(QStringLiteral("fg"), m_pal.windowText);
++    put(QStringLiteral("infobar, .info"), box);
++}
++
++void
++Writer::tooltip()
++{
++    Box box;
++    box.image = grad(QStringLiteral("tip-img"), m_opts.tooltipAppearance,
++                     m_pal.tooltip);
++    box.bg = col(QStringLiteral("tip-bg"), m_pal.tooltip);
++    box.border = line(QStringLiteral("tip-border"), m_pal.win[QTC_STD_BORDER]);
++    box.radius = (m_opts.square & SQUARE_TOOLTIPS) ? QStringLiteral("0") :
++        rad(QStringLiteral("tip-radius"), WIDGET_OTHER, 100, 24);
++    box.fg = col(QStringLiteral("tip-fg"), m_pal.tooltipText);
++    box.more << QStringLiteral("padding: 0");
++    put(QStringLiteral("tooltip, tooltip.background"), box);
++
++    Box label;
++    label.fg = col(QStringLiteral("tip-fg"), m_pal.tooltipText);
++    put(QStringLiteral("tooltip label, tooltip > label"), label);
++}
++
++void
++Writer::popoverMenu()
++{
++    Box box;
++    box.image = grad(QStringLiteral("menu-img"), m_opts.menuBgndAppearance,
++                     m_pal.menu[ORIGINAL_SHADE],
++                     m_opts.menuBgndGrad == GT_HORIZ);
++    box.bg = col(QStringLiteral("menu-bg"), m_pal.menu[ORIGINAL_SHADE]);
++    box.border = m_opts.popupBorder ?
++        line(QStringLiteral("menu-border"), m_pal.menu[QTC_STD_BORDER]) :
++        v(QStringLiteral("menu-noborder"), QStringLiteral("none"));
++    box.radius = (m_opts.square & SQUARE_POPUP_MENUS) ? QStringLiteral("0") :
++        rad(QStringLiteral("menu-radius"), WIDGET_OTHER, 240, 120);
++    box.fg = col(QStringLiteral("menu-fg"), m_pal.text);
++    box.more << QStringLiteral("padding: 1px");
++    put(QStringLiteral("%1, %1 > box").arg(m_nodes.menu), box);
++
++    Box item;
++    item.fg = col(QStringLiteral("menu-fg"), m_pal.text);
++    item.radius = rad(QStringLiteral("mitem-radius"), WIDGET_MENU_ITEM,
++                      200, 20);
++    item.more << QStringLiteral("padding: 3px 8px")
++              << QStringLiteral("min-height: 18px");
++    put(m_nodes.menuItem, item);
++
++    Box hover;
++    hover.image = grad(QStringLiteral("mitem-img"), m_opts.menuitemAppearance,
++                       m_pal.highlight);
++    hover.bg = col(QStringLiteral("mitem-bg"), m_pal.highlight);
++    hover.fg = col(QStringLiteral("mitem-fg"), m_pal.highlightText);
++    hover.radius = rad(QStringLiteral("mitem-radius"), WIDGET_MENU_ITEM,
++                       200, 20);
++    hover.border = m_opts.borderMenuitems ?
++        line(QStringLiteral("mitem-border"), m_pal.hl[QTC_STD_BORDER]) :
++        v(QStringLiteral("mitem-noborder"), QStringLiteral("none"));
++    hover.more << QStringLiteral("padding: 3px 8px");
++    put(QStringLiteral("%1:hover, %1:selected")
++        .arg(m_nodes.menuItem), hover);
++
++    Box off;
++    off.fg = col(QStringLiteral("menu-fg-off"),
++                 disabledMix(m_pal.text, m_pal.menu[ORIGINAL_SHADE]));
++    put(QStringLiteral("%1:disabled").arg(m_nodes.menuItem), off);
++
++    if (m_nodes.glyphAsset) {
++        Box right;
++        right.fg = col(QStringLiteral("menu-fg"), m_pal.text);
++        right.more << glyph(QStringLiteral("arrow-right"),
++                            QStringLiteral("qtc-arrow-right.svg"));
++        put(QStringLiteral("%1 > arrow.right").arg(m_nodes.menuItem), right);
++
++        Box left = right;
++        left.more.clear();
++        left.more << glyph(QStringLiteral("arrow-left"),
++                           QStringLiteral("qtc-arrow-left.svg"));
++        put(QStringLiteral("%1 > arrow.left").arg(m_nodes.menuItem), left);
++    }
++}
++
++void
++Writer::focusRing()
++{
++    const bool none = m_opts.focus == FOCUS_NONE;
++    const QColor ring = m_opts.focus == FOCUS_STANDARD ?
++        m_pal.windowText : m_pal.highlight;
++
++    QString body;
++    body += QStringLiteral("  outline: %1;\n")
++        .arg(v(QStringLiteral("focus-outline"), none ?
++               QStringLiteral("none") :
++               QStringLiteral("1px solid %1").arg(hex(ring))));
++    body += QStringLiteral("  outline-offset: %1;\n")
++        .arg(v(QStringLiteral("focus-offset"), QStringLiteral("-3px")));
++    body += QStringLiteral("  box-shadow: %1;\n")
++        .arg(v(QStringLiteral("focus-glow"),
++               (none || m_opts.focus != FOCUS_GLOW) ?
++               QStringLiteral("none") :
++               QStringLiteral("inset 0 0 0 2px %1")
++               .arg(rgba(m_pal.highlight, 0.55))));
++    m_sheet.rule(QStringLiteral(":focus-visible, check:focus-visible, "
++                                "radio:focus-visible, row:focus-visible, "
++                                "tab:focus-visible"), body);
++}
++
++void
++Writer::progressAnimation()
++{
++    m_sheet.raw(QStringLiteral(
++                    "@keyframes qtc-progress-stripe {\n"
++                    "  from { background-position: -10px 0px; }\n"
++                    "  to { background-position: 10px 0px; }\n"
++                    "}\n"));
++}
++
++/** The 23 public colour names that breeze-gtk declares without a suffix. */
++static const char *const publicNames[] = {
++    "accent_bg_color", "accent_color", "accent_fg_color", "borders",
++    "content_view_bg", "error_bg_color", "error_color", "error_fg_color",
++    "insensitive_bg_color", "insensitive_base_color", "insensitive_fg_color",
++    "success_bg_color", "success_color", "success_fg_color", "theme_base_color",
++    "theme_bg_color", "theme_fg_color", "theme_selected_bg_color",
++    "theme_selected_fg_color", "theme_text_color", "warning_bg_color",
++    "warning_color", "warning_fg_color"
++};
++
++void
++Writer::colourNames()
++{
++    const QColor values[] = {
++        m_pal.highlight, m_pal.highlight, m_pal.highlightText,
++        m_pal.win[QTC_STD_BORDER],
++        m_pal.base, m_pal.negative, m_pal.negative, m_pal.highlightText,
++        m_pal.window, m_pal.window, m_pal.windowTextDisabled,
++        m_pal.positive, m_pal.positive, m_pal.highlightText, m_pal.base,
++        m_pal.window, m_pal.windowText, m_pal.highlight,
++        m_pal.highlightText, m_pal.text, m_pal.neutral,
++        m_pal.neutral, m_pal.highlightText
++    };
++    static_assert(sizeof(values) / sizeof(values[0]) ==
++                  sizeof(publicNames) / sizeof(publicNames[0]),
++                  "one colour per public name");
++    QString block;
++    for (size_t i = 0;i < sizeof(values) / sizeof(values[0]);++i) {
++        block += QStringLiteral("@define-color %1 %2;\n")
++            .arg(QLatin1String(publicNames[i]), hex(values[i]));
++    }
++    m_sheet.raw(block);
++}
++
++void
++Writer::run()
++{
++    colourNames();
++    reset();
++    window();
++    button();
++    entry();
++    spinButton();
++    dropDown();
++    checkRadio();
++    scale();
++    progressBar();
++    levelBar();
++    scrollBar();
++    toggleSwitch();
++    separator();
++    toolBar();
++    headerBar();
++    menuBar();
++    frame();
++    decoration();
++    notebook();
++    lists();
++    infoBar();
++    tooltip();
++    popoverMenu();
++    focusRing();
++    progressAnimation();
++}
++
++}
++
++QString
++buildSheet(const Options &opts, const Palette &pal, Dialect dialect,
++           const QString &assetBase)
++{
++    Sheet sheet(dialect, assetBase);
++    Writer writer(opts, pal, sheet, nodesFor(dialect));
++    writer.run();
++    return QStringLiteral("/* QtCurve GTK theme. This file is generated; "
++                          "change the QtCurve settings instead. */\n")
++        + sheet.text();
++}
++
++QString
++buildRoot(const Options &opts, const Palette &pal, const QString &assetBase)
++{
++    Sheet sheet(Dialect::Gtk4, assetBase);
++    Writer writer(opts, pal, sheet, nodesFor(Dialect::Gtk4));
++    writer.run();
++    Sheet names(Dialect::Gtk4, assetBase);
++    Writer only(opts, pal, names, nodesFor(Dialect::Gtk4));
++    only.colourNames();
++    return sheet.rootBlock() + names.text();
++}
++
++}
++}
+diff --git a/qt6/config/qtcurveconfig.cpp b/qt6/config/qtcurveconfig.cpp
+index 0c891ce3..d39d052b 100644
+--- a/qt6/config/qtcurveconfig.cpp
++++ b/qt6/config/qtcurveconfig.cpp
+@@ -1305,6 +1305,13 @@ void QtCurveConfig::save()
+     // Remove QTCURVE_PREVIEW_CONFIG setting, so that main kcmstyle
+     // preview does not revert to default settings!
+     qputenv(QTCURVE_PREVIEW_CONFIG, "");
++
++    // qtcSpawn() reports no error, so an absent writer costs the GTK theme
++    // alone and the Qt settings still reach the disk.
++    static const char *const gtkWriter[] = {
++        "qtcurve-gtk-writer", "--write", nullptr
++    };
++    qtcSpawn(gtkWriter[0], gtkWriter, nullptr, nullptr);
+ }
+ 
+ void QtCurveConfig::defaults()

@@ -1,0 +1,411 @@
+Add a Reset Section button to the configure dialog
+
+The button sits under the section list and resets only the
+section that the stack shows. It reads the same defaults source
+as the Restore Defaults path, the (Default) preset. It applies
+only the fields of the shown section over the live widget state.
+The write reuses the setPreset() tail: one setWidgetOptions()
+call over the merged options, the preview test, the changed(true)
+test and the gradient list rebuild.
+
+The Window Manager section resets through kwin->defaults() alone.
+The Presets and Preview section and the Legacy section own no
+option and keep the button disabled. The thin flags split by
+page. The drop shadow size follows the live X11 value on this
+tree, so the copied default cannot move that spin box.
+
+The section field map lives once, in sectionmap.h.
+
+The change sits on the branch work/section-reset of the local tree, as
+commit 1 of 4. The fork wyn/qtcurve holds that branch. Merge request !30
+on system/qtcurve holds that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/qt6/config/qtcurveconfig.cpp b/qt6/config/qtcurveconfig.cpp
+index 2ef8fce5..cbdca44f 100644
+--- a/qt6/config/qtcurveconfig.cpp
++++ b/qt6/config/qtcurveconfig.cpp
+@@ -25,6 +25,7 @@
+ // local
+ #include "qtcurveconfig.h"
+ #include "imagepropertiesdialog.h"
++#include "sectionmap.h"
+ // TODO
+ #ifdef QTC_QT6_STYLE_SUPPORT
+ #  include "exportthemedialog.h"
+@@ -1265,6 +1266,7 @@ QtCurveConfig::QtCurveConfig(QWidget *parent)
+         stack->setCurrentIndex(kwinPage);
+         titleLabel->setVisible(false);
+         stackList->setVisible(false);
++        resetSectionButton->setVisible(false);
+     }
+ }
+ 
+@@ -1374,6 +1376,80 @@ void QtCurveConfig::defaults()
+     kwin->defaults();
+ }
+ 
++// Reset the options of the shown section to the values of the default
++// preset. The options of the other sections keep the live widget state.
++void QtCurveConfig::resetSection()
++{
++    if (!kwin->ok())
++        return;
++
++    QWidget *sect = stack->currentWidget();
++
++    if (sect == kwin) {
++        kwin->defaults();
++        return;
++    }
++
++    Options opts = presets[currentText].opts;
++
++    setOptions(opts);
++    if (!copySectionDefaults(sect, opts, presets[defaultText].opts))
++        return;
++    readyForPreview = false;
++    setWidgetOptions(opts);
++    readyForPreview = true;
++    if (settingsChanged(previewStyle))
++        updatePreview();
++    if (settingsChanged())
++        emit changed(true);
++    gradChanged(gradCombo->currentIndex());
++}
++
++// Copy the option fields of the shown stack section from src to dest.
++// Returns false for a section with no entry in the map; the caller then
++// does nothing, which matches the disabled button.
++bool QtCurveConfig::copySectionDefaults(QWidget *sect, Options &dest,
++                                        const Options &src)
++{
++    bool found = false;
++
++#define QTC_FIELD(PAGE, FIELD)                          \
++    if (sect == PAGE) {                                 \
++        dest.FIELD = src.FIELD;                         \
++        found = true;                                   \
++    }
++#define QTC_FIELD_MASK(PAGE, FIELD, MASK)               \
++    if (sect == PAGE) {                                 \
++        dest.FIELD = (dest.FIELD & ~(MASK)) | (src.FIELD & (MASK)); \
++        found = true;                                   \
++    }
++#define QTC_FIELD_ARRAY(PAGE, FIELD)                    \
++    if (sect == PAGE) {                                 \
++        memcpy(dest.FIELD, src.FIELD, sizeof(dest.FIELD)); \
++        found = true;                                   \
++    }
++    QTC_SECTION_FIELDS
++#undef QTC_FIELD
++#undef QTC_FIELD_MASK
++#undef QTC_FIELD_ARRAY
++
++    return found;
++}
++
++void QtCurveConfig::updateResetSectionButton()
++{
++    QWidget *sect = stack->currentWidget();
++    bool canReset = sect != page_24 && sect != page_25;
++
++    resetSectionButton->setEnabled(canReset);
++    resetSectionButton->setToolTip(canReset
++        ? i18n("<p>Reset the settings of the shown section to their "
++               "default values. The settings of all other sections do "
++               "not change.</p><p>Nothing is saved until you press "
++               "OK.</p>")
++        : i18n("This section has no settings of its own to reset."));
++}
++
+ void QtCurveConfig::emboldenToggled()
+ {
+     if(!embolden->isChecked() && IND_NONE==defBtnIndicator->currentIndex())
+@@ -1785,6 +1861,12 @@ void QtCurveConfig::setupStack()
+     first->setSelected(true);
+     connect(qtcSlot(stackList, itemSelectionChanged),
+             qtcSlot(this, changeStack));
++
++    KGuiItem::assign(resetSectionButton,
++                     KGuiItem(i18n("Reset Section"), "document-revert"));
++    connect(qtcSlot(resetSectionButton, clicked),
++            qtcSlot(this, resetSection));
++    updateResetSectionButton();
+ }
+ 
+ void
+@@ -1887,6 +1969,8 @@ void QtCurveConfig::changeStack()
+             updatePreview();
+         stack->setCurrentIndex(item->stack());
+     }
++
++    updateResetSectionButton();
+ }
+ 
+ void QtCurveConfig::gradChanged(int i)
+diff --git a/qt6/config/qtcurveconfig.h b/qt6/config/qtcurveconfig.h
+index b6fefe28..dae8aecb 100644
+--- a/qt6/config/qtcurveconfig.h
++++ b/qt6/config/qtcurveconfig.h
+@@ -164,6 +164,7 @@ private:
+     void configureMenuBgndAppearanceFile();
+     void configureMenuBgndImageFile();
+     void copyGradient(QAction *act);
++    bool copySectionDefaults(QWidget *sect, Options &dest, const Options &src);
+     void crColorChanged();
+     void customMenuTextColorChanged();
+     void darkerBordersChanged();
+@@ -191,6 +192,7 @@ private:
+     void progressColorChanged();
+     void removeGradStop();
+     void reorderGtkButtonsChanged();
++    void resetSection();
+     void roundChanged();
+     void savePreset();
+     bool savePreset(const QString &name);
+@@ -217,6 +219,7 @@ private:
+     void updateEnableStates();
+     void updateGradStop();
+     void updatePreview();
++    void updateResetSectionButton();
+     void updateTitlebarButtonColorState();
+     void windowBorder_blendChanged();
+     void windowBorder_colorTitlebarOnlyChanged();
+diff --git a/qt6/config/qtcurveconfigbase.ui b/qt6/config/qtcurveconfigbase.ui
+index 89b21846..4b8ccbb2 100644
+--- a/qt6/config/qtcurveconfigbase.ui
++++ b/qt6/config/qtcurveconfigbase.ui
+@@ -75,7 +75,7 @@
+      </column>
+     </widget>
+    </item>
+-   <item row="1" column="1">
++   <item row="1" column="1" rowspan="2">
+     <widget class="QStackedWidget" name="stack">
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="MinimumExpanding" vsizetype="Preferred">
+@@ -4559,6 +4559,9 @@
+      </widget>
+     </widget>
+    </item>
++   <item row="2" column="0">
++    <widget class="QPushButton" name="resetSectionButton"/>
++   </item>
+   </layout>
+  </widget>
+  <layoutdefault spacing="6" margin="11"/>
+@@ -4576,6 +4579,7 @@
+  </customwidgets>
+  <tabstops>
+   <tabstop>stackList</tabstop>
++  <tabstop>resetSectionButton</tabstop>
+   <tabstop>presetsCombo</tabstop>
+   <tabstop>saveButton</tabstop>
+   <tabstop>deleteButton</tabstop>
+diff --git a/qt6/config/sectionmap.h b/qt6/config/sectionmap.h
+new file mode 100644
+index 00000000..be8d5505
+--- /dev/null
++++ b/qt6/config/sectionmap.h
+@@ -0,0 +1,199 @@
++/*****************************************************************************
++ *   Copyright 2026 QtCurve authors                                          *
++ *                                                                           *
++ *   This program is free software; you can redistribute it and/or modify    *
++ *   it under the terms of the GNU Lesser General Public License as          *
++ *   published by the Free Software Foundation; either version 2.1 of the    *
++ *   License, or (at your option) version 3, or any later version accepted   *
++ *   by the membership of KDE e.V. (or its successor approved by the         *
++ *   membership of KDE e.V.), which shall act as a proxy defined in          *
++ *   Section 6 of version 3 of the license.                                  *
++ *                                                                           *
++ *   This program is distributed in the hope that it will be useful,         *
++ *   but WITHOUT ANY WARRANTY; without even the implied warranty of          *
++ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU       *
++ *   Lesser General Public License for more details.                         *
++ *                                                                           *
++ *   You should have received a copy of the GNU Lesser General Public        *
++ *   License along with this library. If not,                                *
++ *   see <http://www.gnu.org/licenses/>.                                     *
++ *****************************************************************************/
++
++#ifndef __QTCURVE_SECTION_MAP_H__
++#define __QTCURVE_SECTION_MAP_H__
++
++// The option fields of each stack section, in the order of the section
++// list, keyed on the page object name of Ui::QtCurveConfigBase.
++// QTC_FIELD_MASK copies the named bits alone, QTC_FIELD_ARRAY copies a C
++// array, and a section with no entry here owns no option field.
++#define QTC_SECTION_FIELDS                                              \
++    QTC_FIELD(page, appearance)                                         \
++    QTC_FIELD(page, bgndAppearance)                                     \
++    QTC_FIELD(page, bgndGrad)                                           \
++    QTC_FIELD(page, bgndImage)                                          \
++    QTC_FIELD(page, bgndPixmap)                                         \
++    QTC_FIELD(page, buttonEffect)                                       \
++    QTC_FIELD(page, darkerBorders)                                      \
++    QTC_FIELD(page, etchEntry)                                          \
++    QTC_FIELD(page, fadeLines)                                          \
++    QTC_FIELD(page, focus)                                              \
++    QTC_FIELD(page, hideShortcutUnderline)                              \
++    QTC_FIELD(page, stdSidebarButtons)                                  \
++    QTC_FIELD(page, sunkenAppearance)                                   \
++    QTC_FIELD_MASK(page, thin, THIN_BUTTONS|THIN_FRAMES)                \
++    QTC_FIELD(page, tooltipAppearance)                                  \
++    QTC_FIELD(page, vArrows)                                            \
++    QTC_FIELD(page_28, round)                                           \
++    QTC_FIELD(page_28, square)                                          \
++    QTC_FIELD(page_29, bgndOpacity)                                     \
++    QTC_FIELD(page_29, dlgOpacity)                                      \
++    QTC_FIELD(page_29, menuBgndOpacity)                                 \
++    QTC_FIELD(page_18, gbFactor)                                        \
++    QTC_FIELD(page_18, gbLabel)                                         \
++    QTC_FIELD(page_18, groupBox)                                        \
++    QTC_FIELD(page_16, comboBtn)                                        \
++    QTC_FIELD(page_16, comboSplitter)                                   \
++    QTC_FIELD(page_16, customComboBtnColor)                             \
++    QTC_FIELD(page_16, doubleGtkComboArrow)                             \
++    QTC_FIELD(page_16, gtkComboMenus)                                   \
++    QTC_FIELD(page_16, unifyCombo)                                      \
++    QTC_FIELD(page_17, unifySpin)                                       \
++    QTC_FIELD(page_17, unifySpinBtns)                                   \
++    QTC_FIELD(page_2, splitterHighlight)                                \
++    QTC_FIELD(page_2, splitters)                                        \
++    QTC_FIELD(page_3, borderSbarGroove)                                 \
++    QTC_FIELD(page_3, colorSliderMouseOver)                             \
++    QTC_FIELD(page_3, customSlidersColor)                               \
++    QTC_FIELD(page_3, fillSlider)                                       \
++    QTC_FIELD(page_3, flatSbarButtons)                                  \
++    QTC_FIELD(page_3, grooveAppearance)                                 \
++    QTC_FIELD(page_3, sbarBgndAppearance)                               \
++    QTC_FIELD(page_3, scrollbarType)                                    \
++    QTC_FIELD(page_3, shadeSliders)                                     \
++    QTC_FIELD(page_3, sliderAppearance)                                 \
++    QTC_FIELD(page_3, sliderFill)                                       \
++    QTC_FIELD(page_3, sliderStyle)                                      \
++    QTC_FIELD(page_3, sliderThumbs)                                     \
++    QTC_FIELD(page_3, sliderWidth)                                      \
++    QTC_FIELD(page_3, stripedSbar)                                      \
++    QTC_FIELD(page_3, thinSbarGroove)                                   \
++    QTC_FIELD(page_4, animatedProgress)                                 \
++    QTC_FIELD(page_4, boldProgress)                                     \
++    QTC_FIELD(page_4, borderProgress)                                   \
++    QTC_FIELD(page_4, customProgressColor)                              \
++    QTC_FIELD(page_4, fillProgress)                                     \
++    QTC_FIELD(page_4, glowProgress)                                     \
++    QTC_FIELD(page_4, progressAppearance)                               \
++    QTC_FIELD(page_4, progressColor)                                    \
++    QTC_FIELD(page_4, progressGrooveAppearance)                         \
++    QTC_FIELD(page_4, progressGrooveColor)                              \
++    QTC_FIELD(page_4, stripedProgress)                                  \
++    QTC_FIELD(page_5, defBtnIndicator)                                  \
++    QTC_FIELD(page_5, embolden)                                         \
++    QTC_FIELD(page_6, coloredMouseOver)                                 \
++    QTC_FIELD(page_6, highlightFactor)                                  \
++    QTC_FIELD(page_7, borderSelection)                                  \
++    QTC_FIELD(page_7, customSortedLvColor)                              \
++    QTC_FIELD(page_7, forceAlternateLvCols)                             \
++    QTC_FIELD(page_7, lvAppearance)                                     \
++    QTC_FIELD(page_7, lvButton)                                         \
++    QTC_FIELD(page_7, lvLines)                                          \
++    QTC_FIELD(page_7, selectionAppearance)                              \
++    QTC_FIELD(page_7, sortedLv)                                         \
++    QTC_FIELD(page_15, gtkScrollViews)                                  \
++    QTC_FIELD(page_15, highlightScrollViews)                            \
++    QTC_FIELD(page_8, activeTabAppearance)                              \
++    QTC_FIELD(page_8, borderInactiveTab)                                \
++    QTC_FIELD(page_8, borderTab)                                        \
++    QTC_FIELD(page_8, centerTabText)                                    \
++    QTC_FIELD(page_8, colorSelTab)                                      \
++    QTC_FIELD(page_8, highlightTab)                                     \
++    QTC_FIELD(page_8, invertBotTab)                                     \
++    QTC_FIELD(page_8, roundAllTabs)                                     \
++    QTC_FIELD(page_8, tabAppearance)                                    \
++    QTC_FIELD(page_8, tabBgnd)                                          \
++    QTC_FIELD(page_8, tabMouseOver)                                     \
++    QTC_FIELD(page_8, toolbarTabs)                                      \
++    QTC_FIELD(page_9, crButton)                                         \
++    QTC_FIELD(page_9, crColor)                                          \
++    QTC_FIELD(page_9, crHighlight)                                      \
++    QTC_FIELD(page_9, crSize)                                           \
++    QTC_FIELD(page_9, customCheckRadioColor)                            \
++    QTC_FIELD(page_9, customCrBgndColor)                                \
++    QTC_FIELD(page_9, shadeCheckRadio)                                  \
++    QTC_FIELD(page_9, smallRadio)                                       \
++    QTC_FIELD(page_9, xCheck)                                           \
++    QTC_FIELD(page_10, inactiveTitlebarAppearance)                      \
++    QTC_FIELD(page_10, titlebarAlignment)                               \
++    QTC_FIELD(page_10, titlebarAppearance)                              \
++    QTC_FIELD(page_10, titlebarEffect)                                  \
++    QTC_FIELD(page_10, titlebarIcon)                                    \
++    QTC_FIELD(page_10, windowBorder)                                    \
++    QTC_FIELD(page_10, windowDrag)                                      \
++    QTC_FIELD(page_19, titlebarButtonAppearance)                        \
++    QTC_FIELD(page_19, titlebarButtons)                                 \
++    QTC_FIELD(page_20, titlebarButtonColors)                            \
++    QTC_FIELD(page_21, colorMenubarMouseOver)                           \
++    QTC_FIELD(page_21, customMenuNormTextColor)                         \
++    QTC_FIELD(page_21, customMenuSelTextColor)                          \
++    QTC_FIELD(page_21, customMenuTextColor)                             \
++    QTC_FIELD(page_21, customMenubarsColor)                             \
++    QTC_FIELD(page_21, menubarAppearance)                               \
++    QTC_FIELD(page_21, menubarHiding)                                   \
++    QTC_FIELD(page_21, menubarMouseOver)                                \
++    QTC_FIELD(page_21, menuitemAppearance)                              \
++    QTC_FIELD(page_21, roundMbTopOnly)                                  \
++    QTC_FIELD(page_21, shadeMenubarOnlyWhenActive)                      \
++    QTC_FIELD(page_21, shadeMenubars)                                   \
++    QTC_FIELD(page_23, borderMenuitems)                                 \
++    QTC_FIELD(page_23, buttonStyleMenuSections)                         \
++    QTC_FIELD(page_23, customMenuStripeColor)                           \
++    QTC_FIELD(page_23, lighterPopupMenuBgnd)                            \
++    QTC_FIELD(page_23, menuBgndAppearance)                              \
++    QTC_FIELD(page_23, menuBgndGrad)                                    \
++    QTC_FIELD(page_23, menuBgndImage)                                   \
++    QTC_FIELD(page_23, menuBgndPixmap)                                  \
++    QTC_FIELD(page_23, menuCloseDelay)                                  \
++    QTC_FIELD(page_23, menuDelay)                                       \
++    QTC_FIELD(page_23, menuIcons)                                       \
++    QTC_FIELD(page_23, menuStripe)                                      \
++    QTC_FIELD(page_23, menuStripeAppearance)                            \
++    QTC_FIELD(page_23, onlyTicksInMenu)                                 \
++    QTC_FIELD(page_23, popupBorder)                                     \
++    QTC_FIELD(page_23, shadePopupMenu)                                  \
++    QTC_FIELD_MASK(page_23, thin, THIN_MENU_ITEMS)                      \
++    QTC_FIELD(page_23, useHighlightForMenu)                             \
++    QTC_FIELD(page_22, coloredTbarMo)                                   \
++    QTC_FIELD(page_22, handles)                                         \
++    QTC_FIELD(page_22, tbarBtnAppearance)                               \
++    QTC_FIELD(page_22, tbarBtnEffect)                                   \
++    QTC_FIELD(page_22, tbarBtns)                                        \
++    QTC_FIELD(page_22, toolbarAppearance)                               \
++    QTC_FIELD(page_22, toolbarBorders)                                  \
++    QTC_FIELD(page_22, toolbarSeparators)                               \
++    QTC_FIELD(page_27, drawStatusBarFrames)                             \
++    QTC_FIELD(page_27, statusbarHiding)                                 \
++    QTC_FIELD(page_11, dwtAppearance)                                   \
++    QTC_FIELD(page_11, dwtSettings)                                     \
++    QTC_FIELD(page_12, expanderHighlight)                               \
++    QTC_FIELD(page_12, gtkButtonOrder)                                  \
++    QTC_FIELD(page_12, mapKdeIcons)                                     \
++    QTC_FIELD(page_12, passwordChar)                                    \
++    QTC_FIELD(page_12, reorderGtkButtons)                               \
++    QTC_FIELD(page_12, shadowSize)                                      \
++    QTC_FIELD(page_12, stdBtnSizes)                                     \
++    QTC_FIELD(page_26, menubarApps)                                     \
++    QTC_FIELD(page_26, noBgndGradientApps)                              \
++    QTC_FIELD(page_26, noBgndImageApps)                                 \
++    QTC_FIELD(page_26, noBgndOpacityApps)                               \
++    QTC_FIELD(page_26, noMenuBgndOpacityApps)                           \
++    QTC_FIELD(page_26, noMenuStripeApps)                                \
++    QTC_FIELD(page_26, nonnativeMenubarApps)                            \
++    QTC_FIELD(page_26, statusbarApps)                                   \
++    QTC_FIELD(page_26, useQtFileDialogApps)                             \
++    QTC_FIELD(page_13, customGradient)                                  \
++    QTC_FIELD_ARRAY(page_14, customAlphas)                              \
++    QTC_FIELD_ARRAY(page_14, customShades)                              \
++    QTC_FIELD(page_14, shading)
++
++#endif

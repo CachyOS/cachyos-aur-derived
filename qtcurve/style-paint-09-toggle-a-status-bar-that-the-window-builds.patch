@@ -1,0 +1,58 @@
+Toggle a status bar that the window builds after the show
+
+The style installs its event filter on a main window only when the
+window holds a status bar at the polish. A program that builds the
+status bar after the first show therefore leaves the window without the
+filter. The keyboard shortcut then does nothing, and the bar ignores the
+hidden state of the last session.
+
+The style now installs the filter on every main window that the hiding
+option covers. The shortcut finds the status bars of the window at the
+time of the key. The work for one bar moves to the polish of the bar. A
+bar of any age therefore installs its own filter, takes the saved hidden
+state and announces the bar to the window manager. A window with a
+status bar at the polish keeps the behaviour of before.
+
+The change sits on the branch work/style-paint of the local tree, as commit 9 of 21.
+A new merge request on system/qtcurve takes that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/qt6/style/qtcurve_api.cpp b/qt6/style/qtcurve_api.cpp
+index 7d8d8cc6..08a1ab93 100644
+--- a/qt6/style/qtcurve_api.cpp
++++ b/qt6/style/qtcurve_api.cpp
+@@ -521,21 +521,21 @@ void Style::polish(QWidget *widget)
+     }
+ 
+     if (opts.statusbarHiding && qobject_cast<QMainWindow*>(widget)) {
+-        QList<QStatusBar*> sb = getStatusBars(widget);
++        widget->installEventFilter(this);
++    }
+ 
+-        if (sb.count()) {
+-            widget->installEventFilter(this);
+-            for (QStatusBar *statusBar: const_(sb)) {
+-                if (m_saveStatusBarStatus) {
+-                    statusBar->installEventFilter(this);
+-                }
+-                if (m_saveStatusBarStatus && qtcStatusBarHidden(appName)) {
+-                    statusBar->setHidden(true);
+-                }
++    if (opts.statusbarHiding && qobject_cast<QStatusBar*>(widget) &&
++        qobject_cast<QMainWindow*>(widget->window())) {
++        QStatusBar *statusBar = static_cast<QStatusBar*>(widget);
++
++        if (m_saveStatusBarStatus) {
++            statusBar->installEventFilter(this);
++            if (qtcStatusBarHidden(appName)) {
++                statusBar->setHidden(true);
+             }
+-            setSbProp(widget);
+-            emitStatusBarState(sb.first());
+         }
++        setSbProp(statusBar->window());
++        emitStatusBarState(statusBar);
+     }
+ 
+     // Enable hover effects in all itemviews

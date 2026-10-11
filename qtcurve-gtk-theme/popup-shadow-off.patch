@@ -1,0 +1,160 @@
+Install no shadow when the shadow setting is off
+
+Style::polish() and the tooltip paint now call
+ShadowHelper::registerWidget() only when popupShadow is true. The
+QtQuick popup path reads the same setting before it installs a shadow.
+In GTK 2 the accept function returns false for every window when the
+setting is off. That also removes the shadow that every OpenOffice
+window gets today.
+
+The Qt gate sits at the call sites and not inside the helper. The
+helper holds no reference to Options. A gate there needs a new include,
+a new member and a reach up to the parent style. Each call site already
+holds the options, and the blur helper of the same function reads them
+too.
+
+The gate covers the event filter as well. registerWidget() installs the
+filter below its own accept test, so a widget that never registers
+never gets one. unregisterWidget() stays open, because it removes a
+shadow that an earlier value installed.
+
+An application that sets _KDE_NET_WM_FORCE_SHADOW loses its shadow when
+the setting is off. The gate runs before the helper reads that
+property. A preference of the user wins over a hint of an application.
+
+The style reads the configuration file once, when the application
+starts. A new value therefore reaches the applications that start after
+the change. A running application keeps its old value. Nothing in the
+tree sweeps the polished widgets for any setting. This change adds no
+sweep.
+
+The change sits on the branch work/popup-shadow of the local tree, as
+the second commit. The fork wyn/qtcurve holds that branch. Merge request
+!19 on system/qtcurve holds that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/gtk2/style/shadowhelper.cpp b/gtk2/style/shadowhelper.cpp
+index 8dd110cc..b9158859 100644
+--- a/gtk2/style/shadowhelper.cpp
++++ b/gtk2/style/shadowhelper.cpp
+@@ -49,6 +49,9 @@ acceptWidget(GtkWidget* widget)
+     if (qtSettings.debug == DEBUG_ALL)
+         printf(DEBUG_PREFIX "%s %p\n", __FUNCTION__, widget);
+ 
++    if (!opts.popupShadow)
++        return false;
++
+     if (widget && GTK_IS_WINDOW(widget)) {
+         if (qtSettings.app == GTK_APP_OPEN_OFFICE) {
+             return true;
+diff --git a/qt4/style/qtcurve.cpp b/qt4/style/qtcurve.cpp
+index f88d0063..a013e843 100644
+--- a/qt4/style/qtcurve.cpp
++++ b/qt4/style/qtcurve.cpp
+@@ -1604,7 +1604,9 @@ Style::polish(QWidget *widget)
+     }
+ 
+     m_windowManager->registerWidget(widget);
+-    m_shadowHelper->registerWidget(widget);
++    if (opts.popupShadow) {
++        m_shadowHelper->registerWidget(widget);
++    }
+ 
+     // Need to register all widgets to blur helper, in order to have proper
+     // blur_behind region set have proper regions removed for opaque widgets.
+@@ -5260,7 +5262,7 @@ void Style::drawPrimitive(PrimitiveElement element, const QStyleOption *option,
+             QPainterPath path = rounded ? buildPath(QRectF(r), WIDGET_OTHER, ROUNDED_ALL, opts.round >= ROUND_FULL ? 5.0 : 2.5) : QPainterPath();
+             QColor       col=palette.toolTipBase().color();
+ 
+-            if(widget && widget->window())
++            if(opts.popupShadow && widget && widget->window())
+                 m_shadowHelper->registerWidget(widget->window());
+             painter->save();
+             if(rounded)
+diff --git a/qt5/style/qtcurve_api.cpp b/qt5/style/qtcurve_api.cpp
+index 631184cf..b7fd2be5 100644
+--- a/qt5/style/qtcurve_api.cpp
++++ b/qt5/style/qtcurve_api.cpp
+@@ -455,7 +455,9 @@ void Style::polish(QWidget *widget)
+     }
+ 
+     m_windowManager->registerWidget(widget);
+-    m_shadowHelper->registerWidget(widget);
++    if (opts.popupShadow) {
++        m_shadowHelper->registerWidget(widget);
++    }
+ 
+     // Need to register all widgets to blur helper, in order to have proper
+     // blur_behind region set have proper regions removed for opaque widgets.
+diff --git a/qt5/style/qtcurve_plugin.cpp b/qt5/style/qtcurve_plugin.cpp
+index 664bc486..16e999f6 100644
+--- a/qt5/style/qtcurve_plugin.cpp
++++ b/qt5/style/qtcurve_plugin.cpp
+@@ -58,7 +58,9 @@ polishQuickControl(QObject *obj)
+                 if (window->inherits("QQuickMenuPopupWindow")) {
+                     window->setColor(QColor(0, 0, 0, 0));
+                 }
+-                qtcX11ShadowInstall(window->winId());
++                if (style->options().popupShadow) {
++                    qtcX11ShadowInstall(window->winId());
++                }
+             } else {
+                 QColor color = window->color();
+                 int opacity = style->options().bgndOpacity;
+diff --git a/qt5/style/qtcurve_primitive.cpp b/qt5/style/qtcurve_primitive.cpp
+index d9bd5195..86f2e8c5 100644
+--- a/qt5/style/qtcurve_primitive.cpp
++++ b/qt5/style/qtcurve_primitive.cpp
+@@ -726,7 +726,7 @@ Style::drawPrimitivePanelTipLabel(PrimitiveElement,
+          QPainterPath());
+     QColor col = palette.toolTipBase().color();
+ 
+-    if (widget && widget->window()) {
++    if (opts.popupShadow && widget && widget->window()) {
+         m_shadowHelper->registerWidget(widget->window());
+     }
+     if (rounded) {
+diff --git a/qt6/style/qtcurve_api.cpp b/qt6/style/qtcurve_api.cpp
+index 0d3a2fb7..1231eec2 100644
+--- a/qt6/style/qtcurve_api.cpp
++++ b/qt6/style/qtcurve_api.cpp
+@@ -455,7 +455,9 @@ void Style::polish(QWidget *widget)
+     }
+ 
+     m_windowManager->registerWidget(widget);
+-    m_shadowHelper->registerWidget(widget);
++    if (opts.popupShadow) {
++        m_shadowHelper->registerWidget(widget);
++    }
+ 
+     // Need to register all widgets to blur helper, in order to have proper
+     // blur_behind region set have proper regions removed for opaque widgets.
+diff --git a/qt6/style/qtcurve_plugin.cpp b/qt6/style/qtcurve_plugin.cpp
+index e874a4c5..8a5b1e32 100644
+--- a/qt6/style/qtcurve_plugin.cpp
++++ b/qt6/style/qtcurve_plugin.cpp
+@@ -58,7 +58,9 @@ polishQuickControl(QObject *obj)
+                 if (window->inherits("QQuickMenuPopupWindow")) {
+                     window->setColor(QColor(0, 0, 0, 0));
+                 }
+-                qtcX11ShadowInstall(window->winId());
++                if (style->options().popupShadow) {
++                    qtcX11ShadowInstall(window->winId());
++                }
+             } else {
+                 QColor color = window->color();
+                 int opacity = style->options().bgndOpacity;
+diff --git a/qt6/style/qtcurve_primitive.cpp b/qt6/style/qtcurve_primitive.cpp
+index 531c6beb..fb2e9956 100644
+--- a/qt6/style/qtcurve_primitive.cpp
++++ b/qt6/style/qtcurve_primitive.cpp
+@@ -726,7 +726,7 @@ Style::drawPrimitivePanelTipLabel(PrimitiveElement,
+          QPainterPath());
+     QColor col = palette.toolTipBase().color();
+ 
+-    if (widget && widget->window()) {
++    if (opts.popupShadow && widget && widget->window()) {
+         m_shadowHelper->registerWidget(widget->window());
+     }
+     if (rounded) {

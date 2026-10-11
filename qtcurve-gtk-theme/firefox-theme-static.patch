@@ -1,0 +1,1736 @@
+Bake the static Firefox theme from the shipped colour schemes
+
+A user without the generator reaches no sheet in a profile, and so
+does a user of another operating system. The add-on channel of Firefox
+carries a theme to both of them. The colour keys of that channel take
+the palette of the sheet.
+
+The manifest mode reads the two shipped colour files and writes one
+manifest of two halves. Both halves walk the map of the sheet, so one
+row moves the two arms together. A check reads every row of the two
+arms against each other. The frame colour stays flat, and a titlebar
+appearance that carries a gradient adds one gradient image beside it.
+The shipped Alpenglow theme holds that shape.
+
+The version of the add-on is its own number line, and it starts at
+1.0. The project version moves under other rules, so a release of
+QtCurve moves no version of the add-on. A date stamp would break the
+byte identical manifest that the check suite and the package need. The
+two deprecated colour aliases never ship, and a check asserts the pair
+absent. The loader drops a key that it does not know without a word.
+
+The archive holds the manifest and the card image of about:addons.
+firefox/preview/render.py writes that image from the dark half, and
+the manifest gains the description and the author of the card. One
+source tree gives one manifest, byte for byte, and a check reads that
+repeat against the member of the archive. The archive itself takes
+other bytes at each build. A zip member carries the times of its file,
+and no step of the build sets the change time of an inode. No rule of
+this tree writes the add-on directory of a browser, because the place
+of such a file is a decision of the distribution.
+
+The change sits on the branch work/firefox-theme of the local tree, as
+commit 5 of 14. The branch holds those fourteen commits above the head of
+work/gtk4-theme, which merge request !15 on system/qtcurve holds. The fork
+wyn/qtcurve holds work/firefox-theme. Merge request !29 on system/qtcurve
+holds that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/firefox/CMakeLists.txt b/firefox/CMakeLists.txt
+index 7599770a..655baadd 100644
+--- a/firefox/CMakeLists.txt
++++ b/firefox/CMakeLists.txt
+@@ -12,6 +12,22 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${ECM_MODULE_PATH})
+ find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Svg)
+ find_package(KF6 REQUIRED COMPONENTS ColorScheme Config CoreAddons)
+ 
++# The manifest check reads the JSON of the build through string(JSON), which
++# CMake 3.19 gives. A tree with an older CMake builds every other module.
++if(CMAKE_VERSION VERSION_LESS 3.19)
++  message(FATAL_ERROR
++    "The Firefox theme needs CMake 3.19 for the manifest check.")
++endif()
++
++# The version of the add-on, which is its own number line. The project version
++# moves under other rules. Firefox takes the text as it stands. The text holds
++# at most four parts, and each part is a number without a leading zero.
++set(QTC_FIREFOX_VERSION "1.0")
++
++# The identifier of the add-on. firefox/writer/manifest.cpp holds the same
++# text, and assert-ff-xpi.sh reads the two against each other.
++set(QTC_FIREFOX_ID "qtcurve-firefox-theme@wyn.invent.kde.org")
++
+ set(qtc_gtk_writer_dir "${CMAKE_CURRENT_SOURCE_DIR}/../gtk4/writer")
+ set(qtc_gtk_check "${CMAKE_CURRENT_SOURCE_DIR}/../gtk4/check")
+ set(qtc_schemes "${CMAKE_CURRENT_SOURCE_DIR}/../gtk4/schemes")
+@@ -19,6 +35,7 @@ set(qtc_schemes "${CMAKE_CURRENT_SOURCE_DIR}/../gtk4/schemes")
+ set(qtcurve_firefox_writer_SRCS
+   writer/main.cpp
+   writer/ffmap.cpp
++  writer/manifest.cpp
+   writer/profiles.cpp
+   writer/sheet.cpp
+   "${qtc_gtk_writer_dir}/palette.cpp"
+@@ -36,7 +53,8 @@ add_executable(qtcurve-firefox-writer ${qtcurve_firefox_writer_SRCS})
+ # names no DBus module of Qt, and KF6::ConfigCore still brings that library
+ # in.
+ target_compile_definitions(qtcurve-firefox-writer PRIVATE
+-  QTC_UTILS_QT6 QTC_UTILS_QT)
++  QTC_UTILS_QT6 QTC_UTILS_QT
++  "QTC_FIREFOX_VERSION=\"${QTC_FIREFOX_VERSION}\"")
+ # qt6/common/common.h includes QApplication, so the writer needs the QtWidgets
+ # headers. It calls no function of the library and it links none.
+ target_include_directories(qtcurve-firefox-writer PRIVATE
+@@ -67,13 +85,67 @@ else()
+   set(qtc_ff_depends qtcurve-firefox-writer)
+ endif()
+ 
+-add_custom_target(qtcurve-firefox-theme ALL DEPENDS ${qtc_ff_depends})
+-
+ set(qtc_ff_check "${CMAKE_CURRENT_SOURCE_DIR}/check")
+ set(qtc_ff_work "${CMAKE_CURRENT_BINARY_DIR}/check")
+ set(qtc_ff_light "${qtc_schemes}/QtCurveLight.colors")
+ set(qtc_ff_dark "${qtc_schemes}/QtCurveDark.colors")
+ 
++# The static theme of the shipped schemes. One build time run of the emitter
++# writes the manifest, and one archive of that file is the add-on.
++set(qtc_ff_data "${CMAKE_CURRENT_BINARY_DIR}/data")
++set(qtc_ff_manifest "${qtc_ff_data}/manifest.json")
++set(qtc_ff_xpi "${qtc_ff_data}/${QTC_FIREFOX_ID}.xpi")
++set(qtc_ff_map "${qtc_ff_work}/ff-map.txt")
++
++add_custom_command(OUTPUT "${qtc_ff_manifest}"
++  COMMAND "${CMAKE_COMMAND}" -E make_directory "${qtc_ff_data}"
++  COMMAND "${qtc_ff_command}" --manifest --default --force
++          --scheme "${qtc_ff_light}" --scheme-dark "${qtc_ff_dark}"
++          --out "${qtc_ff_manifest}"
++  DEPENDS ${qtc_ff_depends} "${qtc_ff_light}" "${qtc_ff_dark}"
++  COMMENT "Writing ${qtc_ff_manifest}"
++  VERBATIM)
++
++# The card image of about:addons, which the archive carries beside the
++# manifest. firefox/preview/render.py writes this file from the manifest of a
++# build, and a maintainer runs that program again after a change of a shipped
++# scheme. No rule of this build runs it, so the build needs no python.
++set(qtc_ff_preview_src "${CMAKE_CURRENT_SOURCE_DIR}/preview/preview.png")
++set(qtc_ff_preview "${qtc_ff_data}/preview.png")
++
++add_custom_command(OUTPUT "${qtc_ff_preview}"
++  COMMAND "${CMAKE_COMMAND}" -E make_directory "${qtc_ff_data}"
++  COMMAND "${CMAKE_COMMAND}" -E copy "${qtc_ff_preview_src}"
++          "${qtc_ff_preview}"
++  DEPENDS "${qtc_ff_preview_src}"
++  COMMENT "Writing ${qtc_ff_preview}"
++  VERBATIM)
++
++# cmake -E tar reads the names against the working directory, so the archive
++# holds the file name alone and no directory part. The archive takes other
++# bytes at each build. A zip member carries the times of its file, and no step
++# of a build sets the change time of an inode. Each member repeats, and
++# assert-ff-repeat.sh reads that repeat.
++add_custom_command(OUTPUT "${qtc_ff_xpi}"
++  COMMAND "${CMAKE_COMMAND}" -E tar cf "${qtc_ff_xpi}" --format=zip --
++          manifest.json preview.png
++  WORKING_DIRECTORY "${qtc_ff_data}"
++  DEPENDS "${qtc_ff_manifest}" "${qtc_ff_preview}"
++  COMMENT "Writing ${qtc_ff_xpi}"
++  VERBATIM)
++
++# The map of the two emitters, which ffmap.cpp holds. A check reads this file
++# and never a hand written copy of the table.
++add_custom_command(OUTPUT "${qtc_ff_map}"
++  COMMAND "${CMAKE_COMMAND}" -E make_directory "${qtc_ff_work}"
++  COMMAND "${qtc_ff_command}" --map --out "${qtc_ff_map}"
++  DEPENDS ${qtc_ff_depends}
++  COMMENT "Writing ${qtc_ff_map}"
++  VERBATIM)
++
++add_custom_target(qtcurve-firefox-theme ALL DEPENDS ${qtc_ff_depends}
++  "${qtc_ff_xpi}" "${qtc_ff_map}")
++
+ # The floor of assert-ff-varnames.sh. A check that reads an empty sheet finds
+ # no fault, so the run states the count that it must read. check/mkfloors.sh
+ # prints this line from one build, and no floor comes from a hand count.
+@@ -93,6 +165,28 @@ add_custom_command(TARGET qtcurve-firefox-theme POST_BUILD
+           "${qtc_ff_work}/dark.css" "${qtc_ff_check}/ff-varnames.txt"
+   VERBATIM)
+ 
++# The floor of the rows of the map, which assert-ff-agree.sh reads. A map of
++# no row binds no colour, and every row binds one palette source.
++set(qtc_ff_rows 18)
++
++# The two arms of the theme must hold one palette, and the manifest must hold
++# keys of the schema alone.
++add_custom_command(TARGET qtcurve-firefox-theme POST_BUILD
++  COMMAND sh "${qtc_ff_check}/assert-ff-agree.sh" "${qtc_ff_command}"
++          "${qtc_ff_map}" "${qtc_ff_work}/light.css" "${qtc_ff_work}/dark.css"
++          "${qtc_ff_manifest}" "${qtc_ff_light}" "${qtc_ff_dark}"
++          ${qtc_ff_rows}
++  COMMAND "${CMAKE_COMMAND}" "-DMANIFEST=${qtc_ff_manifest}"
++          "-DKEYS=${qtc_ff_check}/ff-manifest-keys.txt"
++          "-DVERSION=${QTC_FIREFOX_VERSION}" "-DID=${QTC_FIREFOX_ID}"
++          -P "${qtc_ff_check}/assert-ff-manifest.cmake"
++  COMMAND sh "${qtc_ff_check}/assert-ff-xpi.sh" "${CMAKE_COMMAND}"
++          "${qtc_ff_xpi}" "${qtc_ff_manifest}" "${QTC_FIREFOX_ID}"
++  COMMAND sh "${qtc_ff_check}/assert-ff-repeat.sh" "${CMAKE_COMMAND}"
++          "${qtc_ff_command}" "${qtc_ff_xpi}" "${qtc_ff_manifest}"
++          "${qtc_ff_light}" "${qtc_ff_dark}" "${qtc_ff_preview_src}"
++  VERBATIM)
++
+ # The two writers must hold no lock name in common, because each one runs a
+ # watch instance of its own.
+ add_custom_command(TARGET qtcurve-firefox-theme POST_BUILD
+@@ -176,3 +270,8 @@ install(TARGETS qtcurve-firefox-writer
+   DESTINATION "${CMAKE_INSTALL_FULL_BINDIR}")
+ install(FILES "${CMAKE_CURRENT_BINARY_DIR}/qtcurve-firefox-writer.desktop"
+   DESTINATION "${CMAKE_INSTALL_FULL_SYSCONFDIR}/xdg/autostart")
++# The add-on and its manifest land in the data directory of QtCurve. A
++# distribution decides where a browser reads an add-on of the system, and no
++# rule of this tree writes such a directory.
++install(FILES "${qtc_ff_manifest}" "${qtc_ff_xpi}"
++  DESTINATION "${CMAKE_INSTALL_FULL_DATADIR}/qtcurve/firefox")
+diff --git a/firefox/check/assert-ff-agree.sh b/firefox/check/assert-ff-agree.sh
+new file mode 100644
+index 00000000..aad204e9
+--- /dev/null
++++ b/firefox/check/assert-ff-agree.sh
+@@ -0,0 +1,168 @@
++#!/bin/sh
++# assert-ff-agree.sh WRITER MAP LIGHT DARK MANIFEST LIGHTCOLORS DARKCOLORS
++# MINROWS: the two arms of the theme must hold one palette. LIGHT and DARK are
++# the sheets of the build and MANIFEST is the manifest of the build. The run
++# reads each one against a fresh run of the writer, then reads every row of
++# MAP: the value of a custom property of a sheet must equal the value of every
++# colour key of the matching half. The run repeats over two colour files that
++# give the halves their own values, and it doctors a copy of the manifest at
++# the end.
++set -eu
++usage='usage: assert-ff-agree.sh WRITER MAP LIGHT DARK MANIFEST LIGHTCOLORS DARKCOLORS MINROWS'
++writer=${1:?$usage}
++map=${2:?$usage}
++light=${3:?$usage}
++dark=${4:?$usage}
++manifest=${5:?$usage}
++lightcolors=${6:?$usage}
++darkcolors=${7:?$usage}
++minrows=${8:?$usage}
++
++tmp=$(mktemp -d)
++trap 'rm -rf "$tmp"' EXIT
++status=0
++
++fail() {
++    echo "assert-ff-agree: $1" >&2
++    status=1
++}
++
++rows=$(grep -c '|' "$map" || true)
++if [ "$rows" -lt "$minrows" ]; then
++    fail "$map holds $rows rows, under $minrows"
++fi
++
++# bake NAME LIGHTCOLORS DARKCOLORS: writes the two sheets and the manifest of
++# one pair of colour files into the temporary directory.
++bake() {
++    "$writer" --stdout --default --force --scheme "$2" \
++        --out "$tmp/$1-light.css"
++    "$writer" --stdout --default --force --scheme "$3" \
++        --out "$tmp/$1-dark.css"
++    "$writer" --manifest --default --force --scheme "$2" --scheme-dark "$3" \
++        --out "$tmp/$1-manifest.json"
++}
++
++# halves FILE: splits the manifest FILE into the two halves of the temporary
++# directory.
++halves() {
++    h_at=$(grep -n '"dark_theme": {' "$1" | cut -d: -f1)
++    if [ -z "$h_at" ]; then
++        echo "assert-ff-agree: $1 holds no dark half" >&2
++        return 1
++    fi
++    sed -n "1,$((h_at - 1))p" "$1" > "$tmp/light.half"
++    sed -n "$h_at,\$p" "$1" > "$tmp/dark.half"
++    return 0
++}
++
++# value FILE NAME: prints the value of the custom property NAME of the sheet
++# FILE, and prints nothing when the sheet does not set it.
++value() {
++    sed -n "s/^  $2: \\(.*\\) !important;\$/\\1/p" "$1"
++}
++
++# colour FILE KEY: prints the value of the colour key KEY of the manifest half
++# FILE, and prints nothing when the half does not hold it.
++colour() {
++    sed -n "s/^ *\"$2\": \"\\([^\"]*\\)\",\\{0,1\\}\$/\\1/p" "$1"
++}
++
++# agree NAME LIGHTSHEET DARKSHEET MANIFEST: gives 0 when every row of the map
++# binds one value in the sheet and in the manifest of each half.
++agree() {
++    a_name=$1
++    halves "$4" || return 1
++    a_bad=0
++    while IFS='|' read -r a_role a_vars a_keys; do
++        [ -n "$a_role" ] || continue
++        a_light=
++        a_dark=
++        if [ -n "$a_vars" ]; then
++            for a_var in $(printf '%s\n' "$a_vars" | tr ',' ' '); do
++                a_one=$(value "$2" "$a_var")
++                a_two=$(value "$3" "$a_var")
++                if [ -z "$a_one" ] || [ -z "$a_two" ]; then
++                    echo "assert-ff-agree: $a_name: the sheets set no" \
++                         "$a_var of the row $a_role" >&2
++                    a_bad=1
++                    continue
++                fi
++                if [ -z "$a_light" ]; then
++                    a_light=$a_one
++                    a_dark=$a_two
++                fi
++                if [ "$a_one" != "$a_light" ] || [ "$a_two" != "$a_dark" ]
++                then
++                    echo "assert-ff-agree: $a_name: $a_var holds another" \
++                         "value of the row $a_role" >&2
++                    a_bad=1
++                fi
++            done
++        fi
++        for a_key in $(printf '%s\n' "$a_keys" | tr ',' ' '); do
++            [ -n "$a_key" ] || continue
++            a_one=$(colour "$tmp/light.half" "$a_key")
++            a_two=$(colour "$tmp/dark.half" "$a_key")
++            if [ -z "$a_one" ] || [ -z "$a_two" ]; then
++                echo "assert-ff-agree: $a_name: the manifest holds no" \
++                     "$a_key of the row $a_role" >&2
++                a_bad=1
++                continue
++            fi
++            if [ -z "$a_light" ]; then
++                a_light=$a_one
++                a_dark=$a_two
++            fi
++            if [ "$a_one" != "$a_light" ] || [ "$a_two" != "$a_dark" ]; then
++                echo "assert-ff-agree: $a_name: $a_key holds $a_one and" \
++                     "$a_two, and the row $a_role holds $a_light and" \
++                     "$a_dark" >&2
++                a_bad=1
++            fi
++        done
++    done < "$map"
++    return $a_bad
++}
++
++# 1. The build products must equal a fresh run of the writer.
++bake shipped "$lightcolors" "$darkcolors"
++cmp -s "$tmp/shipped-light.css" "$light" ||
++    fail "the light sheet of the build differs from a fresh run"
++cmp -s "$tmp/shipped-dark.css" "$dark" ||
++    fail "the dark sheet of the build differs from a fresh run"
++cmp -s "$tmp/shipped-manifest.json" "$manifest" ||
++    fail "the manifest of the build differs from a fresh run"
++
++# 2. Every row of the map holds one value in the two arms of the shipped
++# schemes.
++agree shipped "$light" "$dark" "$manifest" || status=1
++
++# 3. The same rows, over two colour files that give the halves their own
++# values. A swap of two roles or of the two halves fails here.
++distinct=$(dirname "$0")
++bake distinct "$distinct/distinct-light.colors" \
++    "$distinct/distinct-dark.colors"
++agree distinct "$tmp/distinct-light.css" "$tmp/distinct-dark.css" \
++    "$tmp/distinct-manifest.json" || status=1
++
++# The control below swaps the value of one colour key of the light half, so
++# that key leaves its row. The check must fail over the copy.
++frame=$(colour "$tmp/light.half" frame)
++toolbar=$(colour "$tmp/light.half" toolbar)
++if [ "$frame" = "$toolbar" ]; then
++    fail "the distinct colour files give the frame and the toolbar one value"
++fi
++sed "s|\"frame\": \"$frame\"|\"frame\": \"$toolbar\"|" \
++    "$tmp/distinct-manifest.json" > "$tmp/swapped.json"
++if agree control "$tmp/distinct-light.css" "$tmp/distinct-dark.css" \
++        "$tmp/swapped.json" 2> "$tmp/control.log"; then
++    fail "the check passed the control copy of the swapped key"
++fi
++
++if [ $status -eq 0 ]; then
++    echo "assert-ff-agree: the $rows rows of the map hold one value in the" \
++         "sheet and in the manifest of each half, over two colour file" \
++         "pairs, and the check rejects the swapped copy"
++fi
++exit $status
+diff --git a/firefox/check/assert-ff-manifest.cmake b/firefox/check/assert-ff-manifest.cmake
+new file mode 100644
+index 00000000..957f0879
+--- /dev/null
++++ b/firefox/check/assert-ff-manifest.cmake
+@@ -0,0 +1,158 @@
++# assert-ff-manifest.cmake MANIFEST KEYS VERSION ID: the manifest of the
++# static theme must be valid JSON, and every colour key of it must stand in
++# the pinned list KEYS. The loader of Firefox drops a key that it does not
++# know without a word, so a name outside the list paints nothing.
++#
++# The manifest must also hold a description and an author, which the card of
++# about:addons shows under the name of the theme. The run then doctors five
++# copies of the manifest, and it fails if the check passes a copy. cmake -P
++# takes the four names as -D definitions, and the usage message below names
++# them.
++
++if(NOT MANIFEST OR NOT KEYS OR NOT VERSION OR NOT ID)
++  message(FATAL_ERROR
++    "usage: cmake -DMANIFEST=<file> -DKEYS=<file> -DVERSION=<version>"
++    " -DID=<identifier> -P assert-ff-manifest.cmake")
++endif()
++
++file(READ "${MANIFEST}" qtc_text)
++file(STRINGS "${KEYS}" qtc_pin REGEX "^[a-z]")
++
++# The two keys that the schema of Firefox marks as aliases of another key.
++# Firefox 70 and later drop the pair, so the manifest must not carry it.
++set(qtc_dead accentcolor textcolor)
++
++# qtc_colour_ok VALUE OUT: sets OUT to true when VALUE is a hexadecimal colour
++# or an rgba() colour.
++function(qtc_colour_ok value out)
++  set(digit "[0-9a-fA-F]")
++  set(hex "^#${digit}${digit}${digit}${digit}${digit}${digit}$")
++  set(rgba "^rgba\\([0-9]+,[0-9]+,[0-9]+,[0-9.]+\\)$")
++  if(value MATCHES "${hex}" OR value MATCHES "${rgba}")
++    set("${out}" True PARENT_SCOPE)
++  else()
++    set("${out}" False PARENT_SCOPE)
++  endif()
++endfunction()
++
++# qtc_check TEXT FAULT: reads the manifest TEXT and sets FAULT to the first
++# contract that fails, or to an empty string when every contract holds.
++function(qtc_check text fault)
++  set("${fault}" "" PARENT_SCOPE)
++  string(JSON version ERROR_VARIABLE bad GET "${text}" version)
++  if(bad)
++    set("${fault}" "the manifest is no JSON object: ${bad}" PARENT_SCOPE)
++    return()
++  endif()
++  if(NOT version STREQUAL "${VERSION}")
++    set("${fault}" "the version is ${version} and not ${VERSION}"
++      PARENT_SCOPE)
++    return()
++  endif()
++  string(JSON kind ERROR_VARIABLE bad GET "${text}" manifest_version)
++  if(bad OR NOT kind EQUAL 2)
++    set("${fault}" "the manifest version is ${kind} and not 2" PARENT_SCOPE)
++    return()
++  endif()
++  string(JSON gecko ERROR_VARIABLE bad GET "${text}"
++    browser_specific_settings gecko id)
++  if(bad OR NOT gecko STREQUAL "${ID}")
++    set("${fault}" "the identifier is ${gecko} and not ${ID}" PARENT_SCOPE)
++    return()
++  endif()
++  # The card of about:addons reads these two fields of the top object. A card
++  # of a theme shows no icon, so the two lines carry the whole text of it.
++  foreach(field description author)
++    string(JSON line ERROR_VARIABLE bad GET "${text}" "${field}")
++    if(bad OR line STREQUAL "")
++      set("${fault}" "the manifest holds no ${field}" PARENT_SCOPE)
++      return()
++    endif()
++  endforeach()
++  foreach(half theme dark_theme)
++    if(half STREQUAL "theme")
++      set(scheme light)
++    else()
++      set(scheme dark)
++    endif()
++    string(JSON colours ERROR_VARIABLE bad GET "${text}" "${half}" colors)
++    if(bad)
++      set("${fault}" "the half ${half} holds no colours: ${bad}" PARENT_SCOPE)
++      return()
++    endif()
++    string(JSON mode ERROR_VARIABLE bad GET "${text}" "${half}" properties
++      color_scheme)
++    if(bad OR NOT mode STREQUAL "${scheme}")
++      set("${fault}" "the half ${half} names the scheme ${mode}" PARENT_SCOPE)
++      return()
++    endif()
++    string(JSON count LENGTH "${colours}")
++    if(count LESS 1)
++      set("${fault}" "the half ${half} holds no colour key" PARENT_SCOPE)
++      return()
++    endif()
++    math(EXPR last "${count} - 1")
++    foreach(at RANGE ${last})
++      string(JSON key MEMBER "${colours}" ${at})
++      if(NOT key IN_LIST qtc_pin)
++        set("${fault}"
++          "the half ${half} holds the key ${key}, outside the pin"
++          PARENT_SCOPE)
++        return()
++      endif()
++      if(key IN_LIST qtc_dead)
++        set("${fault}" "the half ${half} holds the dead key ${key}"
++          PARENT_SCOPE)
++        return()
++      endif()
++      string(JSON value GET "${colours}" "${key}")
++      qtc_colour_ok("${value}" ok)
++      if(NOT ok)
++        set("${fault}" "the key ${key} holds the value ${value}" PARENT_SCOPE)
++        return()
++      endif()
++    endforeach()
++  endforeach()
++endfunction()
++
++qtc_check("${qtc_text}" qtc_fault)
++if(qtc_fault)
++  message(FATAL_ERROR "assert-ff-manifest: ${qtc_fault}")
++endif()
++
++# The controls below doctor a copy of the manifest, and the check must fail
++# over each copy.
++set(qtc_broken 0)
++function(qtc_control name text)
++  qtc_check("${text}" fault)
++  if(NOT fault)
++    message(FATAL_ERROR
++      "assert-ff-manifest: the check passed the control copy of ${name}")
++  endif()
++  math(EXPR qtc_broken "${qtc_broken} + 1")
++  set(qtc_broken "${qtc_broken}" PARENT_SCOPE)
++endfunction()
++
++set(qtc_dead_row "\"colors\": {\n      \"accentcolor\": \"#000000\",")
++string(REPLACE "\"colors\": {" "${qtc_dead_row}" qtc_dead_copy "${qtc_text}")
++qtc_control(accentcolor "${qtc_dead_copy}")
++
++string(REPLACE "\"version\": \"${VERSION}\"" "\"version\": \"0.0.1\""
++  qtc_version_copy "${qtc_text}")
++qtc_control(version "${qtc_version_copy}")
++
++string(REPLACE "\"frame\":" "\"qtc_no_such_key\":" qtc_key_copy "${qtc_text}")
++qtc_control(key "${qtc_key_copy}")
++
++# The two controls below rename a field of the card, so the copy holds no
++# field of that name.
++string(REPLACE "\"description\":" "\"qtc_no_description\":" qtc_line_copy
++  "${qtc_text}")
++qtc_control(description "${qtc_line_copy}")
++
++string(REPLACE "\"author\":" "\"qtc_no_author\":" qtc_who_copy "${qtc_text}")
++qtc_control(author "${qtc_who_copy}")
++
++message(STATUS
++  "assert-ff-manifest: ${MANIFEST} ok, the two halves hold keys of the pin"
++  " alone, and the check rejects each of the ${qtc_broken} control copies")
+diff --git a/firefox/check/assert-ff-repeat.sh b/firefox/check/assert-ff-repeat.sh
+new file mode 100644
+index 00000000..a55ea9c1
+--- /dev/null
++++ b/firefox/check/assert-ff-repeat.sh
+@@ -0,0 +1,84 @@
++#!/bin/sh
++# assert-ff-repeat.sh CMAKE WRITER XPI MANIFEST LIGHT DARK PREVIEW: one source
++# tree must give one manifest. The upload of a release names the bytes of one
++# build. A rebuild that moved a byte would give a second add-on of one
++# version.
++#
++# The run writes the manifest two times from the colour files LIGHT and DARK.
++# It reads the two texts against each other and against the manifest MANIFEST
++# of the build. It also reads the two members of the archive XPI against that
++# file and against the card image PREVIEW of the tree.
++#
++# The run then doctors a manifest and an image, and it fails if a compare
++# passes a copy.
++set -eu
++ulimit -c 0
++usage='usage: assert-ff-repeat.sh CMAKE WRITER XPI MANIFEST LIGHT DARK'
++usage="$usage PREVIEW"
++cmake=${1:?$usage}
++writer=${2:?$usage}
++xpi=${3:?$usage}
++manifest=${4:?$usage}
++light=${5:?$usage}
++dark=${6:?$usage}
++preview=${7:?$usage}
++
++tmp=$(mktemp -d)
++trap 'rm -rf "$tmp"' EXIT
++status=0
++
++fail() {
++    echo "assert-ff-repeat: $1" >&2
++    status=1
++}
++
++# emit NAME DARKFILE: writes one manifest of the light file and DARKFILE.
++emit() {
++    "$writer" --manifest --default --force --scheme "$light" \
++        --scheme-dark "$2" --out "$tmp/$1.json" > "$tmp/$1.log" 2>&1
++}
++
++# 1. Two runs of one tree give one manifest.
++emit one "$dark"
++emit two "$dark"
++cmp -s "$tmp/one.json" "$tmp/two.json" ||
++    fail "two runs of the manifest mode gave two texts"
++
++# 2. That manifest is the manifest of the build.
++cmp -s "$tmp/one.json" "$manifest" ||
++    fail "a fresh run does not give the manifest of the build"
++
++# 3. The archive carries those bytes. A zip container holds the times of its
++# file, so the container repeats no build; each member must.
++mkdir -p "$tmp/out"
++( cd "$tmp/out" && "$cmake" -E tar xf "$xpi" ) > "$tmp/unpack.log" 2>&1
++cmp -s "$tmp/out/manifest.json" "$manifest" ||
++    fail "the member of the archive is not the manifest of the build"
++
++# 4. The card image of the archive is the image of the tree. A build copies
++# that file and writes no byte of it, so the two must agree.
++cmp -s "$tmp/out/preview.png" "$preview" ||
++    fail "the card image of the archive is not the image of the tree"
++
++# The control below writes a manifest of two light halves. The compare must
++# reject it, so a run of this check cannot pass a text that moved.
++emit control "$light"
++if cmp -s "$tmp/control.json" "$tmp/one.json"; then
++    fail "the compare passed the control manifest of two light halves"
++fi
++
++# The control below moves the first bytes of a copy of the card image. The
++# magic of a PNG makes that copy differ, and the compare must reject it.
++cp "$preview" "$tmp/control.png"
++dd if="$preview" of="$tmp/control.png" bs=1 skip=1 seek=0 count=4 \
++    conv=notrunc > "$tmp/control.log" 2>&1
++if cmp -s "$tmp/control.png" "$preview"; then
++    fail "the compare passed the control image of a doctored header"
++fi
++
++if [ $status -eq 0 ]; then
++    echo "assert-ff-repeat: two runs give one manifest, which the build and" \
++         "the member of $(basename "$xpi") hold, the archive carries the" \
++         "card image of the tree, and the check rejects the 2 control copies"
++fi
++exit $status
+diff --git a/firefox/check/assert-ff-xpi.sh b/firefox/check/assert-ff-xpi.sh
+new file mode 100644
+index 00000000..04caafa7
+--- /dev/null
++++ b/firefox/check/assert-ff-xpi.sh
+@@ -0,0 +1,140 @@
++#!/bin/sh
++# assert-ff-xpi.sh CMAKE XPI MANIFEST ID: the package of the static theme must
++# hold the manifest and the card image, and no other file. The card of
++# about:addons reads that image under the literal name preview.png at the root
++# of the package. The file name of the package must carry the identifier of
++# the add-on.
++#
++# The run then builds three faulty packages, and it fails if the check passes
++# one of them.
++set -eu
++usage='usage: assert-ff-xpi.sh CMAKE XPI MANIFEST ID'
++cmake=${1:?$usage}
++xpi=${2:?$usage}
++manifest=${3:?$usage}
++id=${4:?$usage}
++
++# The width of the card image in pixels, which aboutaddons.css of Firefox 155
++# gives. Another width still shows, and it takes a warning of the console.
++width=680
++
++# The height of the card image in pixels, which the same file gives.
++height=92
++
++# The first eight bytes of a PNG file, in hexadecimal. Firefox takes the type
++# of the image from the name of the member, so an image of other bytes shows
++# nothing on the card.
++magic=89504e470d0a1a0a
++
++tmp=$(mktemp -d)
++trap 'rm -rf "$tmp"' EXIT
++status=0
++
++fail() {
++    echo "assert-ff-xpi: $1" >&2
++    status=1
++}
++
++# listing FILE: prints the names of the files of the package FILE, sorted.
++listing() {
++    "$cmake" -E tar tf "$1" | sed 's|/$||' | sort
++}
++
++# two_members FILE: gives 0 when the package FILE holds the manifest and the
++# card image, and no other file.
++two_members() {
++    listing "$1" > "$tmp/listing"
++    if [ "$(cat "$tmp/listing")" != "manifest.json
++preview.png" ]; then
++        echo "assert-ff-xpi: $1 holds:" >&2
++        cat "$tmp/listing" >&2
++        return 1
++    fi
++    return 0
++}
++
++# be32 FILE AT: prints the whole number of the four bytes at the offset AT of
++# FILE. A number of a PNG file stands in the order of the network, which puts
++# the highest byte first.
++be32() {
++    set -- $(od -An -tu1 -j "$2" -N 4 "$1")
++    echo $(( $1 * 16777216 + $2 * 65536 + $3 * 256 + $4 ))
++}
++
++# png_ok FILE: gives 0 when FILE starts with the magic of a PNG and its header
++# names the size of the card image. The header chunk stands at the offset 8 of
++# the file, and it holds the type, the width and the height, each of four
++# bytes.
++png_ok() {
++    if [ ! -f "$1" ]; then
++        echo "assert-ff-xpi: the package holds no $(basename "$1")" >&2
++        return 1
++    fi
++    start=$(od -An -tx1 -N 8 "$1" | tr -d ' \n')
++    if [ "$start" != "$magic" ]; then
++        echo "assert-ff-xpi: $1 starts with '$start' and not with $magic" >&2
++        return 1
++    fi
++    kind=$(dd if="$1" bs=1 skip=12 count=4 2> /dev/null)
++    got_w=$(be32 "$1" 16)
++    got_h=$(be32 "$1" 20)
++    if [ "$kind" != IHDR ] || [ "$got_w" != "$width" ] ||
++        [ "$got_h" != "$height" ]; then
++        echo "assert-ff-xpi: $1 holds the chunk $kind of $got_w by $got_h," \
++             "and not IHDR of $width by $height" >&2
++        return 1
++    fi
++    return 0
++}
++
++two_members "$xpi" || status=1
++
++mkdir -p "$tmp/out"
++( cd "$tmp/out" && "$cmake" -E tar xf "$xpi" ) > "$tmp/unpack.log" 2>&1
++png_ok "$tmp/out/preview.png" || status=1
++
++# The file name of the package must be the identifier of the add-on.
++name=$(basename "$xpi")
++if [ "$name" != "$id.xpi" ]; then
++    fail "the file name is $name and not $id.xpi"
++fi
++
++# The identifier inside the manifest must be the same text.
++inside=$(sed -n 's/^ *"id": "\(.*\)"$/\1/p' "$manifest")
++if [ "$inside" != "$id" ]; then
++    fail "the manifest holds the identifier $inside and not $id"
++fi
++
++# The controls below build a package of one file and a package of three files,
++# and the check must fail over each one.
++mkdir -p "$tmp/pack"
++cp "$manifest" "$tmp/pack/manifest.json"
++cp "$tmp/out/preview.png" "$tmp/pack/preview.png"
++printf 'a stray file\n' > "$tmp/pack/icon.svg"
++( cd "$tmp/pack" && "$cmake" -E tar cf "$tmp/one.xpi" --format=zip -- \
++    manifest.json ) > "$tmp/pack.log" 2>&1
++if two_members "$tmp/one.xpi" 2>> "$tmp/pack.log"; then
++    fail "the check passed the control package of the manifest alone"
++fi
++( cd "$tmp/pack" && "$cmake" -E tar cf "$tmp/three.xpi" --format=zip -- \
++    manifest.json preview.png icon.svg ) >> "$tmp/pack.log" 2>&1
++if two_members "$tmp/three.xpi" 2>> "$tmp/pack.log"; then
++    fail "the check passed the control package of three files"
++fi
++
++# The control below writes the first four bytes of the file over the four
++# bytes of the width. The header of the copy then names another size, because
++# no width of a real PNG holds the magic.
++cp "$tmp/out/preview.png" "$tmp/bad.png"
++dd if="$tmp/out/preview.png" of="$tmp/bad.png" bs=1 skip=0 seek=16 count=4 \
++    conv=notrunc >> "$tmp/pack.log" 2>&1
++if png_ok "$tmp/bad.png" 2>> "$tmp/pack.log"; then
++    fail "the check passed the control image of a doctored header"
++fi
++
++if [ $status -eq 0 ]; then
++    echo "assert-ff-xpi: $name holds manifest.json and one PNG of $width by" \
++         "$height, the name and the manifest hold the identifier $id, and" \
++         "the check rejects each of the 3 control copies"
++fi
++exit $status
+diff --git a/firefox/check/distinct-dark.colors b/firefox/check/distinct-dark.colors
+new file mode 100644
+index 00000000..09864419
+--- /dev/null
++++ b/firefox/check/distinct-dark.colors
+@@ -0,0 +1,106 @@
++# The dark half of the agree check of the Firefox theme. Every colour of the
++# light half beside it takes the value 255 less each channel here. No colour
++# of the two halves can then hold one value. A swap of the two halves fails
++# the check.
++
++[ColorEffects:Disabled]
++Color=199,199,199
++ColorAmount=0
++ColorEffect=0
++ContrastAmount=0.65
++ContrastEffect=1
++IntensityAmount=0.1
++IntensityEffect=2
++
++[ColorEffects:Inactive]
++ChangeSelectionColor=true
++Color=143,144,145
++ColorAmount=0.025
++ColorEffect=2
++ContrastAmount=0.1
++ContrastEffect=2
++Enable=false
++IntensityAmount=0
++IntensityEffect=0
++
++[Colors:Button]
++BackgroundAlternate=115,105,95
++BackgroundNormal=41,39,146
++DecorationFocus=55,235,135
++DecorationHover=194,81,22
++ForegroundActive=194,81,22
++ForegroundInactive=143,130,117
++ForegroundLink=214,127,70
++ForegroundNegative=37,187,172
++ForegroundNeutral=9,139,255
++ForegroundNormal=233,191,146
++ForegroundPositive=216,81,159
++ForegroundVisited=100,166,73
++
++[Colors:Selection]
++BackgroundAlternate=92,43,5
++BackgroundNormal=167,231,86
++DecorationFocus=194,81,22
++DecorationHover=194,81,22
++ForegroundActive=0,0,0
++ForegroundInactive=143,130,117
++ForegroundLink=2,67,180
++ForegroundNegative=79,200,186
++ForegroundNeutral=57,163,255
++ForegroundNormal=6,24,96
++ForegroundPositive=232,151,198
++ForegroundVisited=100,166,73
++
++[Colors:Tooltip]
++BackgroundAlternate=16,15,14
++BackgroundNormal=191,223,239
++DecorationFocus=194,81,22
++DecorationHover=194,81,22
++ForegroundActive=194,81,22
++ForegroundInactive=143,130,117
++ForegroundLink=214,127,70
++ForegroundNegative=37,187,172
++ForegroundNeutral=9,139,255
++ForegroundNormal=82,0,48
++ForegroundPositive=216,81,159
++ForegroundVisited=100,166,73
++
++[Colors:View]
++BackgroundAlternate=8,8,8
++BackgroundNormal=5,19,31
++DecorationFocus=194,81,22
++DecorationHover=194,81,22
++ForegroundActive=194,81,22
++ForegroundInactive=143,130,117
++ForegroundLink=255,159,95
++ForegroundNegative=79,239,207
++ForegroundNeutral=55,111,239
++ForegroundNormal=207,239,223
++ForegroundPositive=239,143,191
++ForegroundVisited=100,166,73
++
++[Colors:Window]
++BackgroundAlternate=28,26,24
++BackgroundNormal=51,23,31
++DecorationFocus=194,81,22
++DecorationHover=194,81,22
++ForegroundActive=194,81,22
++ForegroundInactive=143,130,117
++ForegroundLink=214,127,70
++ForegroundNegative=37,187,172
++ForegroundNeutral=9,139,255
++ForegroundNormal=239,223,159
++ForegroundPositive=216,81,159
++ForegroundVisited=100,166,73
++
++[WM]
++activeBackground=135,175,215
++activeBlend=135,175,215
++activeForeground=0,31,127
++inactiveBackground=16,15,14
++inactiveBlend=16,15,14
++inactiveForeground=143,130,117
++
++[General]
++Name=QtCurve Distinct Dark
++shadeSortColumn=true
+diff --git a/firefox/check/distinct-light.colors b/firefox/check/distinct-light.colors
+new file mode 100644
+index 00000000..b3599548
+--- /dev/null
++++ b/firefox/check/distinct-light.colors
+@@ -0,0 +1,107 @@
++# The light half of the agree check of the Firefox theme, where every colour
++# name holds its own value. A shipped scheme ties fifteen of the names in five
++# groups, so a swap of two names of one group ships no difference. The file is
++# the distinct scheme of the GTK checks, and the dark half beside it holds
++# another value for every name.
++
++[ColorEffects:Disabled]
++Color=56,56,56
++ColorAmount=0
++ColorEffect=0
++ContrastAmount=0.65
++ContrastEffect=1
++IntensityAmount=0.1
++IntensityEffect=2
++
++[ColorEffects:Inactive]
++ChangeSelectionColor=true
++Color=112,111,110
++ColorAmount=0.025
++ColorEffect=2
++ContrastAmount=0.1
++ContrastEffect=2
++Enable=false
++IntensityAmount=0
++IntensityEffect=0
++
++[Colors:Button]
++BackgroundAlternate=140,150,160
++BackgroundNormal=214,216,109
++DecorationFocus=200,20,120
++DecorationHover=61,174,233
++ForegroundActive=61,174,233
++ForegroundInactive=112,125,138
++ForegroundLink=41,128,185
++ForegroundNegative=218,68,83
++ForegroundNeutral=246,116,0
++ForegroundNormal=22,64,109
++ForegroundPositive=39,174,96
++ForegroundVisited=155,89,182
++
++[Colors:Selection]
++BackgroundAlternate=163,212,250
++BackgroundNormal=88,24,169
++DecorationFocus=61,174,233
++DecorationHover=61,174,233
++ForegroundActive=255,255,255
++ForegroundInactive=112,125,138
++ForegroundLink=253,188,75
++ForegroundNegative=176,55,69
++ForegroundNeutral=198,92,0
++ForegroundNormal=249,231,159
++ForegroundPositive=23,104,57
++ForegroundVisited=155,89,182
++
++[Colors:Tooltip]
++BackgroundAlternate=239,240,241
++BackgroundNormal=64,32,16
++DecorationFocus=61,174,233
++DecorationHover=61,174,233
++ForegroundActive=61,174,233
++ForegroundInactive=112,125,138
++ForegroundLink=41,128,185
++ForegroundNegative=218,68,83
++ForegroundNeutral=246,116,0
++ForegroundNormal=173,255,207
++ForegroundPositive=39,174,96
++ForegroundVisited=155,89,182
++
++[Colors:View]
++BackgroundAlternate=247,247,247
++BackgroundNormal=250,236,224
++DecorationFocus=61,174,233
++DecorationHover=61,174,233
++ForegroundActive=61,174,233
++ForegroundInactive=112,125,138
++ForegroundLink=0,96,160
++ForegroundNegative=176,16,48
++ForegroundNeutral=200,144,16
++ForegroundNormal=48,16,32
++ForegroundPositive=16,112,64
++ForegroundVisited=155,89,182
++
++[Colors:Window]
++BackgroundAlternate=227,229,231
++BackgroundNormal=204,232,224
++DecorationFocus=61,174,233
++DecorationHover=61,174,233
++ForegroundActive=61,174,233
++ForegroundInactive=112,125,138
++ForegroundLink=41,128,185
++ForegroundNegative=218,68,83
++ForegroundNeutral=246,116,0
++ForegroundNormal=16,32,96
++ForegroundPositive=39,174,96
++ForegroundVisited=155,89,182
++
++[WM]
++activeBackground=120,80,40
++activeBlend=120,80,40
++activeForeground=255,224,128
++inactiveBackground=239,240,241
++inactiveBlend=239,240,241
++inactiveForeground=112,125,138
++
++[General]
++Name=QtCurve Distinct
++shadeSortColumn=true
+diff --git a/firefox/check/ff-manifest-keys.txt b/firefox/check/ff-manifest-keys.txt
+new file mode 100644
+index 00000000..c2932b9f
+--- /dev/null
++++ b/firefox/check/ff-manifest-keys.txt
+@@ -0,0 +1,46 @@
++# The colour keys that the theme schema of Firefox 155 holds, less the two
++# aliases that Firefox 70 and later drop. The loader takes a key outside this
++# list without a word, so the manifest check reads every key against the list.
++# Derivation: chrome/toolkit/content/extensions/schemas/theme.json of omni.ja
++# of Firefox 155.0, the properties of theme.colors. The two dropped keys
++# are accentcolor and textcolor, which the check asserts absent.
++bookmark_text
++button_background_active
++button_background_hover
++frame
++frame_inactive
++icons
++icons_attention
++ntp_background
++ntp_card_background
++ntp_text
++popup
++popup_border
++popup_highlight
++popup_highlight_text
++popup_text
++sidebar
++sidebar_border
++sidebar_highlight
++sidebar_highlight_text
++sidebar_text
++tab_background_separator
++tab_background_text
++tab_line
++tab_loading
++tab_selected
++tab_text
++toolbar
++toolbar_bottom_separator
++toolbar_field
++toolbar_field_border
++toolbar_field_border_focus
++toolbar_field_focus
++toolbar_field_highlight
++toolbar_field_highlight_text
++toolbar_field_separator
++toolbar_field_text
++toolbar_field_text_focus
++toolbar_text
++toolbar_top_separator
++toolbar_vertical_separator
+diff --git a/firefox/preview/preview.png b/firefox/preview/preview.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..ce7cb1d188a79b42c497114b73cba0dc7c450479
+GIT binary patch
+literal 1670
+zcmeAS@N?(olHy`uVBq!ia0y~yU|PYzz!1a1#K6Fy>vlnxfq~7})5S5QV$R#U-Z?Sh
+zlI$OfpFd<TT;{PRK!lU?N}r_J(y6{WrOqK!!ybil=m>1Q`fQ<zN)Y!{21N}HMxiYp
+zoJ${F)MDM3;q2QbzB2WU+N9>SQ|3N)Ii=_Ol5OSJBc(#sX#t%f3quThZNHzBoqs<+
+z{rrzP=f8XX`(5+>&d!sv^LH3CFcfN(>|$V0ux^rPP*VEAsGtO51bJoNak_utz~A51
+z?Cz8H>1z5qrf*%R6B|2YXU!+`v)a?=ayR5nT(WWX{tM<G79O7`{?jlcHuBf^;KiHd
+z6<&q?KfwHZX`RZXeY(v2Z{C-PGL&q&dOun=Q!l>m^LqDb&;3oOe{D2h?)2ZG{_Q;e
+zx_1Tnr7A7z*0FpHbGiS8t^T@x{yU+cv!jcDe!4Vs^6AgZ?f%StJa-*yL*KSv_vct>
+zeO3PGm!1A7WBF=^1&e3@4s%la@i_2>yheK%NTgW1Zl%2Fa_I%#KN#d0IyxS(H*|2+
+zVPkki^*_D4<Ke@F>GSNOZtmK8xiu%P`|Gd9=JvGo=T7H%?$%zP82_(k_2&7@s`l3X
+zxOn{exjnO9={ShYzf)dXnfbW+&*w91uAD!RwD;f1-R<TU9{K;LT?qSc@wI&A{Kl%i
+z|5jGp%{}VlkeBh5*}>(L^dELUxu`YQtz%t9*8ZDd-!5Of=iQt1ORxN^#T4>C-F~&a
+zd&}Od{0=4BbqovMve+}YxO`xCa3R1@nfkzgl1gvlN%iH@3f~^+i+E@9c-vXtW!T7G
+zzcOYUSC7jim8C^HFNZQ*c$odi(?7m`V~EiI*%6aejs~q<zTTcCyo_O&Tb1q4B_Z#4
+zr!_H5P%i_y7RA;jC8d=sFPkzjNN#+DGcdv7yyW`?xkIl`ZB1KzF>9*~cY}=Aq$L45
+z(@xncsx{f`USFrP-c0Ijn(<aih8ruK7GKOU`S-i!V?@T+<w>PaXI)`Gu|I9|&RZF4
+z*2QpN6!^0;BkDDCNoU&Tn>i*<CM@+@G1u8&D6O4gmduF}ojdyF89qHd^mFt3|7YcQ
+zKYl!O-H+pL<^FRd_80tn)A~7G-LI#=_uah*4VE*trGI~WH*?;sn#W(S->dk$_2tTw
+zwbkECb}2EK?R=svzqhv5K5}Kqzc0s=o3Fk)bZF<wmoEhl?X@oF;|mi%H~06g>&L~!
+z#cxNXPAlGe^y<^?;bGy|D-P#w4?Xt3W>47av**vxuSqp(DfplMZuh^Z&GGlXUW?xO
+zyO+UiW6{bhxBoW^w0~v)f8_Mz+uL%jKb%;2bLY<T{gyT+U(T%WkK0x9a`XK94YjUm
+zR^es`?QKnW*8cvsv0ZN7Ov}IT%-!9}WUAlY>=xI5x99slpHnOfyB@@+uddH2`JS+~
+z%2}vgAno}xKAWP94N<wt@^+_pZrYgteqPktGUr$A0%>V}{kC5U)`ngF%&rix{jYQS
+zac2(m=&bdBv*tZNm3GwL_N!n1|FqM;w#NUxf6rlQP^SAv2WcHWy?x*JSMGAPTqgS8
+zs{AW|*lPE>uV2o_&HZ)z%foz`I}V|;v$dtSM!gmHw=3No?!V9I=h}R`ZQnS8<UcJ7
+zS_yLR?bX}2?U&k>A8yZZ!F9{8;DuNDH(q@8J}Y(YzyGh7eiXj{``z~T_O`qm1?9Dy
+z|0Znx^?3fDHL=f?Pw(9H@lf~i`Y(so-Q3Fdd@p)%;zVE6+HZg5Z8m=6Fg9LZD#94S
+zzWwvkLvL#sVwcEV?z+$ZW62@*9}FcEH$ABTf6T4C{$+Q(gv^>Y0Wq<2d%sK<K0fci
+zvzNNs>7AGO{=NS8_U`Aa>)))pnx)wC^XE_TIGcaB@Bg)%%*1#i|HJZKtLy)2*O|%v
+zVR+(bx$MFB5<7+y)1%LRihg8=k@z_Ng{XK=I(L9!OT5r!`P_r^&n4=LakCy5Tfi;C
+z)#|iSVv*vUpg^tfQ&Q|5-idOx25pSc`reYUqu*ZFw)Su9)a<ivi?3!aHREJ>Jzd39
+zanlv?KbrD)iu^T}+psg-;aZDnAxvb-I=%gOUrI4FOz8d35E@_nKT3KB4+8@OgQu&X
+J%Q~loCII(WI7$Ej
+
+literal 0
+HcmV?d00001
+
+diff --git a/firefox/preview/render.py b/firefox/preview/render.py
+new file mode 100644
+index 00000000..62de6e59
+--- /dev/null
++++ b/firefox/preview/render.py
+@@ -0,0 +1,196 @@
++#!/usr/bin/env python3
++"""Writes preview.png, which about:addons shows on the card of the theme.
++
++The image takes the colours of the dark half of the manifest of a build. No
++rule of the build and no check of the tree runs this program, so python and
++Pillow are tools of a maintainer. The image holds flat colour alone; it
++carries no gradient of the title bar and no text.
++
++Usage:
++    python3 firefox/preview/render.py --manifest MANIFEST --out PNG
++"""
++
++import argparse
++import json
++import re
++
++from PIL import Image, ImageDraw
++
++# The width of the card image in pixels. aboutaddons.css of Firefox 155 sizes
++# the image of a card at this width.
++WIDTH = 680
++
++# The height of the card image in pixels. Another height still shows, and it
++# takes a warning in the console of Firefox.
++HEIGHT = 92
++
++# The factor of the supersample. The program draws at this multiple of the
++# size and then averages each block of pixels, which gives a smooth edge. A
++# whole number keeps that average a plain mean of the block.
++SCALE = 4
++
++# The half of the manifest that the image takes. A card holds one image, and
++# Firefox cannot switch that image with the mode of the desktop.
++HALF = "dark_theme"
++
++# The shape of an rgba colour of the manifest, which holds three bytes and one
++# fraction.
++RGBA = re.compile(r"^rgba\((\d+),(\d+),(\d+),[0-9.]+\)$")
++
++# The shape of a hexadecimal colour of the manifest.
++HEX = re.compile(r"^#[0-9a-fA-F]{6}$")
++
++
++def colour(value):
++    """Returns the red, the green and the blue byte of one colour.
++
++    Args:
++        value: one colour of the manifest, as #rrggbb or as rgba(r,g,b,a).
++
++    Returns:
++        The three bytes of that colour. The alpha of an rgba colour drops,
++        because the image holds flat colour alone.
++
++    Raises:
++        ValueError: the text holds neither shape.
++    """
++    if HEX.match(value):
++        return (int(value[1:3], 16), int(value[3:5], 16), int(value[5:7], 16))
++    found = RGBA.match(value)
++    if found:
++        return (int(found.group(1)), int(found.group(2)), int(found.group(3)))
++    raise ValueError("the colour %s is no hexadecimal and no rgba" % value)
++
++
++def palette(path):
++    """Returns the colours of the dark half of one manifest.
++
++    Args:
++        path: the manifest.json of a build.
++
++    Returns:
++        A map of each colour key of that half to the three bytes of the
++        colour.
++
++    Raises:
++        KeyError: the manifest holds no dark half, or that half holds no
++            colours.
++        ValueError: one colour of that half holds an unknown shape.
++    """
++    with open(path, "r", encoding="utf-8") as handle:
++        text = json.load(handle)
++    return {key: colour(value)
++            for key, value in text[HALF]["colors"].items()}
++
++
++def box(pen, place, fill=None, radius=0, edge=None, width=0):
++    """Draws one rectangle at SCALE times the place place.
++
++    Args:
++        pen: the pen of the image.
++        place: the left, the top, the right and the bottom of the rectangle,
++            in the pixels of the card. The right edge and the bottom edge
++            stand outside the shape.
++        fill: the colour inside the rectangle, or None for no fill.
++        radius: the radius of each corner, in the pixels of the card.
++        edge: the colour of the border, or None for no border.
++        width: the width of the border, in the pixels of the card.
++
++    Returns:
++        None.
++    """
++    left, top, right, bottom = place
++    at = [left * SCALE, top * SCALE, right * SCALE - 1, bottom * SCALE - 1]
++    if radius:
++        pen.rounded_rectangle(at, radius=radius * SCALE, fill=fill,
++                              outline=edge, width=width * SCALE)
++    else:
++        pen.rectangle(at, fill=fill, outline=edge, width=width * SCALE)
++
++
++def dot(pen, centre, radius, edge, width):
++    """Draws one circle of the line colour edge at SCALE times the size.
++
++    Args:
++        pen: the pen of the image.
++        centre: the x and the y of the centre, in the pixels of the card.
++        radius: the radius of the circle, in the pixels of the card.
++        edge: the colour of the line.
++        width: the width of the line, in the pixels of the card. A fraction
++            takes the nearest whole number of the pixels of the draw.
++
++    Returns:
++        None.
++    """
++    centre_x, centre_y = centre
++    at = [(centre_x - radius) * SCALE, (centre_y - radius) * SCALE,
++          (centre_x + radius) * SCALE - 1, (centre_y + radius) * SCALE - 1]
++    pen.ellipse(at, outline=edge, width=round(width * SCALE))
++
++
++def strip(pal):
++    """Returns the card image of the palette pal.
++
++    The shapes follow the preview of a theme of Firefox: one tab row over one
++    tool bar, with the address bar inside the tool bar. Each shape stands at
++    SCALE times the size of the card.
++
++    Args:
++        pal: the colours of the dark half, from palette().
++
++    Returns:
++        The image, at SCALE times the size of the card.
++
++    Raises:
++        KeyError: the palette holds no colour that a shape needs.
++    """
++    image = Image.new("RGB", (WIDTH * SCALE, HEIGHT * SCALE), pal["frame"])
++    pen = ImageDraw.Draw(image)
++
++    # The selected tab, with the accent line of the theme at its head.
++    box(pen, (28, 5, 194, 39), radius=4, fill=pal["tab_line"])
++    box(pen, (28, 8, 194, 39), radius=4, fill=pal["tab_selected"])
++    # The title of the selected tab and the title of one background tab.
++    box(pen, (51, 20, 172, 24), radius=2, fill=pal["tab_text"])
++    box(pen, (221, 20, 342, 24), radius=2, fill=pal["tab_background_text"])
++
++    # The tool bar and the line under it.
++    box(pen, (0, 44, WIDTH, HEIGHT), fill=pal["toolbar"])
++    box(pen, (0, HEIGHT - 1, WIDTH, HEIGHT),
++        fill=pal["toolbar_bottom_separator"])
++
++    # The two navigation buttons and the menu button.
++    dot(pen, (24, 68), 6, pal["icons"], 1.5)
++    dot(pen, (60, 68), 6, pal["icons"], 1.5)
++    for top in (61, 67, 73):
++        box(pen, (649, top, 664, top + 2), fill=pal["icons"])
++
++    # The address bar, the icon of the site and the address itself.
++    box(pen, (114, 52, 602, 84), radius=4, fill=pal["toolbar_field"],
++        edge=pal["toolbar_field_border"], width=1)
++    dot(pen, (130, 68), 6, pal["icons"], 1.5)
++    box(pen, (146, 66, 454, 70), radius=2, fill=pal["toolbar_field_text"])
++    return image
++
++
++def main():
++    """Reads the manifest of the command line and writes the card image.
++
++    Two runs over one manifest give one file, byte for byte. A maintainer runs
++    this program after a change of a shipped scheme, and commits the image.
++
++    Returns:
++        None.
++    """
++    parse = argparse.ArgumentParser(description=__doc__.splitlines()[0])
++    parse.add_argument("--manifest", required=True,
++                       help="the manifest.json of a build")
++    parse.add_argument("--out", required=True,
++                       help="the preview.png to write")
++    args = parse.parse_args()
++    image = strip(palette(args.manifest))
++    image.resize((WIDTH, HEIGHT), Image.BOX).save(args.out, "PNG")
++
++
++if __name__ == "__main__":
++    main()
+diff --git a/firefox/writer/main.cpp b/firefox/writer/main.cpp
+index 6304205b..264267c8 100644
+--- a/firefox/writer/main.cpp
++++ b/firefox/writer/main.cpp
+@@ -20,6 +20,7 @@
+  *****************************************************************************/
+ 
+ #include "ffmap.h"
++#include "manifest.h"
+ #include "profiles.h"
+ #include "sheet.h"
+ 
+@@ -93,6 +94,7 @@ struct Args {
+     QString mode = QStringLiteral("--write");
+     QString settings;
+     QString scheme;
++    QString schemeDark;
+     QString out;
+     bool useDefaults = false;
+     bool force = false;
+@@ -103,12 +105,15 @@ usage()
+ {
+     fprintf(stderr,
+             "usage: qtcurve-firefox-writer [--write|--remove|--watch|\n"
+-            "                               --stdout]\n"
++            "                               --stdout|--manifest|--map]\n"
+             "  --remove          delete the Firefox files of the writer\n"
++            "  --manifest        write the manifest of the static theme\n"
++            "  --map             write the map of the two emitters\n"
+             "  --settings FILE   read the QtCurve settings from FILE\n"
+             "  --default         use the shipped preset\n"
+             "  --scheme FILE     read the colours from a KDE .colors file\n"
+-            "  --out FILE        write the sheet to FILE and not to stdout\n"
++            "  --scheme-dark FILE  the colours of the dark half\n"
++            "  --out FILE        write the text to FILE and not to stdout\n"
+             "  --force           skip the settings gate\n");
+ }
+ 
+@@ -399,6 +404,21 @@ runWrite(const Args &args)
+     return status;
+ }
+ 
++/**
++ * Writes text to the file of --out or to standard output, and returns the
++ * exit code of that write.
++ */
++int
++give(const Args &args, const QString &text)
++{
++    if (!args.out.isEmpty()) {
++        return writeOwned(args.out, text.toUtf8());
++    }
++    QTextStream stream(stdout);
++    stream << text;
++    return 0;
++}
++
+ /** Prints one sheet to standard output, and returns the exit code. */
+ int
+ runStdout(const Args &args)
+@@ -421,12 +441,40 @@ runStdout(const Args &args)
+     if (Gtk::emitError() != 0) {
+         return Gtk::emitError();
+     }
+-    if (!args.out.isEmpty()) {
+-        return writeOwned(args.out, text.toUtf8());
++    return give(args, text);
++}
++
++/**
++ * Writes the manifest of the static theme, and returns the exit code. The two
++ * halves read the two colour files of the command line, and a half with no
++ * file reads the live scheme of the user.
++ */
++int
++runManifest(const Args &args)
++{
++    Gtk::clearEmitError();
++    Options opts;
++    const int read = readOptions(args, opts);
++    if (read != 0) {
++        return read;
+     }
+-    QTextStream stream(stdout);
+-    stream << text;
+-    return 0;
++    Palette light;
++    Palette dark;
++    QString err;
++    int bad = readPalette(args.scheme, opts, light, err);
++    if (bad == 0) {
++        bad = readPalette(args.schemeDark, opts, dark, err);
++    }
++    if (bad != 0) {
++        fprintf(stderr, "%s: %s\n", writerName,
++                err.toLocal8Bit().constData());
++        return bad;
++    }
++    const QString manifest = buildManifest(opts, light, dark);
++    if (Gtk::emitError() != 0) {
++        return Gtk::emitError();
++    }
++    return give(args, manifest);
+ }
+ 
+ /**
+@@ -461,7 +509,9 @@ parse(const QStringList &argv, Args &args)
+         if (arg == QLatin1String("--write") ||
+             arg == QLatin1String("--remove") ||
+             arg == QLatin1String("--watch") ||
+-            arg == QLatin1String("--stdout")) {
++            arg == QLatin1String("--stdout") ||
++            arg == QLatin1String("--manifest") ||
++            arg == QLatin1String("--map")) {
+             args.mode = arg;
+         } else if (arg == QLatin1String("--default")) {
+             args.useDefaults = true;
+@@ -471,6 +521,9 @@ parse(const QStringList &argv, Args &args)
+             args.settings = argv.at(++i);
+         } else if (arg == QLatin1String("--scheme") && i + 1 < argv.size()) {
+             args.scheme = argv.at(++i);
++        } else if (arg == QLatin1String("--scheme-dark") &&
++                   i + 1 < argv.size()) {
++            args.schemeDark = argv.at(++i);
+         } else if (arg == QLatin1String("--out") && i + 1 < argv.size()) {
+             args.out = argv.at(++i);
+         } else {
+@@ -546,6 +599,12 @@ main(int argc, char **argv)
+     if (args.mode == QLatin1String("--stdout")) {
+         return runStdout(args);
+     }
++    if (args.mode == QLatin1String("--manifest")) {
++        return runManifest(args);
++    }
++    if (args.mode == QLatin1String("--map")) {
++        return give(args, buildMap());
++    }
+     if (args.mode == QLatin1String("--remove")) {
+         return lockedRun(removeAll);
+     }
+diff --git a/firefox/writer/manifest.cpp b/firefox/writer/manifest.cpp
+new file mode 100644
+index 00000000..f215376e
+--- /dev/null
++++ b/firefox/writer/manifest.cpp
+@@ -0,0 +1,233 @@
++/*****************************************************************************
++ *   Copyright 2026 QtCurve authors                                          *
++ *                                                                           *
++ *   This program is free software; you can redistribute it and/or modify    *
++ *   it under the terms of the GNU Lesser General Public License as          *
++ *   published by the Free Software Foundation; either version 2.1 of the    *
++ *   License, or (at your option) version 3, or any later version accepted   *
++ *   by the membership of KDE e.V. (or its successor approved by the         *
++ *   membership of KDE e.V.), which shall act as a proxy defined in          *
++ *   Section 6 of version 3 of the license.                                  *
++ *                                                                           *
++ *   This program is distributed in the hope that it will be useful,         *
++ *   but WITHOUT ANY WARRANTY; without even the implied warranty of          *
++ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU       *
++ *   Lesser General Public License for more details.                         *
++ *                                                                           *
++ *   You should have received a copy of the GNU Lesser General Public        *
++ *   License along with this library. If not,                                *
++ *   see <http://www.gnu.org/licenses/>.                                     *
++ *****************************************************************************/
++
++#include "manifest.h"
++
++#include "ffmap.h"
++
++#include <emit.h>
++
++#include <QStringList>
++
++namespace QtCurve {
++namespace Firefox {
++
++using Gtk::Palette;
++
++const char *const geckoId = "qtcurve-firefox-theme@wyn.invent.kde.org";
++
++namespace {
++
++/** The name of the add-on, which about:addons shows. */
++const char *const themeName = "QtCurve";
++
++/**
++ * The line under the name on the card of about:addons. The card of a theme
++ * holds the name, this line and the preview image, and it holds no icon.
++ */
++const char *const themeDescription =
++    "This theme paints the Firefox window, the tabs and the address bar in"
++    " the colours of QtCurve. On its own it uses the default QtCurve colours,"
++    " light or dark to match your system. With QtCurve on Linux, the colours"
++    " can follow your own settings.";
++
++/** The author of the add-on, which the open card of about:addons shows. */
++const char *const themeAuthor = "Wyn Sun";
++
++/**
++ * The alignment of the gradient image, which the manifest carries beside the
++ * image. The gradient covers the tool box, so it starts at the top left.
++ */
++const char *const backgroundAlignment = "left top";
++
++/**
++ * The tiling of the gradient image. The stops run down the tool box, so the
++ * image repeats to the right of it.
++ */
++const char *const backgroundTiling = "repeat";
++
++/** Returns one string in the JSON form, with no escape of its own. */
++QString
++text(const QString &value)
++{
++    return QLatin1Char('"') + value + QLatin1Char('"');
++}
++
++/** Returns one row of an object, at the depth depth of two spaces. */
++QString
++row(int depth, const QString &key, const QString &value, bool last)
++{
++    return QString(depth * 2, QLatin1Char(' ')) + text(key) +
++        QStringLiteral(": ") + value + (last ? QString() :
++                                        QStringLiteral(",")) +
++        QLatin1Char('\n');
++}
++
++/** Returns one line of a list or of a block, at the depth depth. */
++QString
++line(int depth, const QString &value)
++{
++    return QString(depth * 2, QLatin1Char(' ')) + value + QLatin1Char('\n');
++}
++
++/**
++ * Returns the stop list of the tool box gradient, with no function name and
++ * no bracket. A titlebar appearance that carries no gradient gives an empty
++ * string, and the sheet reads the same source.
++ */
++QString
++gradientStops(const Options &opts, const QColor &base)
++{
++    const QString image = Gtk::gradientImage(opts, opts.titlebarAppearance,
++                                             Gtk::fixedTone(base));
++    const QString head = QStringLiteral("linear-gradient(");
++    if (!image.startsWith(head) || !image.endsWith(QLatin1Char(')'))) {
++        return QString();
++    }
++    return image.mid(head.size(), image.size() - head.size() - 1);
++}
++
++/** Returns the colours object of one half, at the depth depth. */
++QString
++colours(const Options &opts, const Palette &pal, int depth)
++{
++    QStringList keys;
++    QStringList values;
++    int count = 0;
++    const FfRow *const map = ffRows(count);
++    for (int at = 0;at < count;++at) {
++        const QColor col = ffColour(opts, pal, map[at].role);
++        const QString value = col.alpha() == 255 ? Gtk::hex(col) :
++            Gtk::rgba(col, col.alphaF());
++        for (int i = 0;i < map[at].keyCount;++i) {
++            keys << QLatin1String(map[at].keys[i]);
++            values << value;
++        }
++    }
++    QString out = line(depth, text(QStringLiteral("colors")) +
++                       QStringLiteral(": {"));
++    for (int at = 0;at < keys.size();++at) {
++        out += row(depth + 1, keys.at(at), text(values.at(at)),
++                   at + 1 == keys.size());
++    }
++    out += line(depth, QStringLiteral("},"));
++    return out;
++}
++
++/**
++ * Returns the theme object of one half, at the depth depth. The scheme scheme
++ * is light or dark, and it reaches properties.color_scheme.
++ */
++QString
++half(const Options &opts, const Palette &pal, const QString &scheme,
++     int depth, bool last)
++{
++    const QString stops = gradientStops(opts, pal.titlebar);
++    QString out = line(depth, text(scheme == QLatin1String("dark") ?
++                                   QStringLiteral("dark_theme") :
++                                   QStringLiteral("theme")) +
++                       QStringLiteral(": {"));
++    out += colours(opts, pal, depth + 1);
++    if (!stops.isEmpty()) {
++        out += line(depth + 1, text(QStringLiteral("images")) +
++                    QStringLiteral(": {"));
++        out += line(depth + 2, text(QStringLiteral("additional_backgrounds")) +
++                    QStringLiteral(": ["));
++        out += line(depth + 3, QStringLiteral("{"));
++        out += row(depth + 4, QStringLiteral("linear-gradient"), text(stops),
++                   true);
++        out += line(depth + 3, QStringLiteral("}"));
++        out += line(depth + 2, QStringLiteral("]"));
++        out += line(depth + 1, QStringLiteral("},"));
++    }
++    out += line(depth + 1, text(QStringLiteral("properties")) +
++                QStringLiteral(": {"));
++    out += row(depth + 2, QStringLiteral("color_scheme"), text(scheme),
++               stops.isEmpty());
++    if (!stops.isEmpty()) {
++        out += line(depth + 2,
++                    text(QStringLiteral("additional_backgrounds_alignment")) +
++                    QStringLiteral(": ["));
++        out += line(depth + 3, text(QLatin1String(backgroundAlignment)));
++        out += line(depth + 2, QStringLiteral("],"));
++        out += line(depth + 2,
++                    text(QStringLiteral("additional_backgrounds_tiling")) +
++                    QStringLiteral(": ["));
++        out += line(depth + 3, text(QLatin1String(backgroundTiling)));
++        out += line(depth + 2, QStringLiteral("]"));
++    }
++    out += line(depth + 1, QStringLiteral("}"));
++    out += line(depth, last ? QStringLiteral("}") : QStringLiteral("},"));
++    return out;
++}
++
++}
++
++QString
++buildManifest(const Options &opts, const Palette &light, const Palette &dark)
++{
++    QString out = QStringLiteral("{\n");
++    out += row(1, QStringLiteral("manifest_version"), QStringLiteral("2"),
++               false);
++    out += row(1, QStringLiteral("name"), text(QLatin1String(themeName)),
++               false);
++    out += row(1, QStringLiteral("version"),
++               text(QStringLiteral(QTC_FIREFOX_VERSION)), false);
++    out += row(1, QStringLiteral("description"),
++               text(QLatin1String(themeDescription)), false);
++    out += row(1, QStringLiteral("author"), text(QLatin1String(themeAuthor)),
++               false);
++    out += line(1, text(QStringLiteral("browser_specific_settings")) +
++                QStringLiteral(": {"));
++    out += line(2, text(QStringLiteral("gecko")) + QStringLiteral(": {"));
++    out += row(3, QStringLiteral("id"), text(QLatin1String(geckoId)), true);
++    out += line(2, QStringLiteral("}"));
++    out += line(1, QStringLiteral("},"));
++    out += half(opts, light, QStringLiteral("light"), 1, false);
++    out += half(opts, dark, QStringLiteral("dark"), 1, true);
++    out += QStringLiteral("}\n");
++    return out;
++}
++
++QString
++buildMap()
++{
++    QString out;
++    int count = 0;
++    const FfRow *const map = ffRows(count);
++    for (int at = 0;at < count;++at) {
++        QStringList vars;
++        for (int i = 0;i < map[at].varCount;++i) {
++            vars << QLatin1String(map[at].vars[i]);
++        }
++        QStringList keys;
++        for (int i = 0;i < map[at].keyCount;++i) {
++            keys << QLatin1String(map[at].keys[i]);
++        }
++        out += QStringLiteral("%1|%2|%3\n")
++            .arg(QLatin1String(ffRoleName(map[at].role)),
++                 vars.join(QLatin1Char(',')), keys.join(QLatin1Char(',')));
++    }
++    return out;
++}
++
++}
++}
+diff --git a/firefox/writer/manifest.h b/firefox/writer/manifest.h
+new file mode 100644
+index 00000000..2b1edc35
+--- /dev/null
++++ b/firefox/writer/manifest.h
+@@ -0,0 +1,65 @@
++/*****************************************************************************
++ *   Copyright 2026 QtCurve authors                                          *
++ *                                                                           *
++ *   This program is free software; you can redistribute it and/or modify    *
++ *   it under the terms of the GNU Lesser General Public License as          *
++ *   published by the Free Software Foundation; either version 2.1 of the    *
++ *   License, or (at your option) version 3, or any later version accepted   *
++ *   by the membership of KDE e.V. (or its successor approved by the         *
++ *   membership of KDE e.V.), which shall act as a proxy defined in          *
++ *   Section 6 of version 3 of the license.                                  *
++ *                                                                           *
++ *   This program is distributed in the hope that it will be useful,         *
++ *   but WITHOUT ANY WARRANTY; without even the implied warranty of          *
++ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU       *
++ *   Lesser General Public License for more details.                         *
++ *                                                                           *
++ *   You should have received a copy of the GNU Lesser General Public        *
++ *   License along with this library. If not,                                *
++ *   see <http://www.gnu.org/licenses/>.                                     *
++ *****************************************************************************/
++
++#ifndef QTC_FIREFOX_MANIFEST_H
++#define QTC_FIREFOX_MANIFEST_H
++
++#include <palette.h>
++
++#include <QString>
++
++namespace QtCurve {
++namespace Firefox {
++
++/**
++ * The identifier of the add-on. The file name of the XPI holds the same text,
++ * and a check reads the two against each other. The text is an opaque name:
++ * no host of it must resolve.
++ */
++extern const char *const geckoId;
++
++/**
++ * Returns the text of the static theme manifest. The two halves take the
++ * colours of the two palettes, and each half names its own colour scheme. The
++ * frame colour is flat in each half, and a titlebar appearance that carries a
++ * gradient adds one gradient image beside it.
++ *
++ * \param opts   the QtCurve settings, which give the appearance and the
++ *     ladders of both halves.
++ * \param light  the palette of the light half.
++ * \param dark   the palette of the dark half.
++ * \return the whole manifest, which ends with one newline.
++ */
++QString buildManifest(const Options &opts, const Gtk::Palette &light,
++                      const Gtk::Palette &dark);
++
++/**
++ * Returns the map of the two emitters as text, one row per line. A row holds
++ * the name of the palette source, the custom properties and the colour keys,
++ * and one vertical bar stands between the three fields. The build writes this
++ * text to ff-map.txt, so no check reads a hand written copy of the table.
++ */
++QString buildMap();
++
++}
++}
++
++#endif

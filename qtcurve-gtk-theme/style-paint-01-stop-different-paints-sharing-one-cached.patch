@@ -1,0 +1,147 @@
+Stop different paints sharing one cached pixmap
+
+drawLightBevel() keys the pixmap of a bevel on the widget kind, the mask,
+the round mode, the size, the state, the fill and the radius. The paint
+inside the pixmap also reads the widget. drawEtch() takes a white line for
+the groove of a scroll bar. It takes a shade of the parent background for
+every other widget. The kind WIDGET_SLIDER_TROUGH covers the groove of a
+slider and the groove of a scroll bar. The two grooves therefore share one
+key, and the second groove takes the pixmap of the first. The scroll bar
+groove then loses its own etch colour on 449 pixels. The key now holds the
+etch colour of the widget. It also holds the checkable flag, because the
+glow of a pressed button reads that flag.
+
+createKey() packs the appearance into five bits. EAppearance holds forty
+values, so APPEARANCE_DARK_INVERTED shares a key with custom gradient one.
+Seven further pairs up to APPEARANCE_LV_AGUA share a key as well. The
+appearance field now holds six bits, and the cache type moves one bit up.
+The colour of the same key also lost the top bit of its alpha channel,
+because the shift ran in the width of QRgb. The code now widens the colour
+before the shift. The key holds 58 bits of the 64 bits of the cache.
+
+The change sits on the branch work/style-paint of the local tree, as commit 1 of 21.
+A new merge request on system/qtcurve takes that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/qt6/style/qtcurve.cpp b/qt6/style/qtcurve.cpp
+index b7effb8d..46465139 100644
+--- a/qt6/style/qtcurve.cpp
++++ b/qt6/style/qtcurve.cpp
+@@ -255,8 +255,8 @@ isOnToolbar(const QWidget *widget)
+ /*
+   Cache key:
+   widgettype 2
+-  app        5
+-  size      15
++  app        6
++  size      16
+   horiz      1
+   alpha      8
+   blue       8
+@@ -264,7 +264,7 @@ isOnToolbar(const QWidget *widget)
+   red        8
+   type       1  (0 for widget, 1 for pixmap)
+   ------------
+-  56
++  58
+ */
+ enum ECacheType {
+     CACHE_STD,
+@@ -284,11 +284,11 @@ createKey(qulonglong size, const QColor &color, bool horiz, int app, EWidget w)
+         ? CACHE_PBAR
+         : CACHE_STD;
+ 
+-    return (color.rgba()<<1)+
++    return (((qulonglong)color.rgba())<<1)+
+         (((qulonglong)(horiz ? 1 : 0))<<33)+
+         (((qulonglong)(size&0xFFFF))<<34)+
+-        (((qulonglong)(app&0x1F))<<50)+
+-        (((qulonglong)(type&0x03))<<55);
++        (((qulonglong)(app&0x3F))<<50)+
++        (((qulonglong)(type&0x03))<<56);
+ }
+ 
+ static QtcKey createKey(const QColor &color, EPixmap p)
+@@ -1703,12 +1703,26 @@ Style::drawLightBevel(QPainter *p, const QRect &r, const QStyleOption *option,
+                                       horiz ? r.height() : size));
+             uint state(option->state&(State_Raised|State_Sunken|State_On|State_Horizontal|State_HasFocus|State_MouseOver|
+                                          (WIDGET_MDI_WINDOW_BUTTON==w ? State_Active : State_None)));
++            // The etch colour and the checkable flag change the paint inside
++            // the pixmap, and the widget kind alone does not separate them.
++            // The key holds both, so two paints that differ in either take
++            // different pixmaps.
++            qulonglong etch(0);
+ 
+-            QString key = QStringLiteral("qtc-%1-%2-%3-%4-%5-%6-%7-%8-%9")
++            if(doBorder && ETCH_WIDGET(w) && opts.buttonEffect != EFFECT_NONE)
++            {
++                etch = etchBottomCol(widget, w).rgba();
++                if(widget && qobject_cast<const QAbstractButton *>(widget) &&
++                   static_cast<const QAbstractButton *>(widget)->isCheckable())
++                    etch |= (qulonglong)1<<32;
++            }
++
++            QString key = QStringLiteral("qtc-%1-%2-%3-%4-%5-%6-%7-%8-%9-%10")
+                 .arg(w, 0, 16).arg(onToolbar ? 1 : 0, 0, 16).arg(round, 0, 16)
+                 .arg((int)realRound, 0, 16).arg(pixSize.width(), 0, 16)
+                 .arg(pixSize.height(), 0, 16)
+-                .arg(state, 0, 16).arg(fill.rgba(), 0, 16).arg((int)(radius * 100), 0, 16);
++                .arg(state, 0, 16).arg(fill.rgba(), 0, 16).arg((int)(radius * 100), 0, 16)
++                .arg(etch, 0, 16);
+             if (!m_usePixmapCache || !QPixmapCache::find(key, &pix)) {
+                 pix = QPixmap(pixSize);
+                 pix.fill(Qt::transparent);
+@@ -2066,6 +2080,18 @@ void Style::drawGlow(QPainter *p, const QRect &r, EWidget w, const QColor *cols)
+     QPAINTER_RENDERHINT_AA_MAYBE_OFF(p);
+ }
+ 
++QColor Style::etchBottomCol(const QWidget *widget, EWidget w) const
++{
++    if(WIDGET_SLIDER_TROUGH==w && opts.thinSbarGroove && widget && qobject_cast<const QScrollBar *>(widget))
++    {
++        QColor col(Qt::white);
++        col.setAlphaF(USE_CUSTOM_ALPHAS(opts) ? opts.customAlphas[ALPHA_ETCH_LIGHT] : ETCH_BOTTOM_ALPHA); // 0.25);
++        return col;
++    }
++
++    return getLowerEtchCol(widget);
++}
++
+ void Style::drawEtch(QPainter *p, const QRect &r, const QWidget *widget,  EWidget w, bool raised, int round) const
+ {
+     QPainterPath tl,
+@@ -2085,14 +2111,7 @@ void Style::drawEtch(QPainter *p, const QRect &r, const QWidget *widget,  EWidge
+     if(!raised && WIDGET_SLIDER!=w)
+     {
+         p->drawPath(tl);
+-        if(WIDGET_SLIDER_TROUGH==w && opts.thinSbarGroove && widget && qobject_cast<const QScrollBar *>(widget))
+-        {
+-            QColor col(Qt::white);
+-            col.setAlphaF(USE_CUSTOM_ALPHAS(opts) ? opts.customAlphas[ALPHA_ETCH_LIGHT] : ETCH_BOTTOM_ALPHA); // 0.25);
+-            setPainterPen(p, col, QPENWIDTH1);
+-        }
+-        else
+-            setPainterPen(p, getLowerEtchCol(widget), QPENWIDTH1);
++        setPainterPen(p, etchBottomCol(widget, w), QPENWIDTH1);
+     }
+ 
+     p->drawPath(br);
+diff --git a/qt6/style/qtcurve.h b/qt6/style/qtcurve.h
+index b9e5e08b..4005c3c7 100644
+--- a/qt6/style/qtcurve.h
++++ b/qt6/style/qtcurve.h
+@@ -251,6 +251,13 @@ private:
+                             bool onToolbar) const;
+     void drawGlow(QPainter *p, const QRect &r, EWidget w,
+                   const QColor *cols=0L) const;
++    //! the colour of the lower etch line
++    /*! \param widget the widget under the paint, or a null pointer.
++        \param w the widget kind.
++        \return white at the light etch alpha, for the groove of a scroll bar
++        while the thin groove option is on. Every other case, and a null
++        widget, gives the result of getLowerEtchCol(). */
++    QColor etchBottomCol(const QWidget *widget, EWidget w) const;
+     void drawEtch(QPainter *p, const QRect &r, const QWidget *widget,
+                   EWidget w, bool raised=false, int round=ROUNDED_ALL) const;
+     void drawBgndRing(QPainter &painter, int x, int y, int size,

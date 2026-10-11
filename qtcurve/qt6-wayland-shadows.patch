@@ -1,0 +1,429 @@
+Draw menu and tooltip shadows through KWindowShadow
+
+QtCurve gives the shadow tiles to the window manager in
+qt6/style/shadowhelper.cpp. The old code put the tiles in the
+_KDE_NET_WM_SHADOW property of the X window. A native Wayland client makes
+no XCB connection, so qtcX11Enabled() is false and the style installs
+nothing. Menus, tooltips, combo box lists and detached tool bars therefore
+get no shadow on a Wayland session.
+
+KWindowShadow from KF6WindowSystem carries the same eight tiles and the same
+four paddings to the compositor on X11 and on Wayland. The qt6 style already
+links KF6::WindowSystem, so the port adds no dependency. QTC_QT6_ENABLE_KDE
+selects the route: a build without KDE support keeps the X property code in
+installShadows(), the new name of installX11Shadows().
+
+The art does not change. qtcShadowCreate() still draws the tiles with the
+arguments of qtcX11ShadowInit(): the greys 0.4 and 0.2, radius 4. The
+gradient length comes from the shadowSize key, 30 pixels by default, and the
+padding is one pixel less. The new code installs no shadow for size zero.
+
+qtcShadowCreate() writes premultiplied pixels in the QTC_PIXEL_QT byte
+order. That is the layout of QImage::Format_ARGB32_Premultiplied on a little
+endian machine, so each tile needs no conversion. lib/utils keeps the
+function private, so qt6/style/CMakeLists.txt compiles lib/utils/shadow.cpp,
+and libqtcurve-utils.so.2 exports nothing new.
+
+The style dialog in qt6/config/qtcurveconfig.cpp keeps the drop shadow size
+active off X11, because the KWindowShadow route reads the key on every
+platform. The dialog builds with KDE Frameworks 6 alone, so the X property
+route never serves it. The tooltip of the box no longer claims X11 alone.
+
+The change sits on the branch work/wayland-shadows of the local tree. The fork
+wyn/qtcurve holds that branch. Merge request !5 on system/qtcurve holds that
+branch as the source.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/qt6/config/qtcurveconfig.cpp b/qt6/config/qtcurveconfig.cpp
+index 0c891ce3..47e8fe08 100644
+--- a/qt6/config/qtcurveconfig.cpp
++++ b/qt6/config/qtcurveconfig.cpp
+@@ -967,9 +967,6 @@ QtCurveConfig::QtCurveConfig(QWidget *parent)
+     dropShadowSize->setRange(0, 100);
+     dropShadowSize->setSingleStep(1);
+     dropShadowSize->setValue(qtcX11ShadowSize());
+-    if (!qtcX11Enabled()) {
+-        dropShadowSize->setEnabled(false);
+-    }
+ 
+ 
+     sliderWidth->setRange(MIN_SLIDER_WIDTH, MAX_SLIDER_WIDTH);
+diff --git a/qt6/config/qtcurveconfigbase.ui b/qt6/config/qtcurveconfigbase.ui
+index 54e2a96d..398d43f1 100644
+--- a/qt6/config/qtcurveconfigbase.ui
++++ b/qt6/config/qtcurveconfigbase.ui
+@@ -3833,7 +3833,7 @@
+        <item row="6" column="1">
+         <widget class="QSpinBox" name="dropShadowSize">
+          <property name="toolTip">
+-          <string>&lt;p&gt;Sets the base value used for determining drop shadow sizes.&lt;/p&gt;&lt;p&gt;X11 only.&lt;/p&gt;</string>
++          <string>&lt;p&gt;Sets the base value used for determining drop shadow sizes.&lt;/p&gt;</string>
+          </property>
+         </widget>
+        </item>
+diff --git a/qt6/style/CMakeLists.txt b/qt6/style/CMakeLists.txt
+index af8ef4e4..04739090 100644
+--- a/qt6/style/CMakeLists.txt
++++ b/qt6/style/CMakeLists.txt
+@@ -47,6 +47,12 @@ endforeach()
+ 
+ set(qtcurve_SRCS ${qtcurve_SRCS} ${qtcurve_style_common_SRCS})
+ 
++if(QTC_QT6_ENABLE_KDE)
++  # The style makes its own shadow tiles. lib/utils keeps qtcShadowCreate()
++  # hidden, so the style compiles the tile generator into the plugin.
++  set(qtcurve_SRCS ${qtcurve_SRCS} ../../lib/utils/shadow.cpp)
++endif()
++
+ add_definitions(-DQT_PLUGIN)
+ include_directories(
+   "${CMAKE_CURRENT_SOURCE_DIR}"
+diff --git a/qt6/style/shadowhelper.cpp b/qt6/style/shadowhelper.cpp
+index 1f9f5e13..6314909f 100644
+--- a/qt6/style/shadowhelper.cpp
++++ b/qt6/style/shadowhelper.cpp
+@@ -55,15 +55,121 @@
+ #include <QToolBar>
+ #include <QEvent>
+ 
+-#include <qtcurve-utils/x11shadow.h>
+ #include <qtcurve-utils/qtprops.h>
+ 
++#ifdef QTC_QT6_ENABLE_KDE
++#include <qtcurve-utils/options.h>
++#include <qtcurve-utils/shadow_p.h>
++
++#include <KWindowShadow>
++
++#include <QCoreApplication>
++#include <QImage>
++#include <QVector>
++#include <QWindow>
++#else
++#include <qtcurve-utils/x11shadow.h>
++#endif
++
+ namespace QtCurve {
+ const char *const ShadowHelper::netWMForceShadowPropertyName =
+     "_KDE_NET_WM_FORCE_SHADOW";
+ const char *const ShadowHelper::netWMSkipShadowPropertyName =
+     "_KDE_NET_WM_SKIP_SHADOW";
+ 
++#ifdef QTC_QT6_ENABLE_KDE
++namespace {
++
++//! the width of the clear band along the window edge, in pixels
++/*! qtcShadowCreate() holds the alpha at zero over this band, then starts the
++    gradient. The band hides the shadow behind the window. */
++const size_t shadowRadius = 4;
++
++//! the number of tiles that make one shadow
++const int numTiles = 8;
++
++//! the tiles that every shadow of this process shares
++/*! The pointer is null until the first shadow needs the tiles. */
++QVector<KWindowShadowTile::Ptr> *shadowTiles = nullptr;
++
++//! the gradient length of the tiles in shadowTiles, in pixels
++/*! The value is zero while the process holds no tiles. */
++int shadowTilesSize = 0;
++
++//! free the shared tiles
++/*! A tile holds resources of the platform plugin. Qt runs a post routine at
++    the start of the QApplication destructor, while the plugin is still
++    alive. A post routine therefore frees the tiles, and a static
++    destructor at process exit does not. */
++void
++freeShadowTiles()
++{
++    delete shadowTiles;
++    shadowTiles = nullptr;
++    shadowTilesSize = 0;
++}
++
++//! how far the shadow reaches outside the window, in pixels
++/*! \param size the length of the shadow gradient, in pixels.
++    \return one pixel less than the gradient. The first pixel of the
++    gradient then sits on the window edge. */
++int
++shadowPadding(int size)
++{
++    return size - 1;
++}
++
++//! make the eight tiles of the QtCurve shadow
++/*! \param size the length of the shadow gradient, in pixels. The call makes
++    new tiles when the size differs from the size of the tiles in hand.
++    \return the eight tiles in the order that KWin wants. The order is top,
++    top right, right, bottom right, bottom, bottom left, left and top left.
++    qtcShadowCreate() writes the tiles in that order. */
++const QVector<KWindowShadowTile::Ptr>&
++getShadowTiles(int size)
++{
++    if (shadowTiles && shadowTilesSize == size)
++        return *shadowTiles;
++    if (shadowTiles) {
++        shadowTiles->clear();
++    } else {
++        shadowTiles = new QVector<KWindowShadowTile::Ptr>;
++        qAddPostRoutine(freeShadowTiles);
++    }
++    shadowTilesSize = size;
++    // The colours match qtcX11ShadowInit(), so a Wayland client and an X11
++    // client get the same shadow.
++    QtcColor c1 = {0.4, 0.4, 0.4};
++    QtcColor c2 = {0.2, 0.2, 0.2};
++    Image *images[numTiles];
++    qtcShadowCreate(size_t(size), &c1, &c2, shadowRadius, false,
++                    QTC_PIXEL_QT, images);
++    shadowTiles->reserve(numTiles);
++    for (int i = 0;i < numTiles;i++) {
++        const Image *image = images[i];
++        // QTC_PIXEL_QT puts the four bytes of a pixel in the order that
++        // QImage::Format_ARGB32_Premultiplied reads. qtcFillShadowPixel()
++        // multiplies the colour by the alpha. QImage shares the buffer of
++        // the Image, so the tile takes a copy before the Image goes away.
++        QImage buffer((const uchar*)image->data.data(), int(image->width),
++                      int(image->height), qsizetype(image->width) * 4,
++                      QImage::Format_ARGB32_Premultiplied);
++        auto tile = KWindowShadowTile::Ptr::create();
++        tile->setImage(buffer.copy());
++        shadowTiles->append(tile);
++        delete images[i];
++    }
++    return *shadowTiles;
++}
++
++}
++
++ShadowHelper::~ShadowHelper()
++{
++    qDeleteAll(m_shadows);
++}
++#endif
++
+ bool
+ ShadowHelper::registerWidget(QWidget *widget, bool force)
+ {
+@@ -77,7 +183,7 @@ ShadowHelper::registerWidget(QWidget *widget, bool force)
+     props->shadowRegistered = true;
+     // WinIdChange Event, should not happen though
+     widget->installEventFilter(this);
+-    installX11Shadows(widget);
++    installShadows(widget);
+     return true;
+ }
+ 
+@@ -86,7 +192,10 @@ ShadowHelper::unregisterWidget(QWidget *widget)
+ {
+     QtcQWidgetProps props(widget);
+     if (props->shadowRegistered) {
+-        uninstallX11Shadows(widget);
++        uninstallShadows(widget);
++        // The filter gives the widget a new shadow at the next WinIdChange
++        // event. Take the filter away with the shadow.
++        widget->removeEventFilter(this);
+         props->shadowRegistered = false;
+     }
+ }
+@@ -95,7 +204,7 @@ bool
+ ShadowHelper::eventFilter(QObject *object, QEvent *event)
+ {
+     if (event->type() == QEvent::WinIdChange)
+-        installX11Shadows(static_cast<QWidget*>(object));
++        installShadows(static_cast<QWidget*>(object));
+     return false;
+ }
+ 
+@@ -128,8 +237,92 @@ ShadowHelper::acceptWidget(QWidget *widget) const
+     return false;
+ }
+ 
++#ifdef QTC_QT6_ENABLE_KDE
++QMargins
++ShadowHelper::shadowMargins(QWidget *widget) const
++{
++    const int padding = shadowPadding(qtcX11ShadowSize());
++    int top = padding;
++    int bottom = padding;
++    if (widget->windowType() == Qt::ToolTip &&
++        widget->inherits("QBalloonTip")) {
++        // A balloon tip keeps an arrow in the top margin or in the bottom
++        // margin. Pull the shadow in on that side, so the shadow follows the
++        // body of the balloon and not the arrow.
++        bool atTop = true;
++        int margin = qtcGetBalloonMargin(widget, &atTop);
++        if (atTop) {
++            top -= margin;
++        } else {
++            bottom -= margin;
++        }
++    }
++    return QMargins(padding, top, padding, bottom);
++}
++
++void
++ShadowHelper::windowDeleted(QObject *object)
++{
++    // The window deletes the shadow, because the shadow is a child of the
++    // window. Drop the stale entry only.
++    m_shadows.remove(static_cast<QWindow*>(object));
++}
++
++bool
++ShadowHelper::installShadows(QWidget *widget)
++{
++    QTC_RET_IF_FAIL(widget, false);
++    // Only a window can carry a shadow.
++    if (!widget->isWindow())
++        return false;
++    // QWidget::create() sets the attribute and makes the QWindow before it
++    // sends the WinIdChange event. QWidget::destroy() sends the same event
++    // with no QWindow, so the checks below are necessary.
++    if (!widget->testAttribute(Qt::WA_WState_Created))
++        return false;
++    QWindow *window = widget->windowHandle();
++    QTC_RET_IF_FAIL(window, false);
++
++    // A size of zero makes a clear shadow. Take away the shadow of an
++    // earlier size, and give the compositor nothing.
++    const int size = qtcX11ShadowSize();
++    if (size < 1) {
++        delete m_shadows.take(window);
++        return false;
++    }
++
++    const QVector<KWindowShadowTile::Ptr> &tiles = getShadowTiles(size);
++    KWindowShadow *&shadow = m_shadows[window];
++    if (!shadow) {
++        shadow = new KWindowShadow(window);
++        connect(window, &QWindow::destroyed, this,
++                &ShadowHelper::windowDeleted);
++    }
++    // KWindowShadow refuses a new tile and a new padding while it holds
++    // resources of the platform. Destroy the shadow first.
++    if (shadow->isCreated())
++        shadow->destroy();
++    shadow->setTopTile(tiles[0]);
++    shadow->setTopRightTile(tiles[1]);
++    shadow->setRightTile(tiles[2]);
++    shadow->setBottomRightTile(tiles[3]);
++    shadow->setBottomTile(tiles[4]);
++    shadow->setBottomLeftTile(tiles[5]);
++    shadow->setLeftTile(tiles[6]);
++    shadow->setTopLeftTile(tiles[7]);
++    shadow->setPadding(shadowMargins(widget));
++    shadow->setWindow(window);
++    return shadow->create();
++}
++
++void
++ShadowHelper::uninstallShadows(QWidget *widget)
++{
++    delete m_shadows.take(widget->windowHandle());
++}
++#else
+ bool
+-ShadowHelper::installX11Shadows(QWidget *widget)
++ShadowHelper::installShadows(QWidget *widget)
+ {
+     // DO NOT condition compile on QTC_ENABLE_X11.
+     // There's no direct linkage on X11 and the following code will just do
+@@ -153,7 +346,7 @@ ShadowHelper::installX11Shadows(QWidget *widget)
+ }
+ 
+ void
+-ShadowHelper::uninstallX11Shadows(QWidget *widget) const
++ShadowHelper::uninstallShadows(QWidget *widget)
+ {
+     // DO NOT condition compile on QTC_ENABLE_X11.
+     // There's no direct linkage on X11 and the following code will just do
+@@ -163,4 +356,5 @@ ShadowHelper::uninstallX11Shadows(QWidget *widget) const
+         qtcX11ShadowUninstall(wid);
+     }
+ }
++#endif
+ }
+diff --git a/qt6/style/shadowhelper.h b/qt6/style/shadowhelper.h
+index 2b6e70a9..86db75bf 100644
+--- a/qt6/style/shadowhelper.h
++++ b/qt6/style/shadowhelper.h
+@@ -51,8 +51,20 @@
+ 
+ #include <QObject>
+ 
++#ifdef QTC_QT6_ENABLE_KDE
++#include <QHash>
++#include <QMargins>
++
++class KWindowShadow;
++class QWindow;
++#endif
++
+ namespace QtCurve {
+-//! handle shadow pixmaps passed to window manager via X property
++//! give menus, tooltips and detached widgets a drop shadow
++/*! With KDE Frameworks 6 the helper gives the tiles to the compositor
++    through KWindowShadow, which serves both X11 and Wayland. Without
++    KDE Frameworks 6 the helper sets the _KDE_NET_WM_SHADOW property, which
++    serves X11 only. The GUI thread owns the helper and every shadow. */
+ class ShadowHelper: public QObject {
+     Q_OBJECT
+ public:
+@@ -64,6 +76,11 @@ public:
+     {
+     }
+ 
++#ifdef QTC_QT6_ENABLE_KDE
++    //! remove every shadow that this helper still holds
++    ~ShadowHelper() override;
++#endif
++
+     //! register widget
+     bool registerWidget(QWidget*, bool force=false);
+ 
+@@ -77,11 +94,39 @@ protected:
+     //! accept widget
+     bool acceptWidget(QWidget*) const;
+ 
+-    //! install shadow X11 property on given widget
+-    bool installX11Shadows(QWidget*);
++    //! give the shadow to the compositor
++    /*! \param widget the widget to draw the shadow behind.
++        \return true if the widget now has a shadow. With KDE Frameworks 6
++        the call returns false for a null widget, and for a widget that is
++        not a window. It also returns false for a widget with no QWindow,
++        and for a drop shadow size of zero. It returns false if the shadow
++        did not reach the compositor. Without KDE Frameworks 6 the call
++        returns false if X11 is off, and if the widget has no X window. */
++    bool installShadows(QWidget *widget);
+ 
+-    //! uninstall shadow X11 property on given widget
+-    void uninstallX11Shadows(QWidget*) const;
++    //! take the shadow away from the compositor
++    /*! \param widget the widget that keeps the shadow. The call does
++        nothing if the widget has no native window. */
++    void uninstallShadows(QWidget *widget);
++
++#ifdef QTC_QT6_ENABLE_KDE
++    //! how far the shadow reaches outside the window, in pixels
++    /*! The margins follow the drop shadow size of the configuration, which
++        qtcX11ShadowSize() reports.
++        \param widget the widget to measure. A balloon tip gets a smaller
++        margin on the side that carries the arrow.
++        \return the margins for KWindowShadow::setPadding(). */
++    QMargins shadowMargins(QWidget *widget) const;
++
++    //! drop the shadow of a window that goes away
++    /*! \param object the QWindow that emits QObject::destroyed. The shadow
++        is a child of the window, so the window deletes the shadow. */
++    void windowDeleted(QObject *object);
++
++private:
++    //! the shadow of each window that this helper gave to the compositor
++    QHash<QWindow*, KWindowShadow*> m_shadows;
++#endif
+ };
+ }
+ 

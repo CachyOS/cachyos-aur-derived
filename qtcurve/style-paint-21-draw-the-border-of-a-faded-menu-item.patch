@@ -1,0 +1,38 @@
+Draw the border of a faded menu item
+
+The paint of a selected menu item tests the fade appearance before the
+border option. The fade branch paints the gradient alone and no border.
+The box for the border of a menu item therefore has no effect under the
+fade appearance. Fade is the shipped value, and the tooltip of the box
+promises a border around the gradient.
+
+The fade branch now draws the border while the box holds true. The
+border takes the standard border shade of the menu colours, which is the
+shade that the other appearances draw through the light bevel. A menu
+item with the box false keeps the paint of before.
+
+The change sits on the branch work/style-paint of the local tree, as commit 21 of 21.
+A new merge request on system/qtcurve takes that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/qt6/style/qtcurve.cpp b/qt6/style/qtcurve.cpp
+index fae68ab8..2ae4d741 100644
+--- a/qt6/style/qtcurve.cpp
++++ b/qt6/style/qtcurve.cpp
+@@ -3026,6 +3026,15 @@ void Style::drawMenuItem(QPainter *p, const QRect &r, const QStyleOption *option
+         } else {
+             p->fillRect(r2, QBrush(grad));
+         }
++
++        if(opts.borderMenuitems)
++        {
++            QStyleOption opt(*option);
++
++            opt.state|=State_Horizontal|State_Raised;
++            opt.state&=~(State_Sunken|State_On);
++            drawBorder(p, r, &opt, round, cols, WIDGET_MENU_ITEM, BORDER_FLAT, false, QTC_STD_BORDER);
++        }
+     } else if (MENU_BAR==type || opts.borderMenuitems) {
+         bool stdColor(MENU_BAR!=type || (SHADE_BLEND_SELECTED!=opts.shadeMenubars && SHADE_SELECTED!=opts.shadeMenubars));
+ 

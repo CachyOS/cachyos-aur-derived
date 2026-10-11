@@ -1,0 +1,34 @@
+Write sliderFill through the appearance writer
+
+sliderFill holds an appearance, and the writer sends it through
+CFG_WRITE_ENTRY. That macro calls the one-argument toStr, whose only
+match for an enumeration is the boolean form. Every value of the combo
+box therefore reaches the file as the word true. The reader asks
+toAppearance for that word and finds no appearance of that name. The
+read takes the default, so the chosen groove fill never survives one
+save.
+
+Send the field through CFG_WRITE_APPEARANCE_ENTRY with APP_ALLOW_BASIC,
+the range that the reader already asks for. The other 23 appearance
+fields already use an appearance writer. An older file that holds the
+word true still reads as the default, because toAppearance answers no
+appearance for it.
+
+The change sits on the branch work/config-io of the local tree, as commit 14 of 18.
+A new merge request on system/qtcurve takes that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/qt6/common/config_file.cpp b/qt6/common/config_file.cpp
+index 8f1b5e29..855c4136 100644
+--- a/qt6/common/config_file.cpp
++++ b/qt6/common/config_file.cpp
+@@ -2436,7 +2436,7 @@ bool qtcWriteConfig(KConfig *cfg, const Options &opts, const Options &def, bool
+         CFG_WRITE_APPEARANCE_ENTRY(sunkenAppearance, APP_ALLOW_BASIC);
+         CFG_WRITE_APPEARANCE_ENTRY(sbarBgndAppearance, APP_ALLOW_BASIC);
+         CFG_WRITE_APPEARANCE_ENTRY(tooltipAppearance, APP_ALLOW_BASIC);
+-        CFG_WRITE_ENTRY(sliderFill);
++        CFG_WRITE_APPEARANCE_ENTRY(sliderFill, APP_ALLOW_BASIC);
+         CFG_WRITE_ENTRY(progressGrooveColor);
+         CFG_WRITE_ENTRY(focus);
+         CFG_WRITE_ENTRY(lvButton);

@@ -1,0 +1,33 @@
+Etch a radio button with the custom dark alpha
+
+The upper etch arc of a radio button takes a fixed alpha. The lower arc
+of the same block takes the custom light alpha, and the check box beside
+it takes both custom values. The custom dark alpha therefore reaches no
+part of the radio button, while the group states that the style always
+uses the alpha values.
+
+The upper arc now takes the custom dark alpha while the group holds
+custom values. The two arcs of the etch follow the two spin boxes. A
+configuration with no custom alphas keeps the fixed alpha and the paint
+of before.
+
+The change sits on the branch work/style-paint of the local tree, as commit 20 of 21.
+A new merge request on system/qtcurve takes that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/qt6/style/qtcurve_primitive.cpp b/qt6/style/qtcurve_primitive.cpp
+index 0b6b5053..c47d98ac 100644
+--- a/qt6/style/qtcurve_primitive.cpp
++++ b/qt6/style/qtcurve_primitive.cpp
+@@ -1619,7 +1619,9 @@ Style::drawPrimitiveIndicatorRadioButton(PrimitiveElement,
+                 (glow || opts.buttonEffect != EFFECT_NONE || sunken)) {
+                 QColor topCol = glow ? m_mouseOverCols[GLOW_MO] : Qt::black;
+                 if (!glow) {
+-                    topCol.setAlphaF(ETCH_RADIO_TOP_ALPHA);
++                    topCol.setAlphaF(USE_CUSTOM_ALPHAS(opts) ?
++                                     opts.customAlphas[ALPHA_ETCH_DARK] :
++                                     ETCH_RADIO_TOP_ALPHA);
+                 }
+                 setPainterPen(painter, topCol, QPENWIDTH1);
+                 painter->drawArc(QRectF(x - 0.5, y - 0.5, opts.crSize + 1,

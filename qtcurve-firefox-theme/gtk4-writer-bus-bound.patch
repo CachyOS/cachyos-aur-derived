@@ -1,0 +1,991 @@
+Bound the session bus read of the writer
+
+A stalled session bus parks a write pass for ever. The pass asks the
+portal for the GTK theme name over the bus. A bus that accepts the
+call and never answers holds the main thread on a lock of Qt that has
+no deadline. No exit code and no file lock can then reach the pass.
+
+The theme read now runs in a sacrificial thread under a deadline. A
+read that answers gives the name to the pass. A read that meets the
+deadline stops the pass with a code of its own. The pass deletes no
+file, because a bus that gives no name is not a foreign theme. At most
+one such thread stays blocked, because a later read stops at once and
+names the earlier read in its line. A one shot pass that met the
+deadline leaves at once, because the teardown of Qt waits for the
+thread of the bus.
+
+The watch mode builds its colour watch after a bounded probe finds the
+bus and a bounded open gives the connection of the process. The colour
+watch and the handler of the lost bus then take that connection, and
+neither one waits for a bus with no deadline. A probe that meets the
+deadline holds the watch back and tries again, so the first pass and
+the file watch start with no bus.
+
+The daemon leaves with the code 0 when the bus dies, so a logout stops
+a daemon that no unit holds. The unit restarts the daemon after a
+failure alone, so any loss of the bus stops the watch and the unit
+starts no new daemon.
+
+The change sits on the branch work/gtk4-theme of the local tree, as the
+twelfth commit. The fork wyn/qtcurve holds that branch. Merge request !15 on
+system/qtcurve holds that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/gtk4/CMakeLists.txt b/gtk4/CMakeLists.txt
+index 9186d67d..af714f35 100644
+--- a/gtk4/CMakeLists.txt
++++ b/gtk4/CMakeLists.txt
+@@ -10,6 +10,8 @@ find_package(ECM 1.2.0 REQUIRED NO_MODULE)
+ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${ECM_MODULE_PATH})
+ find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Svg DBus)
+ find_package(KF6 REQUIRED COMPONENTS ColorScheme Config CoreAddons)
++# The bounded read of the session bus runs in a thread of its own.
++find_package(Threads REQUIRED)
+ 
+ set(qtcurve_gtk_writer_SRCS
+   writer/main.cpp
+@@ -21,6 +23,7 @@ set(qtcurve_gtk_writer_SRCS
+   writer/watch.cpp
+   writer/lock.cpp
+   writer/reexec.cpp
++  writer/busprobe.cpp
+   "${CMAKE_CURRENT_SOURCE_DIR}/../qt6/common/common.cpp"
+   "${CMAKE_CURRENT_SOURCE_DIR}/../qt6/common/config_file.cpp")
+ 
+@@ -38,6 +41,7 @@ target_include_directories(qtcurve-gtk-writer PRIVATE
+ target_link_libraries(qtcurve-gtk-writer
+   Qt6::Core Qt6::Gui Qt6::Svg Qt6::DBus
+   KF6::ColorScheme KF6::ConfigCore KF6::CoreAddons
++  Threads::Threads
+   qtcurve-utils)
+ 
+ # A cross build cannot run a host tool. A silent skip would install a theme
+@@ -633,6 +637,12 @@ if(QTC_GTK3_RENDER)
+     VERBATIM)
+ endif()
+ 
++# A socket that accepts a client and answers nothing. assert-bus.sh points the
++# session bus of a run of the writer at it, so a bounded read of the bus stops
++# at its deadline. The helper is a test fixture, and no rule installs it.
++add_executable(qtcurve-mutebus check/mutebus.c)
++add_dependencies(qtcurve-gtk-theme qtcurve-mutebus)
++
+ # The rows below run the writer over the files of a user, and not over a
+ # sheet of the build. Each row holds a private HOME and XDG_CONFIG_HOME, so
+ # the run leaves the files of the caller alone.
+@@ -646,6 +656,8 @@ add_custom_command(TARGET qtcurve-gtk-theme POST_BUILD
+           "${qtc_writer_work}/lock"
+   COMMAND sh "${qtc_check}/assert-reexec.sh" "${qtc_writer_command}"
+           "${qtc_writer_work}/reexec"
++  COMMAND sh "${qtc_check}/assert-bus.sh" "${qtc_writer_command}"
++          "${qtc_writer_work}/bus" "$<TARGET_FILE:qtcurve-mutebus>"
+   VERBATIM)
+ 
+ # The save of the dialog of Qt 6 spawns the writer, and the flag of that
+diff --git a/gtk4/check/assert-bus.sh b/gtk4/check/assert-bus.sh
+new file mode 100644
+index 00000000..679c2fdd
+--- /dev/null
++++ b/gtk4/check/assert-bus.sh
+@@ -0,0 +1,213 @@
++#!/bin/sh
++# assert-bus.sh WRITER WORKDIR MUTEBUS: a stalled session bus must not park a
++# pass or the start of the daemon. The run points the session bus of the
++# writer at MUTEBUS, which accepts a client and answers nothing. It reads the
++# deadline through the exit codes, the log lines and the liveness of each run.
++# This is the one check that runs the writer without --force, because it must
++# drive the read of the bus. HOME, XDG_CONFIG_HOME, QTCURVE_CONFIG_DIR and
++# XDG_RUNTIME_DIR point into WORKDIR, and GTK_THEME and DISPLAY go away. No
++# run therefore reaches the bus or the files of the caller. Every wait is a
++# counted poll of steps of one second, so no arm can stop the build.
++set -eu
++usage='usage: assert-bus.sh WRITER WORKDIR MUTEBUS'
++writer=${1:?$usage}
++work=${2:?$usage}
++mutebus=${3:?$usage}
++
++conf=$work/config
++qtc=$work/qtcurve
++run=$work/runtime
++fault=$work/fault
++# The names of two sockets of the abstract namespace, which hold no path. The
++# number of the process keeps the names of one run apart from another run.
++mutename=qtcurve-mutebus-$$
++realname=qtcurve-realbus-$$
++# The cap of the run time of the mute bus, in seconds.
++mutecap=120
++seeds="$conf/gtk-4.0/qtcurve.css $conf/gtk-3.0/qtcurve.css
++$conf/gtk-4.0/qtcurve-assets/marker"
++pids=
++last=
++code=0
++daemon=
++kept=0
++
++clean() {
++    for p in $pids; do
++        kill "$p" 2>/dev/null || true
++    done
++    rm -f "$fault" 2>/dev/null || true
++}
++
++# A signal that stops the run leaves a writer, a mute bus or a private bus of
++# the run alive. The trap takes each one away, and SIGKILL runs no trap.
++trap clean EXIT
++trap 'clean; exit 1' HUP INT QUIT TERM
++
++rm -rf "$work"
++mkdir -p "$conf/gtk-3.0" "$conf/gtk-4.0" "$conf/gtk-4.0/qtcurve-assets" \
++    "$qtc" "$run"
++chmod 0700 "$run"
++printf '[Settings]\nappearance=gradient\n' > "$qtc/stylerc"
++unset GTK_THEME DISPLAY WAYLAND_DISPLAY DBUS_SESSION_BUS_ADDRESS
++ulimit -c 0
++
++fail() {
++    echo "assert-bus: $1" >&2
++    exit 1
++}
++
++# running PID: gives 0 while the process PID runs. A process that ended and
++# waits for its parent holds the state Z, and it does not run.
++running() {
++    state=$(sed -n 's/^State:[[:space:]]*//p' "/proc/$1/status" 2>/dev/null) ||
++        return 1
++    case $state in
++        Z*|'') return 1;;
++        *) return 0;;
++    esac
++}
++
++# start LOG BUS ARGS...: starts one run of the writer over the private home
++# and the bus BUS, and holds the pid of that run in the variable last.
++start() {
++    log=$1
++    bus=$2
++    shift 2
++    HOME=$work XDG_CONFIG_HOME=$conf QTCURVE_CONFIG_DIR=$qtc \
++        XDG_RUNTIME_DIR=$run DBUS_SESSION_BUS_ADDRESS=$bus \
++        QTC_GTK_TEST_FAULT=$fault "$writer" "$@" > "$log" 2>&1 &
++    last=$!
++    pids="$pids $last"
++}
++
++# wait_exit PID LIMIT NAME: waits at most LIMIT seconds for the run PID to
++# end, and holds the exit code of that run in the variable code. A run that
++# stays at the limit takes a signal, and the check fails.
++wait_exit() {
++    i=0
++    while [ "$i" -lt "$2" ]; do
++        if ! running "$1"; then
++            code=0
++            wait "$1" || code=$?
++            return 0
++        fi
++        sleep 1
++        i=$((i + 1))
++    done
++    kill "$1" 2>/dev/null || true
++    fail "$3 runs after $2 seconds"
++}
++
++# wait_line LIMIT FILE TEXT NAME: waits at most LIMIT seconds for the file
++# FILE to hold the text TEXT.
++wait_line() {
++    i=0
++    while [ "$i" -lt "$1" ]; do
++        if grep -qF "$3" "$2" 2>/dev/null; then
++            return 0
++        fi
++        sleep 1
++        i=$((i + 1))
++    done
++    fail "$4"
++}
++
++# 1. A one shot write meets the deadline of the bus, gives the code 8 and
++# removes no file. The mute bus accepts the client and answers nothing, so a
++# read of the bus with no deadline parks the run for ever.
++"$mutebus" "$mutename" "$mutecap" > "$work/mute.log" 2>&1 &
++pids="$pids $!"
++wait_line 15 "$work/mute.log" ready "the mute bus started no socket"
++
++for path in $seeds; do
++    printf 'seed\n' > "$path"
++    kept=$((kept + 1))
++done
++start "$work/write.log" "unix:abstract=$mutename" --write
++wait_exit "$last" 20 "the bounded write"
++if [ "$code" -ne 8 ]; then
++    fail "the bounded write gave the code $code and not 8"
++fi
++grep -qF "gave no theme name" "$work/write.log" ||
++    fail "the bounded write named no deadline of the session bus"
++for path in $seeds; do
++    [ -e "$path" ] || fail "the bounded write removed $path"
++done
++echo "assert-bus: the bounded write met the deadline, gave the code 8 and" \
++     "kept its $kept files"
++
++# 2. The watch mode starts on the same stalled bus, and a poke of a watched
++# path drives one pass. The flag --force holds the bus out of every pass, so
++# the arm reads the start of the daemon alone. The control fault gives that
++# pass the code 5 on every host.
++rm -f "$fault"
++start "$work/watch.log" "unix:abstract=$mutename" --watch --force
++daemon=$last
++sleep 2
++running "$daemon" || fail "the watch mode stopped at the first pass"
++: > "$fault"
++printf 'appearance=soft\n' >> "$qtc/stylerc"
++wait_line 20 "$work/watch.log" "the write failed with the code 5" \
++    "the watch mode ran no pass on a stalled bus"
++running "$daemon" || fail "the watch mode stopped after the pass"
++kill "$daemon" 2>/dev/null || true
++wait_exit "$daemon" 10 "the watch mode on a stalled bus"
++rm -f "$fault"
++echo "assert-bus: the watch mode started on a stalled bus, and a poke of a" \
++     "watched path drove one pass"
++
++# 3. The watch mode with no --force meets the deadline in its first pass, and
++# the daemon lives on. The unit of the daemon carries Restart=on-failure. A
++# first pass that left with the code 8 would give one restart every few
++# seconds while the bus stalls. A later pass waits no time, because the read
++# of the first pass still holds the one thread of the bus.
++rm -f "$fault"
++start "$work/tolerate.log" "unix:abstract=$mutename" --watch
++daemon=$last
++wait_line 20 "$work/tolerate.log" "gave no theme name" \
++    "the first pass of the watch mode met no deadline"
++if ! running "$daemon"; then
++    code=0
++    wait "$daemon" || code=$?
++    if [ "$code" -eq 8 ]; then
++        fail "the watch mode left with the code 8, which the unit restarts"
++    fi
++    fail "the watch mode left with the code $code after the first pass"
++fi
++printf 'appearance=flat\n' >> "$qtc/stylerc"
++wait_line 20 "$work/tolerate.log" "an earlier read of the session bus" \
++    "a later pass named no earlier read of the session bus"
++running "$daemon" || fail "the watch mode stopped after a later pass"
++kill "$daemon" 2>/dev/null || true
++wait_exit "$daemon" 10 "the watch mode with no --force"
++echo "assert-bus: the watch mode with no --force lived past a first pass of" \
++     "the code 8, and a later pass named the earlier read"
++
++# 4. The daemon leaves with the code 0 when the session bus dies, so a logout
++# stops a daemon that no unit holds. The arm needs dbus-daemon, and it names
++# the binary where the host holds none. The private bus holds no portal, so
++# the probe of the daemon connects and reads no name. That outcome is enough
++# for the handler of the lost bus.
++if command -v dbus-daemon > /dev/null 2>&1; then
++    dbus-daemon --session --nofork --address="unix:abstract=$realname" \
++        --print-address > "$work/bus.log" 2>&1 &
++    buspid=$!
++    pids="$pids $buspid"
++    wait_line 15 "$work/bus.log" "$realname" \
++        "the private bus started no socket"
++    start "$work/death.log" "unix:abstract=$realname" --watch --force
++    daemon=$last
++    sleep 3
++    running "$daemon" || fail "the watch mode stopped on a live bus"
++    kill "$buspid" 2>/dev/null || true
++    wait_exit "$daemon" 20 "the daemon after the death of the bus"
++    if [ "$code" -ne 0 ]; then
++        fail "the daemon gave the code $code and not 0 after the bus died"
++    fi
++    echo "assert-bus: the daemon left with the code 0 when the session bus" \
++         "died"
++else
++    echo "assert-bus: dbus-daemon is absent, so the arm of the death of the" \
++         "bus did not run" >&2
++fi
+diff --git a/gtk4/check/mutebus.c b/gtk4/check/mutebus.c
+new file mode 100644
+index 00000000..78809c55
+--- /dev/null
++++ b/gtk4/check/mutebus.c
+@@ -0,0 +1,97 @@
++/*****************************************************************************
++ *   Copyright 2026 QtCurve authors                                          *
++ *                                                                           *
++ *   This program is free software; you can redistribute it and/or modify    *
++ *   it under the terms of the GNU Lesser General Public License as          *
++ *   published by the Free Software Foundation; either version 2.1 of the    *
++ *   License, or (at your option) version 3, or any later version accepted   *
++ *   by the membership of KDE e.V. (or its successor approved by the         *
++ *   membership of KDE e.V.), which shall act as a proxy defined in          *
++ *   Section 6 of version 3 of the license.                                  *
++ *                                                                           *
++ *   This program is distributed in the hope that it will be useful,         *
++ *   but WITHOUT ANY WARRANTY; without even the implied warranty of          *
++ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU       *
++ *   Lesser General Public License for more details.                         *
++ *                                                                           *
++ *   You should have received a copy of the GNU Lesser General Public        *
++ *   License along with this library. If not,                                *
++ *   see <http://www.gnu.org/licenses/>.                                     *
++ *****************************************************************************/
++
++/* mutebus NAME [SECONDS]: a socket that accepts a client and answers nothing.
++ *
++ * A D-Bus client that waits for this bus blocks for ever. A bounded read of
++ * the bus therefore stops at its deadline, and the check reads that outcome.
++ * The socket takes a name of the abstract namespace of Linux. The path of a
++ * socket of the file system holds 107 bytes at most, and a build tree can be
++ * deeper than that. The helper is a test fixture, and no rule installs it.
++ */
++
++#include <errno.h>
++#include <stddef.h>
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++#include <sys/socket.h>
++#include <sys/un.h>
++#include <unistd.h>
++
++/* The cap of the run time of the helper, in seconds. */
++#define QTC_MUTEBUS_CAP 180
++
++int
++main(int argc, char **argv)
++{
++    struct sockaddr_un addr;
++    socklen_t len;
++    size_t size;
++    unsigned cap;
++    int s;
++
++    if (argc < 2) {
++        fprintf(stderr, "usage: qtcurve-mutebus NAME [SECONDS]\n");
++        return 2;
++    }
++    size = strlen(argv[1]);
++    if (size + 1 >= sizeof addr.sun_path) {
++        fprintf(stderr, "qtcurve-mutebus: the name is too long\n");
++        return 1;
++    }
++    cap = argc > 2 && atoi(argv[2]) > 0 ? (unsigned)atoi(argv[2]) :
++        QTC_MUTEBUS_CAP;
++    s = socket(AF_UNIX, SOCK_STREAM, 0);
++    if (s < 0) {
++        perror("qtcurve-mutebus: socket");
++        return 1;
++    }
++    memset(&addr, 0, sizeof addr);
++    addr.sun_family = AF_UNIX;
++    /* A first byte of 0 in sun_path names the abstract namespace, and the
++       length of the address gives the length of the name. */
++    memcpy(addr.sun_path + 1, argv[1], size);
++    len = (socklen_t)(offsetof(struct sockaddr_un, sun_path) + 1 + size);
++    if (bind(s, (struct sockaddr *)&addr, len) != 0) {
++        perror("qtcurve-mutebus: bind");
++        return 1;
++    }
++    if (listen(s, 16) != 0) {
++        perror("qtcurve-mutebus: listen");
++        return 1;
++    }
++    printf("ready\n");
++    fflush(stdout);
++    /* A cap of the run time, so a helper that outlives its script stops. */
++    alarm(cap);
++    for (;;) {
++        int c = accept(s, NULL, NULL);
++        if (c < 0) {
++            if (errno == EINTR) {
++                continue;
++            }
++            break;
++        }
++        /* The helper holds the connection open and it answers nothing. */
++    }
++    return 0;
++}
+diff --git a/gtk4/writer/busprobe.cpp b/gtk4/writer/busprobe.cpp
+new file mode 100644
+index 00000000..06db0036
+--- /dev/null
++++ b/gtk4/writer/busprobe.cpp
+@@ -0,0 +1,171 @@
++/*****************************************************************************
++ *   Copyright 2026 QtCurve authors                                          *
++ *                                                                           *
++ *   This program is free software; you can redistribute it and/or modify    *
++ *   it under the terms of the GNU Lesser General Public License as          *
++ *   published by the Free Software Foundation; either version 2.1 of the    *
++ *   License, or (at your option) version 3, or any later version accepted   *
++ *   by the membership of KDE e.V. (or its successor approved by the         *
++ *   membership of KDE e.V.), which shall act as a proxy defined in          *
++ *   Section 6 of version 3 of the license.                                  *
++ *                                                                           *
++ *   This program is distributed in the hope that it will be useful,         *
++ *   but WITHOUT ANY WARRANTY; without even the implied warranty of          *
++ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU       *
++ *   Lesser General Public License for more details.                         *
++ *                                                                           *
++ *   You should have received a copy of the GNU Lesser General Public        *
++ *   License along with this library. If not,                                *
++ *   see <http://www.gnu.org/licenses/>.                                     *
++ *****************************************************************************/
++
++#include "busprobe.h"
++
++#include <QByteArray>
++#include <QDBusConnection>
++#include <QDBusInterface>
++#include <QDBusReply>
++
++#include <atomic>
++#include <chrono>
++#include <future>
++#include <memory>
++#include <thread>
++
++namespace QtCurve {
++namespace Gtk {
++
++namespace {
++
++/** The name of the variable that holds the theme name of the session. */
++const char *const themeEnv = "GTK_THEME";
++
++/**
++ * True while a stalled bus holds a sacrificial thread. A later call then
++ * stops at once, and it starts no second thread.
++ */
++std::atomic<bool> g_busy{false};
++
++/** The serial of a private connection, so no two probes share a name. */
++std::atomic<unsigned> g_serial{0};
++
++/** The outcome of one run of the sacrificial thread. */
++enum class Slot { Done, Deadline, Stalled };
++
++/**
++ * Runs the function body in the sacrificial thread, waits at most deadlineMs
++ * for it, and gives the value of body to out. The thread of a run that met
++ * the deadline stays blocked, and it owns the shared state of that run.
++ *
++ * \param deadlineMs the longest wait for body, in milliseconds.
++ * \param body the work over the session bus, which gives one value.
++ * \param out the value of body, which the function writes for Done alone.
++ * \return Done after body returned inside deadlineMs. Deadline after a wait
++ *     of deadlineMs. Stalled while the thread of an earlier run stays
++ *     blocked, which starts no thread and waits no time.
++ */
++template <typename Value, typename Body>
++Slot
++runBounded(int deadlineMs, Body body, Value &out)
++{
++    if (g_busy.exchange(true)) {
++        return Slot::Stalled;
++    }
++    // The worker owns the promise through the shared pointer, so the promise
++    // outlives the future of a run that meets its deadline.
++    auto slot = std::make_shared<std::promise<Value>>();
++    std::future<Value> ready = slot->get_future();
++    std::thread worker([slot, body] {
++            slot->set_value(body());
++            g_busy.store(false);
++        });
++    if (ready.wait_for(std::chrono::milliseconds(deadlineMs)) ==
++        std::future_status::ready) {
++        worker.join();
++        out = ready.get();
++        return Slot::Done;
++    }
++    worker.detach();
++    return Slot::Deadline;
++}
++
++/**
++ * Reads the theme name over a private connection of the session bus, and
++ * gives the outcome. The function runs in the sacrificial thread alone. The
++ * connection carries a name of its own, and the function closes it before it
++ * returns.
++ *
++ * \param name the name of the private connection, which no other probe holds.
++ * \return the outcome and the name, which is empty for every outcome other
++ *     than Answered.
++ */
++ThemeResult
++readOverBus(const QString &name)
++{
++    ThemeResult result{ ThemeProbe::NoBus, QString() };
++    QDBusConnection bus =
++        QDBusConnection::connectToBus(QDBusConnection::SessionBus, name);
++    if (bus.isConnected()) {
++        QDBusInterface portal(
++            QStringLiteral("org.freedesktop.portal.Desktop"),
++            QStringLiteral("/org/freedesktop/portal/desktop"),
++            QStringLiteral("org.freedesktop.portal.Settings"), bus);
++        const QDBusReply<QDBusVariant> reply =
++            portal.call(QStringLiteral("ReadOne"),
++                        QStringLiteral("org.gnome.desktop.interface"),
++                        QStringLiteral("gtk-theme"));
++        if (reply.isValid()) {
++            result.probe = ThemeProbe::Answered;
++            result.name = reply.value().variant().toString();
++            // A deep copy, because the name crosses to the calling thread.
++            result.name.detach();
++        } else {
++            result.probe = ThemeProbe::Connected;
++        }
++    }
++    QDBusConnection::disconnectFromBus(name);
++    return result;
++}
++
++}
++
++ThemeResult
++sessionThemeProbe(int deadlineMs)
++{
++    const QByteArray env = qgetenv(themeEnv);
++    if (!env.isEmpty()) {
++        return { ThemeProbe::Answered,
++                 QString::fromLocal8Bit(env).section(QLatin1Char(':'), 0, 0) };
++    }
++    const QString name = QStringLiteral("qtcurve-gtk-writer-probe-%1")
++        .arg(g_serial.fetch_add(1));
++    ThemeResult result{ ThemeProbe::NoBus, QString() };
++    const Slot slot = runBounded(deadlineMs,
++                                 [name] { return readOverBus(name); }, result);
++    if (slot == Slot::Done) {
++        return result;
++    }
++    if (slot == Slot::Stalled) {
++        return { ThemeProbe::Stalled, QString() };
++    }
++    return { ThemeProbe::Deadline, QString() };
++}
++
++bool
++openSessionBus(int deadlineMs)
++{
++    bool open = false;
++    const Slot slot = runBounded(deadlineMs, [] {
++            return QDBusConnection::sessionBus().isConnected();
++        }, open);
++    return slot == Slot::Done && open;
++}
++
++bool
++busProbeStalled()
++{
++    return g_busy.load();
++}
++
++}
++}
+diff --git a/gtk4/writer/busprobe.h b/gtk4/writer/busprobe.h
+new file mode 100644
+index 00000000..141fdfdf
+--- /dev/null
++++ b/gtk4/writer/busprobe.h
+@@ -0,0 +1,91 @@
++/*****************************************************************************
++ *   Copyright 2026 QtCurve authors                                          *
++ *                                                                           *
++ *   This program is free software; you can redistribute it and/or modify    *
++ *   it under the terms of the GNU Lesser General Public License as          *
++ *   published by the Free Software Foundation; either version 2.1 of the    *
++ *   License, or (at your option) version 3, or any later version accepted   *
++ *   by the membership of KDE e.V. (or its successor approved by the         *
++ *   membership of KDE e.V.), which shall act as a proxy defined in          *
++ *   Section 6 of version 3 of the license.                                  *
++ *                                                                           *
++ *   This program is distributed in the hope that it will be useful,         *
++ *   but WITHOUT ANY WARRANTY; without even the implied warranty of          *
++ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU       *
++ *   Lesser General Public License for more details.                         *
++ *                                                                           *
++ *   You should have received a copy of the GNU Lesser General Public        *
++ *   License along with this library. If not,                                *
++ *   see <http://www.gnu.org/licenses/>.                                     *
++ *****************************************************************************/
++
++#ifndef QTC_GTK4_BUSPROBE_H
++#define QTC_GTK4_BUSPROBE_H
++
++#include <QString>
++
++namespace QtCurve {
++namespace Gtk {
++
++/** The exit code of a pass that gets no theme name from the session bus. */
++const int busTimeoutCode = 8;
++
++/**
++ * The longest wait for the theme name of the session bus, in milliseconds.
++ * A portal that answers takes much less than one second. A deadline of 5 s
++ * covers a loaded session, and it still bounds a bus that never answers.
++ */
++const int busDeadlineMs = 5000;
++
++/** The outcome of a bounded read of the theme name of the session. */
++enum class ThemeProbe { Answered, Connected, NoBus, Deadline, Stalled };
++
++/** The outcome and the name of a bounded read of the theme of the session. */
++struct ThemeResult {
++    ThemeProbe probe;
++    QString name;
++};
++
++/**
++ * Reads the GTK theme name of the session under a deadline. The variable
++ * GTK_THEME answers in the calling thread and takes no bus. Every read over
++ * the session bus runs in one sacrificial thread that holds a private
++ * connection. The function holds at most one such thread for the life of the
++ * process.
++ *
++ * \param deadlineMs the longest wait for the bus, in milliseconds.
++ * \return Answered with the name of the theme. Connected with an empty name
++ *     when the bus answers and the portal does not. NoBus with an empty name
++ *     when no session bus answers. Deadline with an empty name after a wait
++ *     of deadlineMs. Stalled with an empty name and with no wait, while the
++ *     thread of an earlier call stays blocked.
++ */
++ThemeResult sessionThemeProbe(int deadlineMs);
++
++/**
++ * Opens the default connection of the session bus under a deadline. The open
++ * runs in the same sacrificial thread as a read of the theme name. Qt holds
++ * that connection for the life of the process, so every later call of
++ * QDBusConnection::sessionBus() gives it back with no wait.
++ *
++ * \param deadlineMs the longest wait for the bus, in milliseconds.
++ * \return true when the default connection is open. false after a wait of
++ *     deadlineMs, and false with no wait while the thread of an earlier call
++ *     stays blocked.
++ */
++bool openSessionBus(int deadlineMs);
++
++/**
++ * Returns true while a stalled session bus holds a sacrificial thread. Such a
++ * bus also holds the D-Bus thread of Qt, and the teardown of Qt waits for
++ * that thread. A caller that leaves the process must therefore leave through
++ * _exit(2).
++ *
++ * \return true while a thread of sessionThemeProbe() stays blocked.
++ */
++bool busProbeStalled();
++
++}
++}
++
++#endif
+diff --git a/gtk4/writer/main.cpp b/gtk4/writer/main.cpp
+index 3244f859..f121740f 100644
+--- a/gtk4/writer/main.cpp
++++ b/gtk4/writer/main.cpp
+@@ -19,6 +19,7 @@
+  *   see <http://www.gnu.org/licenses/>.                                     *
+  *****************************************************************************/
+ 
++#include "busprobe.h"
+ #include "dialect.h"
+ #include "lock.h"
+ #include "reexec.h"
+@@ -29,9 +30,6 @@
+ #include <qtcurve-utils/dirs.h>
+ 
+ #include <QCoreApplication>
+-#include <QDBusConnection>
+-#include <QDBusInterface>
+-#include <QDBusReply>
+ #include <QDir>
+ #include <QFile>
+ #include <QTextStream>
+@@ -83,28 +81,6 @@ usage()
+             "  --force           skip the theme name gate\n");
+ }
+ 
+-/** Returns the GTK theme name of the session, or an empty string. */
+-QString
+-sessionThemeName()
+-{
+-    const QByteArray env = qgetenv("GTK_THEME");
+-    if (!env.isEmpty()) {
+-        return QString::fromLocal8Bit(env).section(QLatin1Char(':'), 0, 0);
+-    }
+-    QDBusInterface portal(QStringLiteral("org.freedesktop.portal.Desktop"),
+-                          QStringLiteral("/org/freedesktop/portal/desktop"),
+-                          QStringLiteral("org.freedesktop.portal.Settings"),
+-                          QDBusConnection::sessionBus());
+-    const QDBusReply<QDBusVariant> reply =
+-        portal.call(QStringLiteral("ReadOne"),
+-                    QStringLiteral("org.gnome.desktop.interface"),
+-                    QStringLiteral("gtk-theme"));
+-    if (reply.isValid()) {
+-        return reply.value().variant().toString();
+-    }
+-    return QString();
+-}
+-
+ /** Returns the directory that holds the shipped SVG assets. */
+ QString
+ installedAssets()
+@@ -212,6 +188,25 @@ lockedRun(const std::function<int()> &body)
+     return code;
+ }
+ 
++/**
++ * Gives the exit code code to the operating system. A pass that met the
++ * deadline of the session bus leaves through _exit(2). The teardown of Qt
++ * waits for a thread that such a bus holds. Every other pass returns, and
++ * main() gives the code back.
++ *
++ * \param code the exit code of one mode.
++ * \return code, for a pass that no stalled session bus met.
++ */
++int
++leaveWith(int code)
++{
++    if (busProbeStalled()) {
++        fflush(nullptr);
++        _exit(code);
++    }
++    return code;
++}
++
+ /** Prints the path of one file or one directory that the writer deleted. */
+ void
+ printGone(const QString &path)
+@@ -340,8 +335,22 @@ int
+ runWrite(const Args &args)
+ {
+     clearEmitError();
+-    if (!args.force && sessionThemeName() != QLatin1String(themeName)) {
+-        return removeBoth();
++    if (!args.force) {
++        const ThemeResult theme = sessionThemeProbe(busDeadlineMs);
++        if (theme.probe == ThemeProbe::Stalled) {
++            fprintf(stderr, "qtcurve-gtk-writer: an earlier read of the"
++                    " session bus still waits, and this pass stops\n");
++            return busTimeoutCode;
++        }
++        if (theme.probe == ThemeProbe::Deadline) {
++            fprintf(stderr, "qtcurve-gtk-writer: the session bus gave no theme"
++                    " name in %d s, and this pass stops\n",
++                    busDeadlineMs / 1000);
++            return busTimeoutCode;
++        }
++        if (theme.name != QLatin1String(themeName)) {
++            return removeBoth();
++        }
+     }
+     if (testFault()) {
+         failTest();
+@@ -465,20 +474,20 @@ main(int argc, char **argv)
+         return runStdout(args);
+     }
+     if (args.mode == QLatin1String("--remove-gtk")) {
+-        return lockedRun(removeBoth);
++        return leaveWith(lockedRun(removeBoth));
+     }
+     if (args.mode == QLatin1String("--remove-qt")) {
+         args.useDefaults = true;
+-        return lockedRun([&args] {
++        return leaveWith(lockedRun([&args] {
+                 removeSettings();
+                 return runWrite(args);
+-            });
++            }));
+     }
+     if (args.mode == QLatin1String("--purge-settings")) {
+-        return lockedRun([] {
++        return leaveWith(lockedRun([] {
+                 removeSettings();
+                 return removeBoth();
+-            });
++            }));
+     }
+     if (args.mode == QLatin1String("--watch")) {
+         int dfd = adoptLockFd(lockPath(daemonLockName));
+@@ -492,8 +501,8 @@ main(int argc, char **argv)
+             }
+         }
+         const int first = lockedRun([&args] { return runWrite(args); });
+-        if (first > 1 && first != lockBusyCode) {
+-            return first;
++        if (first > 1 && first != lockBusyCode && first != busTimeoutCode) {
++            return leaveWith(first);
+         }
+         QStringList paths;
+         paths << QString::fromLocal8Bit(getConfDir()) + QStringLiteral("stylerc");
+@@ -508,7 +517,7 @@ main(int argc, char **argv)
+         if (first == lockBusyCode) {
+             watcher.kick();
+         }
+-        return QCoreApplication::exec();
++        return leaveWith(QCoreApplication::exec());
+     }
+-    return lockedRun([&args] { return runWrite(args); });
++    return leaveWith(lockedRun([&args] { return runWrite(args); }));
+ }
+diff --git a/gtk4/writer/watch.cpp b/gtk4/writer/watch.cpp
+index 58c762ab..36d08a91 100644
+--- a/gtk4/writer/watch.cpp
++++ b/gtk4/writer/watch.cpp
+@@ -21,12 +21,15 @@
+ 
+ #include "watch.h"
+ 
++#include "busprobe.h"
+ #include "lock.h"
+ 
+ #include <KConfigGroup>
+ #include <KConfigWatcher>
+ #include <KSharedConfig>
+ 
++#include <QCoreApplication>
++#include <QDBusConnection>
+ #include <QFileInfo>
+ #include <QFileSystemWatcher>
+ 
+@@ -42,6 +45,13 @@ namespace Gtk {
+  */
+ static const int debounceMs = 500;
+ 
++/**
++ * The retry of the colour watch, in milliseconds. A session bus that does not
++ * answer at the start of the daemon can answer later, and 30 s keeps the
++ * retry cheap.
++ */
++static const int colourRetryMs = 30000;
++
+ Watcher::Watcher(const std::function<int()> &write, const QStringList &paths,
+                  QObject *parent)
+     : QObject(parent), m_write(write), m_paths(paths),
+@@ -57,18 +67,10 @@ Watcher::Watcher(const std::function<int()> &write, const QStringList &paths,
+     connect(m_files, &QFileSystemWatcher::directoryChanged,
+             this, &Watcher::schedule);
+ 
+-    m_config = KConfigWatcher::create(
+-        KSharedConfig::openConfig(QStringLiteral("kdeglobals")));
+-    connect(m_config.get(), &KConfigWatcher::configChanged, this,
+-            [this] (const KConfigGroup &group, const QByteArrayList &names) {
+-                if (group.name() != QLatin1String("General")) {
+-                    return;
+-                }
+-                if (names.contains(QByteArrayLiteral("ColorScheme")) ||
+-                    names.contains(QByteArrayLiteral("AccentColor"))) {
+-                    schedule();
+-                }
+-            });
++    m_busRetry.setSingleShot(true);
++    m_busRetry.setInterval(colourRetryMs);
++    connect(&m_busRetry, &QTimer::timeout, this, &Watcher::initColourWatch);
++    QTimer::singleShot(0, this, &Watcher::initColourWatch);
+ }
+ 
+ void
+@@ -100,6 +102,47 @@ Watcher::kick()
+     schedule();
+ }
+ 
++void
++Watcher::initColourWatch()
++{
++    if (m_colourReady) {
++        return;
++    }
++    const ThemeResult probe = sessionThemeProbe(busDeadlineMs);
++    if (probe.probe != ThemeProbe::Answered &&
++        probe.probe != ThemeProbe::Connected) {
++        m_busRetry.start();
++        return;
++    }
++    if (!openSessionBus(busDeadlineMs)) {
++        m_busRetry.start();
++        return;
++    }
++    m_config = KConfigWatcher::create(
++        KSharedConfig::openConfig(QStringLiteral("kdeglobals")));
++    connect(m_config.get(), &KConfigWatcher::configChanged, this,
++            [this] (const KConfigGroup &group, const QByteArrayList &names) {
++                if (group.name() != QLatin1String("General")) {
++                    return;
++                }
++                if (names.contains(QByteArrayLiteral("ColorScheme")) ||
++                    names.contains(QByteArrayLiteral("AccentColor"))) {
++                    schedule();
++                }
++            });
++    QDBusConnection::sessionBus().connect(
++        QString(), QStringLiteral("/org/freedesktop/DBus/Local"),
++        QStringLiteral("org.freedesktop.DBus.Local"),
++        QStringLiteral("Disconnected"), this, SLOT(busDown()));
++    m_colourReady = true;
++}
++
++void
++Watcher::busDown()
++{
++    QCoreApplication::exit(0);
++}
++
+ /** Prints the one line that names the exit code of a pass that failed. */
+ static void
+ printFailure(int code)
+diff --git a/gtk4/writer/watch.h b/gtk4/writer/watch.h
+index f4cc26f4..f839a40c 100644
+--- a/gtk4/writer/watch.h
++++ b/gtk4/writer/watch.h
+@@ -36,9 +36,11 @@ namespace QtCurve {
+ namespace Gtk {
+ 
+ /**
+- * The resident half of the writer. It holds one KConfigWatcher over kdeglobals
+- * and one QFileSystemWatcher over the five watched paths and their holding
+- * directories.
++ * The resident half of the writer. It holds one QFileSystemWatcher over the
++ * five watched paths and their holding directories from the start. It holds
++ * one KConfigWatcher over kdeglobals and one handler of the lost session bus
++ * only after a bounded probe finds that bus. A stalled bus therefore does not
++ * stop the start of the daemon.
+  */
+ class Watcher : public QObject {
+     Q_OBJECT
+@@ -64,6 +66,19 @@ private Q_SLOTS:
+      * that code.
+      */
+     void fire();
++    /**
++     * Builds the colour watch and reads the signal of the lost session bus.
++     * A bounded probe reads that bus first, and a bounded open then gives the
++     * default connection of the process. A probe or an open that gives no bus
++     * starts a retry of 30 s, and the daemon runs the file watch alone. The
++     * colour watch and the signal take that connection, so neither one waits
++     * for a bus with no deadline.
++     */
++    void initColourWatch();
++    /**
++     * Leaves with the code 0, so a logout stops a daemon that no unit holds.
++     */
++    void busDown();
+ 
+ private:
+     /**
+@@ -75,8 +90,16 @@ private:
+     std::function<int()> m_write;
+     QStringList m_paths;
+     QFileSystemWatcher *m_files;
++    /** The colour watch, which initColourWatch() builds. */
+     KConfigWatcher::Ptr m_config;
+     QTimer m_timer;
++    /** The retry of the colour watch while no session bus answers. */
++    QTimer m_busRetry;
++    /**
++     * True after the watcher holds the colour watch and reads the signal of
++     * the lost session bus.
++     */
++    bool m_colourReady = false;
+     /**
+      * True after a line of the busy write lock, until a pass of another code.
+      * The flag caps the journal at one line for each run of that code.

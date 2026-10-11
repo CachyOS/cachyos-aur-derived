@@ -1,0 +1,43 @@
+Free the status bar frame from the menu options
+
+One function serves the frame of a status bar item and the frame of a
+popup menu, and one body paints both. The body tests the options of a
+popup menu first. A menu background that is not flat, or a popup menu
+that is not square, therefore stops the paint of a status bar frame. The
+dialog keeps the check box enabled, and its tool tip names status bars
+alone, so the option moves no pixel in such a configuration. The frame
+also takes the colours of a popup menu, so the shade of the menu
+background moves the colour of a status bar.
+
+The status bar arm now stands alone. It tests the option of the status
+bar frames, and it takes the colours of the window. The menu arm keeps
+every line, so the frame of a popup menu does not move.
+
+The change sits on the branch work/style-paint of the local tree, as commit 5 of 21.
+A new merge request on system/qtcurve takes that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/qt6/style/qtcurve_primitive.cpp b/qt6/style/qtcurve_primitive.cpp
+index d31daa97..d45c001d 100644
+--- a/qt6/style/qtcurve_primitive.cpp
++++ b/qt6/style/qtcurve_primitive.cpp
+@@ -1988,10 +1988,16 @@ Style::drawPrimitiveFrameStatusBarOrMenu(PrimitiveElement element,
+                                          QPainter *painter,
+                                          const QWidget *widget) const
+ {
+-    if (element == PE_FrameStatusBarItem && !opts.drawStatusBarFrames) {
++    QRect r = option->rect;
++    if (element == PE_FrameStatusBarItem) {
++        // A status bar holds no menu background, so the frame takes the
++        // colours of the window and no option of a popup menu.
++        if (opts.drawStatusBarFrames) {
++            painter->setPen(backgroundColors(option)[QTC_STD_BORDER]);
++            drawRect(painter, r);
++        }
+         return true;
+     }
+-    QRect r = option->rect;
+     if ((opts.square & SQUARE_POPUP_MENUS) &&
+         (qtcIsFlatBgnd(opts.menuBgndAppearance) ||
+          (opts.gtkComboMenus && widget && widget->parent() &&

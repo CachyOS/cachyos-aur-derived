@@ -1,0 +1,34 @@
+Keep the loaded shadow colour type in range
+
+The loader of the shadow settings checks the size and the two offsets against
+their limits. It replaces a value outside those limits with the default of
+the group. It gave the colour type no such check. setColorType() assigns the
+number before its switch, and the default branch of that switch leaves an
+unknown number in place.
+
+A file that holds ColorType=99 therefore reached the combination box of the
+window manager page. QComboBox::setCurrentIndex() refuses the index and shows
+an empty box, and the next save wrote ColorType=-1 back to the file.
+
+Replace a colour type outside the range of the box with the default of the
+group. Put the new check beside the checks of the size and of the offsets. A
+value from Focus to Custom loads as before.
+
+The change sits on the branch work/wm-kcm of the local tree, as commit 3 of 4.
+A new merge request on system/qtcurve takes that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/qt6/kwin/qtcurveshadowconfiguration.cpp b/qt6/kwin/qtcurveshadowconfiguration.cpp
+index 88fe23f4..02bd1c56 100644
+--- a/qt6/kwin/qtcurveshadowconfiguration.cpp
++++ b/qt6/kwin/qtcurveshadowconfiguration.cpp
+@@ -110,6 +110,8 @@ void ShadowConfig::load(KConfig *cfg)
+         m_hOffset=def.horizontalOffset();
+     if(m_vOffset<MIN_OFFSET || m_vOffset>MAX_OFFSET)
+         m_vOffset=def.verticalOffset();
++    if(m_colorType<CT_FOCUS || m_colorType>CT_CUSTOM)
++        m_colorType=def.colorType();
+     setColorType((ColorType)m_colorType);
+ }
+ 

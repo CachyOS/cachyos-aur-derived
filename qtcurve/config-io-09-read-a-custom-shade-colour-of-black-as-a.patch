@@ -1,0 +1,56 @@
+Read a custom shade colour of black as a colour
+
+The reader turned a custom shade into no shade when the colour was pure
+black. The test covers six inputs: the menu bar, the sliders, the check
+marks, the menu stripe, the combination button and the sorted header.
+
+The dialog stores a black colour as the text #000000, because the colour
+button starts at black and the writer always stores seven characters.
+The next read answers none, the dialog shows None, and the choice of the
+user is gone. A colour one step from black, #010101, paints 14352 pixels
+of the menu bar, while black paints none at all.
+
+Drop the test. A custom shade now uses the colour that the file names.
+The bare name custom names no colour, so the input keeps its shipped
+colour, which is black.
+
+Only a file that holds a custom black changes, and it changes to the
+colour that it holds.
+
+The change sits on the branch work/config-io of the local tree, as commit 9 of 18.
+A new merge request on system/qtcurve takes that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/qt6/common/config_file.cpp b/qt6/common/config_file.cpp
+index 1407c220..9ef6d216 100644
+--- a/qt6/common/config_file.cpp
++++ b/qt6/common/config_file.cpp
+@@ -618,14 +618,6 @@ void qtcLoadBgndImage(QtCImage *img)
+ 
+ #endif
+ 
+-static void
+-checkColor(EShade *s, QColor *c)
+-{
+-    if (*s == SHADE_CUSTOM && QtCurve::isBlack(*c)) {
+-        *s = SHADE_NONE;
+-    }
+-}
+-
+ class QtCConfig {
+ public:
+     QtCConfig(const QString &filename);
+@@ -1010,12 +1002,6 @@ void qtcCheckConfig(Options *opts)
+     if(SHADE_BLEND_SELECTED==opts->shadeCheckRadio)
+         opts->shadeCheckRadio=SHADE_SELECTED;
+ 
+-    checkColor(&opts->shadeMenubars, &opts->customMenubarsColor);
+-    checkColor(&opts->shadeSliders, &opts->customSlidersColor);
+-    checkColor(&opts->shadeCheckRadio, &opts->customCheckRadioColor);
+-    checkColor(&opts->menuStripe, &opts->customMenuStripeColor);
+-    checkColor(&opts->comboBtn, &opts->customComboBtnColor);
+-    checkColor(&opts->sortedLv, &opts->customSortedLvColor);
+     if(APPEARANCE_BEVELLED==opts->toolbarAppearance)
+         opts->toolbarAppearance=APPEARANCE_GRADIENT;
+     else if(APPEARANCE_RAISED==opts->toolbarAppearance)

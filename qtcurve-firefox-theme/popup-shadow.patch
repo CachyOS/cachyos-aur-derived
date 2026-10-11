@@ -1,0 +1,187 @@
+Add a setting for the shadow of menus and tooltips
+
+QtCurve gives a drop shadow to a menu, a tooltip and a combo box list.
+The Qt styles also give one to a detached tool bar and a detached dock
+widget. No setting switches that shadow off. A user whose window
+manager draws its own shadow gets two shadows on one menu.
+
+The Options struct now carries popupShadow, and each parser reads the
+stylerc key of the same name. No code reads the field yet, so this
+change alters no behaviour.
+
+The default is true, which keeps the shadow that users have today. An
+absent key falls back to the built-in default, so a configuration file
+from an earlier release needs no migration clause.
+
+All four toolkit trees take the member, the read and the default. A
+tree without the member ignores a key that the user set, which splits
+the behaviour between two toolkits of one desktop. The three Qt trees
+also take a write line. The GTK 2 tree takes none, because it has no
+write path.
+
+The change sits on the branch work/popup-shadow of the local tree, as
+the first commit. The fork wyn/qtcurve holds that branch. Merge request
+!19 on system/qtcurve holds that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/gtk2/common/common.h b/gtk2/common/common.h
+index d43f4b7d..aaebc963 100644
+--- a/gtk2/common/common.h
++++ b/gtk2/common/common.h
+@@ -704,6 +704,9 @@ typedef struct {
+                      noMenuBgndOpacityApps,
+                      noBgndImageApps;
+     Strings          noMenuStripeApps;
++    // If true, QtCurve gives a drop shadow to a menu, a combo box list and a
++    // tooltip.
++    bool             popupShadow;
+     // for completeness, unused:
+     bool             onlyTicksInMenu;
+     bool             buttonStyleMenuSections;
+diff --git a/gtk2/common/config_file.cpp b/gtk2/common/config_file.cpp
+index 5df550fc..d7ccb11e 100644
+--- a/gtk2/common/config_file.cpp
++++ b/gtk2/common/config_file.cpp
+@@ -1347,6 +1347,7 @@ bool qtcReadConfig(const char *file, Options *opts, Options *defOpts)
+             CFG_READ_BOOL(borderSbarGroove);
+             CFG_READ_BOOL(borderProgress);
+             CFG_READ_BOOL(popupBorder);
++            CFG_READ_BOOL(popupShadow);
+             CFG_READ_BOOL(unifySpinBtns);
+             CFG_READ_BOOL(unifySpin);
+             CFG_READ_BOOL(unifyCombo);
+@@ -1706,6 +1707,7 @@ void qtcDefaultSettings(Options *opts)
+     opts->borderSbarGroove=true;
+     opts->borderProgress=true;
+     opts->popupBorder=true;
++    opts->popupShadow=true;
+     opts->unifySpinBtns=false;
+     opts->unifySpin=true;
+     opts->unifyCombo=true;
+diff --git a/qt4/common/common.h b/qt4/common/common.h
+index 6312ef90..b0e9f93f 100644
+--- a/qt4/common/common.h
++++ b/qt4/common/common.h
+@@ -901,6 +901,9 @@ typedef struct {
+ #endif
+     bool             onlyTicksInMenu;
+     bool             buttonStyleMenuSections;
++    // If true, QtCurve gives a drop shadow to a menu, a tooltip, a combo box
++    // list, a detached tool bar and a detached dock widget.
++    bool             popupShadow;
+ } Options;
+ 
+ void qtcSetupGradient(Gradient *grad, EGradientBorder border, int numStops, ...);
+diff --git a/qt4/common/config_file.cpp b/qt4/common/config_file.cpp
+index e5a6d197..dc43454d 100644
+--- a/qt4/common/config_file.cpp
++++ b/qt4/common/config_file.cpp
+@@ -1273,6 +1273,7 @@ bool qtcReadConfig(const QString &file, Options *opts, Options *defOpts, bool ch
+             CFG_READ_BOOL(borderSbarGroove);
+             CFG_READ_BOOL(borderProgress);
+             CFG_READ_BOOL(popupBorder);
++            CFG_READ_BOOL(popupShadow);
+             CFG_READ_BOOL(unifySpinBtns);
+             CFG_READ_BOOL(unifySpin);
+             CFG_READ_BOOL(unifyCombo);
+@@ -1558,6 +1559,7 @@ void qtcDefaultSettings(Options *opts)
+     opts->borderSbarGroove=true;
+     opts->borderProgress=true;
+     opts->popupBorder=true;
++    opts->popupShadow=true;
+     opts->unifySpinBtns=false;
+     opts->unifySpin=true;
+     opts->unifyCombo=true;
+@@ -2293,6 +2295,7 @@ bool qtcWriteConfig(KConfig *cfg, const Options &opts, const Options &def, bool
+         CFG_WRITE_ENTRY(borderSbarGroove);
+         CFG_WRITE_ENTRY(borderProgress);
+         CFG_WRITE_ENTRY(popupBorder);
++        CFG_WRITE_ENTRY(popupShadow);
+         CFG_WRITE_ENTRY(unifySpinBtns);
+         CFG_WRITE_ENTRY(unifySpin);
+         CFG_WRITE_ENTRY(unifyCombo);
+diff --git a/qt5/common/common.h b/qt5/common/common.h
+index 91bceaaf..24d1ce74 100644
+--- a/qt5/common/common.h
++++ b/qt5/common/common.h
+@@ -897,6 +897,9 @@ typedef struct {
+     QString          menuTick;
+     int              fontTickWidth;
+     bool             buttonStyleMenuSections;
++    // If true, QtCurve gives a drop shadow to a menu, a tooltip, a combo box
++    // list, a detached tool bar and a detached dock widget.
++    bool             popupShadow;
+ } Options;
+ 
+ void qtcSetupGradient(Gradient *grad, EGradientBorder border, int numStops, ...);
+diff --git a/qt5/common/config_file.cpp b/qt5/common/config_file.cpp
+index 63346b61..f8fae261 100644
+--- a/qt5/common/config_file.cpp
++++ b/qt5/common/config_file.cpp
+@@ -1279,6 +1279,7 @@ bool qtcReadConfig(const QString &file, Options *opts, Options *defOpts, bool ch
+             CFG_READ_BOOL(borderSbarGroove);
+             CFG_READ_BOOL(borderProgress);
+             CFG_READ_BOOL(popupBorder);
++            CFG_READ_BOOL(popupShadow);
+             CFG_READ_BOOL(unifySpinBtns);
+             CFG_READ_BOOL(unifySpin);
+             CFG_READ_BOOL(unifyCombo);
+@@ -1571,6 +1572,7 @@ void qtcDefaultSettings(Options *opts)
+     opts->borderSbarGroove=true;
+     opts->borderProgress=true;
+     opts->popupBorder=true;
++    opts->popupShadow=true;
+     opts->unifySpinBtns=false;
+     opts->unifySpin=true;
+     opts->unifyCombo=true;
+@@ -2300,6 +2302,7 @@ bool qtcWriteConfig(KConfig *cfg, const Options &opts, const Options &def, bool
+         CFG_WRITE_ENTRY(borderSbarGroove);
+         CFG_WRITE_ENTRY(borderProgress);
+         CFG_WRITE_ENTRY(popupBorder);
++        CFG_WRITE_ENTRY(popupShadow);
+         CFG_WRITE_ENTRY(unifySpinBtns);
+         CFG_WRITE_ENTRY(unifySpin);
+         CFG_WRITE_ENTRY(unifyCombo);
+diff --git a/qt6/common/common.h b/qt6/common/common.h
+index c17e066f..b6c04125 100644
+--- a/qt6/common/common.h
++++ b/qt6/common/common.h
+@@ -897,6 +897,9 @@ typedef struct {
+     QString          menuTick;
+     int              fontTickWidth;
+     bool             buttonStyleMenuSections;
++    // If true, QtCurve gives a drop shadow to a menu, a tooltip, a combo box
++    // list, a detached tool bar and a detached dock widget.
++    bool             popupShadow;
+ } Options;
+ 
+ void qtcSetupGradient(Gradient *grad, EGradientBorder border, int numStops, ...);
+diff --git a/qt6/common/config_file.cpp b/qt6/common/config_file.cpp
+index 4535c785..f29a5eff 100644
+--- a/qt6/common/config_file.cpp
++++ b/qt6/common/config_file.cpp
+@@ -1279,6 +1279,7 @@ bool qtcReadConfig(const QString &file, Options *opts, Options *defOpts, bool ch
+             CFG_READ_BOOL(borderSbarGroove);
+             CFG_READ_BOOL(borderProgress);
+             CFG_READ_BOOL(popupBorder);
++            CFG_READ_BOOL(popupShadow);
+             CFG_READ_BOOL(unifySpinBtns);
+             CFG_READ_BOOL(unifySpin);
+             CFG_READ_BOOL(unifyCombo);
+@@ -1571,6 +1572,7 @@ void qtcDefaultSettings(Options *opts)
+     opts->borderSbarGroove=true;
+     opts->borderProgress=true;
+     opts->popupBorder=true;
++    opts->popupShadow=true;
+     opts->unifySpinBtns=false;
+     opts->unifySpin=true;
+     opts->unifyCombo=true;
+@@ -2300,6 +2302,7 @@ bool qtcWriteConfig(KConfig *cfg, const Options &opts, const Options &def, bool
+         CFG_WRITE_ENTRY(borderSbarGroove);
+         CFG_WRITE_ENTRY(borderProgress);
+         CFG_WRITE_ENTRY(popupBorder);
++        CFG_WRITE_ENTRY(popupShadow);
+         CFG_WRITE_ENTRY(unifySpinBtns);
+         CFG_WRITE_ENTRY(unifySpin);
+         CFG_WRITE_ENTRY(unifyCombo);

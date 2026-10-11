@@ -1,0 +1,652 @@
+Colour the scroll bars of the browser from QtCurve
+
+A browser draws the scroll bar of a page through GTK, and it asks
+the theme for the colours of the #MozillaGtkWidget node chain. It
+takes those colours while the trough of the chain holds no ground.
+The sheets of QtCurve carried no rule of that chain, so every page
+kept the grey pair of the browser.
+
+The GTK 3 sheet now carries the block. A sibling of the scroll bar
+section writes it, so the rules of the widget keep every byte. A
+node flag holds the block to the GTK 3 dialect, because the browser
+reads no GTK 4 sheet. Without the flag, the names of the block
+would move the floors of that dialect.
+
+The block states the colours of the Qt style. It holds the ladder
+of Style::sliderColors() under each slider key, one step of that
+ladder for the pointer, and the groove colour of the bar. Every
+groove path of the style paints the groove at step two of a shade
+ladder, so one colour serves every setting. The ground takes the
+Base seed of the palette. The helper of palette.cpp holds the
+derivation, and the block reads it. The block carries colours
+alone. A border of the chain paints no pixel of the browser, and an
+image of it stands unproven.
+
+assert-browser.sh binds the block to the settings over eleven arms.
+assert-alphas.sh now takes a comment of a whole line, because the
+selector of a row can start with a number sign.
+
+The change sits on the branch work/firefox-theme of the local tree, as
+commit 9 of 14. The branch holds those fourteen commits above the head of
+work/gtk4-theme, which merge request !15 on system/qtcurve holds. The fork
+wyn/qtcurve holds work/firefox-theme. Merge request !29 on system/qtcurve
+holds that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/gtk4/CMakeLists.txt b/gtk4/CMakeLists.txt
+index d5ab7d01..f5196904 100644
+--- a/gtk4/CMakeLists.txt
++++ b/gtk4/CMakeLists.txt
+@@ -97,13 +97,13 @@ set(qtc_check "${CMAKE_CURRENT_SOURCE_DIR}/check")
+ set(qtc_names3 26)
+ set(qtc_names4 206)
+ set(qtc_names4_dark 29)
+-set(qtc_rules3 176)
++set(qtc_rules3 181)
+ set(qtc_rules4 186)
+ # The option arm adds the three rules of a list row that takes the alternate
+ # background. The shading arm drops every rule that a shade step grounds.
+-set(qtc_rules_opt3 179)
++set(qtc_rules_opt3 184)
+ set(qtc_rules_opt4 189)
+-set(qtc_rules_shade3 152)
++set(qtc_rules_shade3 157)
+ set(qtc_rules_shade4 162)
+ # The gradient layers of a sheet, which assert-layers.sh counts. A layer of
+ # the emitter reads one seed, so two names in one layer mark a lost seed.
+@@ -164,11 +164,11 @@ add_custom_command(TARGET qtcurve-gtk-theme POST_BUILD
+ # a box of its own moves the widget under the pointer. The run therefore reads
+ # every state of every sheet. The dark GTK 4 sheet holds the :root block
+ # alone, and assert-import.sh binds that block to the light sheet.
+-set(qtc_boxes3 162)
++set(qtc_boxes3 164)
+ set(qtc_boxes4 167)
+ # The shading arm drops every rule that a shade step grounds, so an arm sheet
+ # holds fewer states than a shipped one.
+-set(qtc_boxes_arm3 132)
++set(qtc_boxes_arm3 134)
+ set(qtc_boxes_arm4 137)
+ add_custom_command(TARGET qtcurve-gtk-theme POST_BUILD
+   COMMAND sh "${qtc_check}/assert-boxes.sh" -k "${qtc_check}/boxes-keep.txt"
+@@ -204,9 +204,9 @@ set(qtc_avals3_shade 44)
+ set(qtc_avals4_shade 67)
+ # The row and value floors of the shade factor table, which binds every stop
+ # of every gradient and every step of every shade ladder.
+-set(qtc_shades3 108)
++set(qtc_shades3 111)
+ set(qtc_shades4 186)
+-set(qtc_svals3 108)
++set(qtc_svals3 111)
+ set(qtc_svals4 186)
+ set(qtc_svals4_dark 72)
+ # The row floors of assert-paths.sh. A table that reads no row exits 0, so
+@@ -238,19 +238,19 @@ set(qtc_names_shade 205)
+ # floor reads the :root block alone, because a rule of that dialect repeats
+ # the name in the fallback of its var(). Each arm holds its own pair, because
+ # a pair of the smallest arm leaves the others free to stop following.
+-set(qtc_follow3 379)
++set(qtc_follow3 383)
+ set(qtc_follow4 180)
+-set(qtc_follow_cover3 384)
++set(qtc_follow_cover3 388)
+ set(qtc_follow_cover4 185)
+-set(qtc_follow_grad3 446)
++set(qtc_follow_grad3 450)
+ set(qtc_follow_grad4 231)
+-set(qtc_follow_flat3 292)
++set(qtc_follow_flat3 296)
+ set(qtc_follow_flat4 115)
+-set(qtc_follow_opt3 376)
++set(qtc_follow_opt3 380)
+ set(qtc_follow_opt4 177)
+-set(qtc_follow_distinct3 379)
++set(qtc_follow_distinct3 383)
+ set(qtc_follow_distinct4 180)
+-set(qtc_follow_shade3 86)
++set(qtc_follow_shade3 87)
+ set(qtc_follow_shade4 37)
+ add_custom_command(TARGET qtcurve-gtk-theme POST_BUILD
+   COMMAND sh "${qtc_check}/assert-kded-names.sh" -e
+@@ -443,13 +443,13 @@ qtc_gtk_check_arm(opt options.qtcurve paths-options.txt
+ # Each arm above takes an appearance of its own, so its shade factors need a
+ # table of its own. The flat arm paints no gradient and the option arm moves
+ # the ground of a menu bar and of a tool bar.
+-set(qtc_shades_cover3 109)
++set(qtc_shades_cover3 112)
+ set(qtc_shades_cover4 189)
+-set(qtc_shades_grad3 113)
++set(qtc_shades_grad3 116)
+ set(qtc_shades_grad4 197)
+-set(qtc_shades_flat3 68)
++set(qtc_shades_flat3 71)
+ set(qtc_shades_flat4 114)
+-set(qtc_shades_opt3 106)
++set(qtc_shades_opt3 109)
+ set(qtc_shades_opt4 182)
+ add_custom_command(TARGET qtcurve-gtk-theme POST_BUILD
+   COMMAND sh "${qtc_check}/assert-alphas.sh" -s -a -d gtk4
+@@ -642,6 +642,15 @@ add_custom_command(TARGET qtcurve-gtk-theme POST_BUILD
+           "${qtc_cover_dir}/scrollbar" "${qtc_light}" "${qtc_distinct}"
+   VERBATIM)
+ 
++# The scroll bar block of the browser. A browser reads the GTK 3 sheet of a
++# theme, and no table above binds a rule of that block to the settings. The
++# check below runs the writer over the slider keys, the pointer key and the
++# groove keys, and it reads the block of each arm.
++add_custom_command(TARGET qtcurve-gtk-theme POST_BUILD
++  COMMAND sh "${qtc_check}/assert-browser.sh" "${qtc_writer_command}"
++          "${qtc_cover_dir}/browser" "${qtc_light}"
++  VERBATIM)
++
+ # Every check above reads a sheet as text. The check below reads one in GTK 3
+ # itself. It builds a menu bar with an open menu. It then reads the node path,
+ # the caption colour and the box of each state that the toolkit gives. A text
+diff --git a/gtk4/check/assert-alphas.sh b/gtk4/check/assert-alphas.sh
+index 42756409..6a1c7c72 100644
+--- a/gtk4/check/assert-alphas.sh
++++ b/gtk4/check/assert-alphas.sh
+@@ -79,10 +79,11 @@ function alphas(v,   i, j, d, c, last, n, out, at) {
+     return out
+ }
+ 
+-# The table rows come first, keyed by the selector and the property.
++# The table rows come first, keyed by the selector and the property. A
++# comment holds a whole line and it starts with a number sign and a space,
++# because the selector of a row can start with a number sign.
+ FILENAME == table {
+-    sub(/#.*/, "")
+-    if ($0 ~ /^[ \t]*$/)
++    if ($0 ~ /^[ \t]*#[ \t]/ || $0 ~ /^[ \t]*$/)
+         next
+     n = split($0, f, / *\| */)
+     if (n < 3) {
+diff --git a/gtk4/check/assert-browser.sh b/gtk4/check/assert-browser.sh
+new file mode 100644
+index 00000000..f7f2fe66
+--- /dev/null
++++ b/gtk4/check/assert-browser.sh
+@@ -0,0 +1,297 @@
++#!/bin/sh
++# assert-browser.sh WRITER WORKDIR SCHEME: the scroll bar block of the browser
++# must stand in the GTK 3 sheet alone, hold a trough of no ground, follow the
++# slider keys of the settings, and hold one ground under every groove key.
++# Each rule of the block that a rule of the widget grounds must also drop the
++# image of that rule. The run writes one settings file and one sheet for each
++# arm under WORKDIR, over the colour file SCHEME. It then breaks one contract
++# in a copy of an arm, and it fails if the check passes the broken copy.
++set -eu
++usage='usage: assert-browser.sh WRITER WORKDIR SCHEME'
++writer=${1:?$usage}
++work=${2:?$usage}
++scheme=${3:?$usage}
++
++# A relative path leaves the sheets outside the directory that the caller
++# names, because the writer runs in a directory of its own.
++case $work in
++    /*) ;;
++    *) work=$PWD/$work;;
++esac
++
++bar='#MozillaGtkWidget scrollbar'
++# The colour of the custom arm, which the rest row must carry byte for byte.
++custom='#ff8800'
++# Every arm of the GTK 3 dialect, in the order that the run writes them.
++arms='none darken selected blend custom mo thin wide page corner square'
++
++rm -rf "$work"
++mkdir -p "$work/arm" "$work/broken"
++
++# settings NAME BODY: writes the settings file of the arm NAME, which holds
++# the keys of BODY over the shipped preset. BODY carries one escape of a new
++# line for each key.
++settings() {
++    printf '[Settings]\n%b' "$2" > "$work/$1.qtcurve"
++}
++
++# sheet NAME DIALECT: writes the sheet of the arm NAME in the dialect DIALECT.
++sheet() {
++    "$writer" --stdout --force --settings "$work/$1.qtcurve" \
++        --scheme "$scheme" --dialect "$2" --asset-base "../assets/" \
++        --out "$work/arm/$1.css"
++}
++
++# The five slider keys, one arm each. The reader takes a colour value of the
++# key as the custom colour of the slider.
++settings none 'shadeSliders=none\n'
++settings darken 'shadeSliders=darken\n'
++settings selected 'shadeSliders=origselected\n'
++settings blend 'shadeSliders=selected\n'
++settings custom "shadeSliders=$custom\\n"
++# The pointer key, which the reader keeps under the three ladder keys alone.
++settings mo 'shadeSliders=origselected\ncolorSliderMouseOver=true\n'
++# The five groove arms, which hold the four corners of the groove keys and the
++# square corner of no button. No one of them may move the ground of the bar.
++settings thin 'flatSbarButtons=true\nthinSbarGroove=true\n'
++settings wide 'flatSbarButtons=true\nthinSbarGroove=false\n'
++settings page 'flatSbarButtons=false\nthinSbarGroove=true\n'
++settings corner 'flatSbarButtons=false\nthinSbarGroove=true\nscrollbarType=none\n'
++settings square \
++    'flatSbarButtons=false\nthinSbarGroove=true\nscrollbarType=none\nround=none\n'
++
++for arm in $arms; do
++    sheet "$arm" gtk3
++done
++# The GTK 4 sheet of one arm, which must carry no rule of the block.
++"$writer" --stdout --force --settings "$work/none.qtcurve" \
++    --scheme "$scheme" --dialect gtk4 --asset-base "../assets/" \
++    --out "$work/arm/gtk4.css"
++
++# row DIR ARM SELECTOR PROP: prints the value of the property PROP of the rule
++# SELECTOR in the sheet of ARM under DIR. It prints nothing for a rule or a
++# property that the sheet does not hold.
++row() {
++    r_sel=$(printf '%s' "$3" | sed 's/[]\/$*.^[]/\\&/g')
++    sed -n "/^$r_sel {\$/,/^}\$/p" "$1/$2.css" |
++        sed -n "s/^  $4: \(.*\);\$/\1/p"
++}
++
++# check DIR: gives 0 while the seven contracts hold over the arm sheets of
++# DIR. It names the first contract that fails on the standard error.
++check() {
++    d=$1
++
++    # 1. Each arm of GTK 3 holds the five rules of the block, and the sheet of
++    # GTK 4 holds no rule of it.
++    for c_arm in $arms; do
++        for c_tail in '' ' trough' ' slider' ' slider:hover' ' slider:active'
++        do
++            if [ -z "$(row "$d" "$c_arm" "$bar$c_tail" background-color)" ]
++            then
++                echo "assert-browser: $c_arm holds no rule '$bar$c_tail'" >&2
++                return 1
++            fi
++        done
++    done
++    if grep -qF "$bar" "$d/gtk4.css"; then
++        echo "assert-browser: the GTK 4 sheet holds the block" >&2
++        return 1
++    fi
++
++    # 2. The trough of each arm holds no ground, which is the one state that
++    # lets the browser read the colours of the theme.
++    for c_arm in $arms; do
++        if [ "$(row "$d" "$c_arm" "$bar trough" background-color)" \
++             != transparent ]; then
++            echo "assert-browser: the trough of $c_arm paints a ground" >&2
++            return 1
++        fi
++    done
++
++    # 3. The five slider keys give five colours of their own, and each one
++    # takes the ladder that Style::sliderColors() holds.
++    c_none=$(row "$d" none "$bar slider" background-color)
++    c_darken=$(row "$d" darken "$bar slider" background-color)
++    c_sel=$(row "$d" selected "$bar slider" background-color)
++    c_blend=$(row "$d" blend "$bar slider" background-color)
++    c_custom=$(row "$d" custom "$bar slider" background-color)
++    if [ "$c_none" != '@theme_button_background_normal_breeze' ]; then
++        echo "assert-browser: the none arm rests on '$c_none'" >&2
++        return 1
++    fi
++    case $c_darken in
++        'shade(@theme_button_background_normal_breeze, '*')') ;;
++        *) echo "assert-browser: the darken arm rests on '$c_darken'" >&2
++           return 1;;
++    esac
++    if [ "$c_sel" != '@theme_selected_bg_color_breeze' ]; then
++        echo "assert-browser: the selected arm rests on '$c_sel'" >&2
++        return 1
++    fi
++    case $c_blend in
++        '#'[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]) ;;
++        *) echo "assert-browser: the blend arm rests on '$c_blend'" >&2
++           return 1;;
++    esac
++    if [ "$c_custom" != "$custom" ]; then
++        echo "assert-browser: the custom arm rests on '$c_custom'" >&2
++        return 1
++    fi
++    if [ "$(printf '%s\n' "$c_none" "$c_darken" "$c_sel" "$c_blend" \
++            "$c_custom" | sort -u | wc -l)" -ne 5 ]; then
++        echo "assert-browser: two slider keys give one colour" >&2
++        return 1
++    fi
++
++    # 4. The pointer key moves the rest row to the button ladder and it keeps
++    # the hover row on the slider ladder.
++    if [ "$(row "$d" mo "$bar slider" background-color)" != "$c_none" ]; then
++        echo "assert-browser: the pointer key holds the rest row" >&2
++        return 1
++    fi
++    if [ "$(row "$d" mo "$bar slider:hover" background-color)" != \
++         "$(row "$d" selected "$bar slider:hover" background-color)" ]; then
++        echo "assert-browser: the pointer key moves the hover row" >&2
++        return 1
++    fi
++
++    # 5. Each arm takes one ladder step for the pointer, and the button state
++    # takes the colour of the pointer state.
++    for c_arm in $arms; do
++        c_rest=$(row "$d" "$c_arm" "$bar slider" background-color)
++        c_hover=$(row "$d" "$c_arm" "$bar slider:hover" background-color)
++        c_down=$(row "$d" "$c_arm" "$bar slider:active" background-color)
++        if [ "$c_rest" = "$c_hover" ]; then
++            echo "assert-browser: $c_arm holds one colour for two states" >&2
++            return 1
++        fi
++        if [ "$c_hover" != "$c_down" ]; then
++            echo "assert-browser: $c_arm paints the button state apart" >&2
++            return 1
++        fi
++    done
++
++    # 6. The ground of the bar takes one step of the base ladder under every
++    # setting, which is the step that each groove path of the Qt style paints.
++    for c_arm in $arms; do
++        c_gnd=$(row "$d" "$c_arm" "$bar" background-color)
++        case $c_gnd in
++            'shade(@theme_base_color_breeze, '*')') ;;
++            *) echo "assert-browser: $c_arm grounds on '$c_gnd'" >&2
++               return 1;;
++        esac
++    done
++    if [ "$(for c_arm in $arms; do
++                row "$d" "$c_arm" "$bar" background-color
++            done | sort -u | wc -l)" -ne 1 ]; then
++        echo "assert-browser: a key of the settings moves the ground" >&2
++        return 1
++    fi
++
++    # 7. The ground, the trough and the rest row drop the image that a rule of
++    # the widget paints on the same node. A colour row alone leaves that image
++    # in place, and a trough of an image holds a ground.
++    for c_arm in $arms; do
++        for c_tail in '' ' trough' ' slider'; do
++            if [ "$(row "$d" "$c_arm" "$bar$c_tail" background-image)" \
++                 != none ]; then
++                echo "assert-browser: $c_arm keeps an image on" \
++                     "'$bar$c_tail'" >&2
++                return 1
++            fi
++        done
++    done
++    return 0
++}
++
++if ! check "$work/arm"; then
++    echo "assert-browser: the arms fail the check" >&2
++    exit 1
++fi
++
++# The controls below. Each one breaks one contract in a copy of the arms, and
++# the check must fail over that copy.
++broken=0
++
++# control NAME: the check must fail over the copy under the broken directory.
++control() {
++    if check "$work/broken" 2> "$work/control.log"; then
++        echo "assert-browser: the check passed the broken copy of $1" >&2
++        exit 1
++    fi
++    broken=$((broken + 1))
++}
++
++# paste ARM SELECTOR PROP VALUE: writes the copy of the arms with the property
++# PROP of the rule SELECTOR of ARM at VALUE.
++paste() {
++    rm -rf "$work/broken"
++    cp -r "$work/arm" "$work/broken"
++    awk -v want="$2 {" -v prop="  $3: " -v val="$4" '
++        $0 == want { in_rule = 1 }
++        in_rule && index($0, prop) == 1 { print prop val ";"; next }
++        in_rule && $0 == "}" { in_rule = 0 }
++        { print }' "$work/arm/$1.css" > "$work/broken/$1.css"
++}
++
++# The block cut out of one arm, which is the sheet before this check shipped.
++rm -rf "$work/broken"
++cp -r "$work/arm" "$work/broken"
++sed "/^$bar/,/^}\$/d" "$work/arm/none.css" > "$work/broken/none.css"
++control 'the block of an arm'
++
++# The block in the GTK 4 sheet, which no browser reads and whose names would
++# move the floors of that dialect.
++rm -rf "$work/broken"
++cp -r "$work/arm" "$work/broken"
++sed -n "/^$bar/,/^}\$/p" "$work/arm/none.css" >> "$work/broken/gtk4.css"
++control 'the block in the GTK 4 sheet'
++
++# A trough of a ground, which takes the block back to the state that leaves
++# the browser on the colours of its own.
++paste none "$bar trough" background-color '@theme_base_color_breeze'
++control 'the ground of the trough'
++
++# The rest row of the darken arm at the colour of the none arm, which drops
++# the darker pair of ladder steps.
++paste darken "$bar slider" background-color \
++    '@theme_button_background_normal_breeze'
++control 'the ladder of the darken arm'
++
++# The hover row at the rest row, which drops the step of the pointer.
++paste selected "$bar slider:hover" background-color \
++    '@theme_selected_bg_color_breeze'
++control 'the step of the pointer'
++
++# The button row apart from the pointer row, which the Qt style paints as one.
++paste selected "$bar slider:active" background-color \
++    '@theme_button_background_normal_breeze'
++control 'the button state'
++
++# The rest row of the pointer arm at the slider ladder, which is the row of
++# the arm that holds the key at false.
++paste mo "$bar slider" background-color '@theme_selected_bg_color_breeze'
++control 'the rest row of the pointer key'
++
++# The ground of one arm at the seed of the ladder, which is the row that a
++# branch on the groove keys writes.
++paste thin "$bar" background-color '@theme_base_color_breeze'
++control 'the seed of the ground'
++
++# The ground of one arm on the window ladder, which is another ladder of the
++# palette.
++paste page "$bar" background-color 'shade(@theme_bg_color_breeze, 0.900)'
++control 'the ladder of the ground'
++
++# The colour of the custom arm at another value, which is a doctored sheet.
++paste custom "$bar slider" background-color '#ff0000'
++control 'the colour of the custom arm'
++
++rm -rf "$work/broken"
++echo "assert-browser: the block stands in the GTK 3 sheet of $(echo $arms |
++     wc -w) arms and in no GTK 4 sheet, it holds the slider keys and the" \
++     "pointer key of the settings, it grounds on one step of the base ladder" \
++     "under every groove key, it drops the image of the rule of the widget" \
++     "on the ground, the trough and the rest row, and the check rejects each" \
++     "of the $broken control copies"
+diff --git a/gtk4/check/shades-cover.txt b/gtk4/check/shades-cover.txt
+index b1f3da80..219e717f 100644
+--- a/gtk4/check/shades-cover.txt
++++ b/gtk4/check/shades-cover.txt
+@@ -131,6 +131,9 @@ scrollbar > range > trough > slider:hover | border | 0.750 |  |
+ scrollbar > range > trough > slider:active | background-image | 1.040 1.030 0.980 1.030 |  |
+ scrollbar > range > trough > slider:active | background-color | 1.030 |  |
+ scrollbar > range > trough > slider:active | border | 0.750 |  |
++#MozillaGtkWidget scrollbar | background-color | 0.900 | gtk3 |
++#MozillaGtkWidget scrollbar slider:hover | background-color | 1.030 | gtk3 |
++#MozillaGtkWidget scrollbar slider:active | background-color | 1.030 | gtk3 |
+ switch | background-image | 0.930 0.900 1.040 0.900 |  |
+ switch | background-color | 0.900 |  |
+ switch | border | 0.750 |  |
+diff --git a/gtk4/check/shades-flat.txt b/gtk4/check/shades-flat.txt
+index 49894038..890f5d40 100644
+--- a/gtk4/check/shades-flat.txt
++++ b/gtk4/check/shades-flat.txt
+@@ -97,6 +97,9 @@ scrollbar > range > trough > slider:hover | background-color | 1.030 |  |
+ scrollbar > range > trough > slider:hover | border | 0.750 |  |
+ scrollbar > range > trough > slider:active | background-color | 1.030 |  |
+ scrollbar > range > trough > slider:active | border | 0.750 |  |
++#MozillaGtkWidget scrollbar | background-color | 0.900 | gtk3 |
++#MozillaGtkWidget scrollbar slider:hover | background-color | 1.030 | gtk3 |
++#MozillaGtkWidget scrollbar slider:active | background-color | 1.030 | gtk3 |
+ switch | background-color | 0.900 |  |
+ switch | border | 0.750 |  |
+ switch:checked | border | 0.750 |  |
+diff --git a/gtk4/check/shades-grad.txt b/gtk4/check/shades-grad.txt
+index 18b85ced..52728a5f 100644
+--- a/gtk4/check/shades-grad.txt
++++ b/gtk4/check/shades-grad.txt
+@@ -135,6 +135,9 @@ scrollbar > range > trough > slider:hover | border | 0.750 |  |
+ scrollbar > range > trough > slider:active | background-image | 1.040 1.030 0.980 1.030 |  |
+ scrollbar > range > trough > slider:active | background-color | 1.030 |  |
+ scrollbar > range > trough > slider:active | border | 0.750 |  |
++#MozillaGtkWidget scrollbar | background-color | 0.900 | gtk3 |
++#MozillaGtkWidget scrollbar slider:hover | background-color | 1.030 | gtk3 |
++#MozillaGtkWidget scrollbar slider:active | background-color | 1.030 | gtk3 |
+ switch | background-image | 0.930 0.900 1.040 0.900 |  |
+ switch | background-color | 0.900 |  |
+ switch | border | 0.750 |  |
+diff --git a/gtk4/check/shades-opt.txt b/gtk4/check/shades-opt.txt
+index ff10e88c..a91cbe94 100644
+--- a/gtk4/check/shades-opt.txt
++++ b/gtk4/check/shades-opt.txt
+@@ -157,6 +157,9 @@ scrollbar > range > trough > slider:hover | border | 0.750 |  |
+ scrollbar > range > trough > slider:active | background-image | 1.040 1.030 0.980 1.030 |  |
+ scrollbar > range > trough > slider:active | background-color | 1.030 |  |
+ scrollbar > range > trough > slider:active | border | 0.750 |  |
++#MozillaGtkWidget scrollbar | background-color | 0.900 | gtk3 |
++#MozillaGtkWidget scrollbar slider:hover | background-color | 1.030 | gtk3 |
++#MozillaGtkWidget scrollbar slider:active | background-color | 1.030 | gtk3 |
+ switch | background-image | 0.930 0.900 1.040 0.900 |  |
+ switch | background-color | 0.900 |  |
+ switch | border | 0.750 |  |
+diff --git a/gtk4/check/shades.txt b/gtk4/check/shades.txt
+index dfe71ad8..2dde55e1 100644
+--- a/gtk4/check/shades.txt
++++ b/gtk4/check/shades.txt
+@@ -133,6 +133,9 @@ scrollbar > range > trough > slider:hover | border | 0.750 |  |
+ scrollbar > range > trough > slider:active | background-image | 1.040 1.030 0.980 1.030 |  |
+ scrollbar > range > trough > slider:active | background-color | 1.030 |  |
+ scrollbar > range > trough > slider:active | border | 0.750 |  |
++#MozillaGtkWidget scrollbar | background-color | 0.900 | gtk3 |
++#MozillaGtkWidget scrollbar slider:hover | background-color | 1.030 | gtk3 |
++#MozillaGtkWidget scrollbar slider:active | background-color | 1.030 | gtk3 |
+ switch | background-image | 0.930 0.900 1.040 0.900 |  |
+ switch | background-color | 0.900 |  |
+ switch | border | 0.750 |  |
+diff --git a/gtk4/writer/dialect.cpp b/gtk4/writer/dialect.cpp
+index 82ad559c..76096f20 100644
+--- a/gtk4/writer/dialect.cpp
++++ b/gtk4/writer/dialect.cpp
+@@ -41,6 +41,7 @@ nodesFor(Dialect dialect)
+         n.decorationNode = false;
+         n.popupShadowNode = QStringLiteral("popover > contents");
+         n.popupShadowRoom = false;
++        n.browserScrollBar = false;
+         n.windowHandle = true;
+         n.focusWithin = QStringLiteral(":focus-within");
+         n.focusVisible = QStringLiteral(":focus-visible");
+@@ -58,6 +59,7 @@ nodesFor(Dialect dialect)
+         n.popupShadowNode = QStringLiteral(".popup decoration, "
+                                            "tooltip decoration");
+         n.popupShadowRoom = true;
++        n.browserScrollBar = true;
+         n.windowHandle = false;
+         n.focusWithin = QStringLiteral(":focus");
+         n.focusVisible = QStringLiteral(":focus");
+diff --git a/gtk4/writer/dialect.h b/gtk4/writer/dialect.h
+index b11b956b..39dfc842 100644
+--- a/gtk4/writer/dialect.h
++++ b/gtk4/writer/dialect.h
+@@ -67,6 +67,12 @@ struct Nodes {
+      * margin must hold the blur and the spread.
+      */
+     bool popupShadowRoom;
++    /**
++     * True while the dialect carries the scroll bar block of the browser. A
++     * browser reads the GTK 3 sheet of a theme alone, so the block leaves the
++     * GTK 4 sheets and the names of it leave the GTK 4 declaration block.
++     */
++    bool browserScrollBar;
+     /** True while a header bar of the dialect holds a window handle child. */
+     bool windowHandle;
+     /**
+diff --git a/gtk4/writer/widgets.cpp b/gtk4/writer/widgets.cpp
+index ca2890ee..4823d2eb 100644
+--- a/gtk4/writer/widgets.cpp
++++ b/gtk4/writer/widgets.cpp
+@@ -234,6 +234,24 @@ ranked(const QString &selector, Rank rank)
+     return out.join(QStringLiteral(", "));
+ }
+ 
++/**
++ * Returns the body of a rule that paints the colour bg and no image. The rule
++ * drops the image that a rule of a lower rank paints on the same node.
++ */
++QString
++flatFill(const QString &bg)
++{
++    return QStringLiteral("  background-image: none;\n"
++                          "  background-color: %1;\n").arg(bg);
++}
++
++/** Returns the body of a rule that paints the colour bg and nothing else. */
++QString
++colourFill(const QString &bg)
++{
++    return QStringLiteral("  background-color: %1;\n").arg(bg);
++}
++
+ /** Holds one emitter run: the settings, the palette, the sheet and the nodes. */
+ class Writer {
+ public:
+@@ -672,6 +690,7 @@ private:
+     void progressBar();
+     void levelBar();
+     void scrollBar();
++    void browserScrollBar();
+     void toggleSwitch();
+     void separator();
+     void toolBar();
+@@ -1684,6 +1703,33 @@ Writer::scrollBar()
+                        "scrollbar slider:active"), hover);
+ }
+ 
++void
++Writer::browserScrollBar()
++{
++    if (!m_nodes.browserScrollBar) {
++        return;
++    }
++    // A browser takes the colours of this node chain while the trough of the
++    // chain holds no ground. It paints the background colour of the chain and
++    // no border and no image of it, so each rule below states one colour and
++    // drops the image that the rule of the widget paints.
++    const ScrollSpec spec = scrollSpec(m_opts, m_pal);
++    const QString bar = QStringLiteral("#MozillaGtkWidget scrollbar");
++    m_sheet.rule(bar, flatFill(tv(QStringLiteral("moz-sbar-bgnd"),
++                                  scrollTone(spec.track))));
++    m_sheet.rule(bar + QStringLiteral(" trough"),
++                 flatFill(QStringLiteral("transparent")));
++    m_sheet.rule(bar + QStringLiteral(" slider"),
++                 flatFill(tv(QStringLiteral("moz-sbar-slider"),
++                             scrollTone(spec.rest))));
++    // The Qt style paints a thumb under the button as a thumb under the
++    // pointer, so the two states take one colour.
++    const QString hover = tv(QStringLiteral("moz-sbar-slider-hover"),
++                             scrollTone(spec.hover));
++    m_sheet.rule(bar + QStringLiteral(" slider:hover"), colourFill(hover));
++    m_sheet.rule(bar + QStringLiteral(" slider:active"), colourFill(hover));
++}
++
+ void
+ Writer::toggleSwitch()
+ {
+@@ -2444,6 +2490,7 @@ Writer::run()
+     progressBar();
+     levelBar();
+     scrollBar();
++    browserScrollBar();
+     toggleSwitch();
+     separator();
+     toolBar();

@@ -1,0 +1,36 @@
+Disable the scale boxes while the scale box is clear
+
+The image dialog held the two scale spin boxes writable while the scale
+check box was clear. The dialog reports a width and a height of zero in
+that state. A user could type a size, accept the dialog and lose the
+typed value, because the dialog gave no sign of the loss.
+
+Follow the check box with the enable state of the scale controls. Set
+that state each time the dialog takes a configuration.
+
+The change sits on the branch work/image-dialog of the local tree, as commit 2 of 5.
+A new merge request on system/qtcurve takes that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/qt6/config/imagepropertiesdialog.cpp b/qt6/config/imagepropertiesdialog.cpp
+index 8fe1756d..a8b16e7a 100644
+--- a/qt6/config/imagepropertiesdialog.cpp
++++ b/qt6/config/imagepropertiesdialog.cpp
+@@ -74,6 +74,8 @@ CImagePropertiesDialog::CImagePropertiesDialog(const QString &title,
+     if (props & SCALE) {
+         scaleWidth->setRange(MIN_SIZE, MAX_SIZE);
+         scaleHeight->setRange(MIN_SIZE, MAX_SIZE);
++        connect(scaleImage, &QCheckBox::toggled,
++                scaleControls, &QWidget::setEnabled);
+     }
+ 
+     if (props & POS) {
+@@ -111,6 +113,7 @@ CImagePropertiesDialog::set(const QString &file, int width, int height,
+ {
+     if (properties & SCALE) {
+         scaleImage->setChecked(width || height);
++        scaleControls->setEnabled(scaleImage->isChecked());
+         scaleWidth->setValue(width < MIN_SIZE || width > MAX_SIZE ?
+                              DEF_SIZE : width);
+         scaleHeight->setValue(height < MIN_SIZE || height > MAX_SIZE ?

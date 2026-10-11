@@ -1,0 +1,107 @@
+Fix the CMake warnings and the compiler flag notes
+
+The top level gave -Wno-deprecated-register and -Wno-inconsistent-missing-
+override to every C++ compiler. GCC does not know the two options, and it
+prints a note for each of them in each translation unit that has another
+diagnostic. The two options now go to Clang alone, by the compiler
+identifier. check_cxx_compiler_flag cannot make the test, because GCC
+accepts an unknown -Wno- option when the compile has no other diagnostic.
+
+ECM prints a warning for each install directory that takes its value from a
+CMAKE_INSTALL_ variable. The top level included GNUInstallDirs first, and
+find_package(Qt6) does the same work, so KDEInstallDirs always ran last. The
+top level now includes KDEInstallDirs before GNUInstallDirs for a Qt 6 build
+with KDE support. The guard names the Qt 6 style alone, because the Qt 5
+half can turn itself off later. Each directory that includes KDEInstallDirs
+names its Qt version first, because ECM otherwise prefers the Qt 5 target
+when both Qt targets exist. KDEInstallDirs also sets a default name for the
+install component. The top level unsets that name, because each subdirectory
+inherits it.
+
+The figures come from one configure run and its build with the package
+configuration of this tree, -DQTC_INSTALL_PO=OFF, -Wall and -Wextra. CMake
+printed 15 warnings before the change and 3 after, and GCC 16.2.1 printed 28
+notes for the two options before and none after. The 3 that stay are the two
+Qt private module warnings and one that the CMAKE_INSTALL_LIBDIR value on
+the command line causes.
+
+The install paths do not move. The installed file list equals the one of the
+parent commit, name for name, size for size and component for component. The
+DT_NEEDED lists, the symbol counts and the disassembly also stay equal.
+
+The change sits on the branch work/build-warnings of the local tree. The
+fork wyn/qtcurve holds that branch. Merge request !14 on system/qtcurve holds
+that branch as the source.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 66e2dbfe..4060ce55 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -3,7 +3,6 @@ cmake_minimum_required(VERSION 3.16 FATAL_ERROR)
+ 
+ project(QtCurve)
+ 
+-include(GNUInstallDirs)
+ include(FeatureSummary)
+ 
+ ## Temporary
+@@ -95,9 +94,11 @@ cmake_c_add_flags(CMAKE_C_FLAGS -Wall -Wextra -Wno-cast-align
+ # We use `override` in certain Qt Classes but the QObject macro does not use it
+ # Use compiler option (-Wno-inconsistent-missing-override) to suppress
+ # the warning in clang++ 3.6+.
+-cmake_c_add_flags(CMAKE_CXX_FLAGS -Wall -Wextra
+-  -Wno-deprecated-register -Wno-cast-align
+-  -Wno-inconsistent-missing-override)
++cmake_c_add_flags(CMAKE_CXX_FLAGS -Wall -Wextra -Wno-cast-align)
++if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
++  cmake_c_add_flags(CMAKE_CXX_FLAGS -Wno-deprecated-register
++    -Wno-inconsistent-missing-override)
++endif()
+ if(NOT APPLE)
+   # -std=c++0x is deprecated but gcc < 4.7 do not recognise c++11 ....
+   cmake_c_add_flags(CMAKE_CXX_FLAGS -std=c++17 -D_DEFAULT_SOURCE)
+@@ -227,6 +228,18 @@ cmake_c_fix_include_path(lib/cairo qtcurve-cairo)
+ add_definitions("-D_GNU_SOURCE -pthread")
+ 
+ cmake_c_include_fix_path()
++
++if(ENABLE_QT6 AND QTC_QT6_ENABLE_KDE)
++  find_package(ECM 1.2.0 QUIET NO_MODULE)
++  if(ECM_FOUND)
++    set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${ECM_MODULE_PATH})
++    set(QT_MAJOR_VERSION 6)
++    include(KDEInstallDirs)
++    unset(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME)
++  endif()
++endif()
++include(GNUInstallDirs)
++
+ if(ENABLE_QT4 OR ENABLE_QT5 OR ENABLE_QT6 OR ENABLE_GTK2)
+   add_subdirectory(lib)
+   add_subdirectory(tools)
+diff --git a/qt5/CMakeLists.txt b/qt5/CMakeLists.txt
+index ea1fbdc5..58c672d6 100644
+--- a/qt5/CMakeLists.txt
++++ b/qt5/CMakeLists.txt
+@@ -78,6 +78,7 @@ if(ENABLE_QT5)
+       XmlGui)
+ 
+     add_definitions(-DQTC_QT5_ENABLE_KDE)
++    set(QT_MAJOR_VERSION 5)
+     include(KDEInstallDirs)
+     include(KDECMakeSettings)
+     include(KDECompilerSettings)
+diff --git a/qt6/CMakeLists.txt b/qt6/CMakeLists.txt
+index 31f31ba6..436f9208 100644
+--- a/qt6/CMakeLists.txt
++++ b/qt6/CMakeLists.txt
+@@ -57,6 +57,7 @@ if(QTC_QT6_ENABLE_KDE)
+     XmlGui)
+ 
+   add_definitions(-DQTC_QT6_ENABLE_KDE)
++  set(QT_MAJOR_VERSION 6)
+   include(KDEInstallDirs)
+   include(KDECMakeSettings)
+   include(KDECompilerSettings)

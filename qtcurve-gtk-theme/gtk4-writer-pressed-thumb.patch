@@ -1,0 +1,394 @@
+State the pressed scroll bar thumb as the hovered thumb
+
+Style::drawSbSliderHandle() folds the pressed state and the on
+state of a thumb into the hover state before any colour pick.
+The widget rules stated no slider:active row, so an engine that
+drops the prelight on a grab paints a dragged thumb with the
+rest colour. The style then clears the two states, so the
+hover pick stands alone.
+
+Writer::scrollBar() now puts the hover box under the
+slider:active selector as well. The rule reuses the hover
+values, so the sheets declare no new custom property.
+
+The shade tables and the path tables gain the rows of the new
+rule. assert-scrollbar.sh binds the pressed row to the hover
+row over every arm, with a control of its own.
+
+The change sits on the branch work/gtk4-theme of the local tree, as the
+sixteenth commit. The fork wyn/qtcurve holds that branch. Merge request !15
+on system/qtcurve holds that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/gtk4/CMakeLists.txt b/gtk4/CMakeLists.txt
+index f144df7a..ccd6f072 100644
+--- a/gtk4/CMakeLists.txt
++++ b/gtk4/CMakeLists.txt
+@@ -95,31 +95,31 @@ set(qtc_check "${CMAKE_CURRENT_SOURCE_DIR}/check")
+ set(qtc_names3 26)
+ set(qtc_names4 206)
+ set(qtc_names4_dark 29)
+-set(qtc_rules3 175)
+-set(qtc_rules4 185)
++set(qtc_rules3 176)
++set(qtc_rules4 186)
+ # The option arm adds the three rules of a list row that takes the alternate
+ # background. The shading arm drops every rule that a shade step grounds.
+-set(qtc_rules_opt3 178)
+-set(qtc_rules_opt4 188)
+-set(qtc_rules_shade3 151)
+-set(qtc_rules_shade4 161)
++set(qtc_rules_opt3 179)
++set(qtc_rules_opt4 189)
++set(qtc_rules_shade3 152)
++set(qtc_rules_shade4 162)
+ # The gradient layers of a sheet, which assert-layers.sh counts. A layer of
+ # the emitter reads one seed, so two names in one layer mark a lost seed.
+-set(qtc_layers3 53)
+-set(qtc_layers4 92)
++set(qtc_layers3 54)
++set(qtc_layers4 93)
+ # The dark GTK 4 sheet holds the :root block alone, and every gradient of that
+ # block needs its own run.
+ set(qtc_layers4_dark 36)
+-set(qtc_layers_cover3 54)
+-set(qtc_layers_cover4 95)
+-set(qtc_layers_grad3 58)
+-set(qtc_layers_grad4 103)
++set(qtc_layers_cover3 55)
++set(qtc_layers_cover4 96)
++set(qtc_layers_grad3 59)
++set(qtc_layers_grad4 104)
+ set(qtc_layers_flat3 14)
+ set(qtc_layers_flat4 21)
+-set(qtc_layers_opt3 52)
+-set(qtc_layers_opt4 90)
+-set(qtc_layers_shade3 46)
+-set(qtc_layers_shade4 83)
++set(qtc_layers_opt3 53)
++set(qtc_layers_opt4 91)
++set(qtc_layers_shade3 47)
++set(qtc_layers_shade4 84)
+ add_custom_command(TARGET qtcurve-gtk-theme POST_BUILD
+   # The dark GTK 4 sheet holds the declarations alone, and it takes every
+   # rule from the light sheet through that import.
+@@ -162,12 +162,12 @@ add_custom_command(TARGET qtcurve-gtk-theme POST_BUILD
+ # a box of its own moves the widget under the pointer. The run therefore reads
+ # every state of every sheet. The dark GTK 4 sheet holds the :root block
+ # alone, and assert-import.sh binds that block to the light sheet.
+-set(qtc_boxes3 160)
+-set(qtc_boxes4 165)
++set(qtc_boxes3 162)
++set(qtc_boxes4 167)
+ # The shading arm drops every rule that a shade step grounds, so an arm sheet
+ # holds fewer states than a shipped one.
+-set(qtc_boxes_arm3 130)
+-set(qtc_boxes_arm4 135)
++set(qtc_boxes_arm3 132)
++set(qtc_boxes_arm4 137)
+ add_custom_command(TARGET qtcurve-gtk-theme POST_BUILD
+   COMMAND sh "${qtc_check}/assert-boxes.sh" -k "${qtc_check}/boxes-keep.txt"
+           -n ${qtc_boxes4} "${qtc_theme_dir}/gtk-4.0/gtk.css"
+@@ -202,29 +202,29 @@ set(qtc_avals3_shade 44)
+ set(qtc_avals4_shade 67)
+ # The row and value floors of the shade factor table, which binds every stop
+ # of every gradient and every step of every shade ladder.
+-set(qtc_shades3 105)
+-set(qtc_shades4 183)
+-set(qtc_svals3 105)
+-set(qtc_svals4 183)
++set(qtc_shades3 108)
++set(qtc_shades4 186)
++set(qtc_svals3 108)
++set(qtc_svals4 186)
+ set(qtc_svals4_dark 72)
+ # The row floors of assert-paths.sh. A table that reads no row exits 0, so
+ # every run below states the row count that it must read.
+-set(qtc_rows3 312)
+-set(qtc_rows4 327)
++set(qtc_rows3 314)
++set(qtc_rows4 329)
+ set(qtc_rows_opt3 46)
+ set(qtc_rows_opt4 58)
+ # The option arm reads both tables. paths-options.txt holds every row that the
+ # arm moves, and the rest of paths.txt covers the caption rules that it keeps.
+-set(qtc_rows_rest3 267)
+-set(qtc_rows_rest4 270)
++set(qtc_rows_rest3 269)
++set(qtc_rows_rest4 272)
+ # The two tables of the option arm together, and the covered window table.
+-set(qtc_rows_both3 313)
+-set(qtc_rows_both4 328)
++set(qtc_rows_both3 315)
++set(qtc_rows_both4 330)
+ set(qtc_rows_cover 4)
+ # The shading arm, which takes a model that the GTK function shade() does not
+ # compute. Every ground of a shade step then holds a literal.
+-set(qtc_rows_shade3 312)
+-set(qtc_rows_shade4 327)
++set(qtc_rows_shade3 314)
++set(qtc_rows_shade4 329)
+ # The name floors of the check arms, which assert-varnames.sh reads.
+ set(qtc_names_distinct 206)
+ set(qtc_names_cover 206)
+@@ -236,17 +236,17 @@ set(qtc_names_shade 205)
+ # floor reads the :root block alone, because a rule of that dialect repeats
+ # the name in the fallback of its var(). Each arm holds its own pair, because
+ # a pair of the smallest arm leaves the others free to stop following.
+-set(qtc_follow3 375)
++set(qtc_follow3 379)
+ set(qtc_follow4 180)
+-set(qtc_follow_cover3 380)
++set(qtc_follow_cover3 384)
+ set(qtc_follow_cover4 185)
+-set(qtc_follow_grad3 442)
++set(qtc_follow_grad3 446)
+ set(qtc_follow_grad4 231)
+-set(qtc_follow_flat3 290)
++set(qtc_follow_flat3 292)
+ set(qtc_follow_flat4 115)
+-set(qtc_follow_opt3 372)
++set(qtc_follow_opt3 376)
+ set(qtc_follow_opt4 177)
+-set(qtc_follow_distinct3 375)
++set(qtc_follow_distinct3 379)
+ set(qtc_follow_distinct4 180)
+ set(qtc_follow_shade3 86)
+ set(qtc_follow_shade4 37)
+@@ -441,14 +441,14 @@ qtc_gtk_check_arm(opt options.qtcurve paths-options.txt
+ # Each arm above takes an appearance of its own, so its shade factors need a
+ # table of its own. The flat arm paints no gradient and the option arm moves
+ # the ground of a menu bar and of a tool bar.
+-set(qtc_shades_cover3 106)
+-set(qtc_shades_cover4 186)
+-set(qtc_shades_grad3 110)
+-set(qtc_shades_grad4 194)
+-set(qtc_shades_flat3 66)
+-set(qtc_shades_flat4 112)
+-set(qtc_shades_opt3 103)
+-set(qtc_shades_opt4 179)
++set(qtc_shades_cover3 109)
++set(qtc_shades_cover4 189)
++set(qtc_shades_grad3 113)
++set(qtc_shades_grad4 197)
++set(qtc_shades_flat3 68)
++set(qtc_shades_flat4 114)
++set(qtc_shades_opt3 106)
++set(qtc_shades_opt4 182)
+ add_custom_command(TARGET qtcurve-gtk-theme POST_BUILD
+   COMMAND sh "${qtc_check}/assert-alphas.sh" -s -a -d gtk4
+           -m ${qtc_shades_cover4} -n ${qtc_shades_cover4}
+@@ -634,7 +634,7 @@ add_custom_command(TARGET qtcurve-gtk-theme POST_BUILD
+ # The scroll bar rules of the widget. The thumb and the groove of the bar read
+ # the slider keys and the groove keys of the settings, and no table above binds
+ # a rule of them to those keys. The check below runs the writer over each key,
+-# and it reads the four rules of each arm.
++# and it reads the five rules of each arm.
+ add_custom_command(TARGET qtcurve-gtk-theme POST_BUILD
+   COMMAND sh "${qtc_check}/assert-scrollbar.sh" "${qtc_writer_command}"
+           "${qtc_cover_dir}/scrollbar" "${qtc_light}" "${qtc_distinct}"
+diff --git a/gtk4/check/assert-scrollbar.sh b/gtk4/check/assert-scrollbar.sh
+index e1ee7c01..c43e73b6 100644
+--- a/gtk4/check/assert-scrollbar.sh
++++ b/gtk4/check/assert-scrollbar.sh
+@@ -22,13 +22,14 @@ case $work in
+     *) work=$PWD/$work;;
+ esac
+ 
+-# The four rules of the scroll bar, as Writer::scrollBar() names them. A rule
++# The five rules of the scroll bar, as Writer::scrollBar() names them. A rule
+ # of the widget carries no rank guard, so each selector below is the whole
+ # selector line of the sheet.
+ bar='scrollbar, scrollbar > range'
+ trough='scrollbar > range > trough, scrollbar trough'
+ thumb='scrollbar > range > trough > slider, scrollbar slider'
+ grab='scrollbar > range > trough > slider:hover, scrollbar slider:hover'
++press='scrollbar > range > trough > slider:active, scrollbar slider:active'
+ # The trough of a level bar, which holds step two of the window ladder. The
+ # fix moves the scroll bar trough off that ladder, so the two rules must hold
+ # two values in every sheet.
+@@ -132,15 +133,15 @@ row() {
+         sed -n "s/^  $4: \(.*\);\$/\1/p"
+ }
+ 
+-# check DIR: gives 0 while the ten contracts hold over the arm sheets of DIR.
+-# It names the first contract that fails on the standard error.
++# check DIR: gives 0 while the eleven contracts hold over the arm sheets of
++# DIR. It names the first contract that fails on the standard error.
+ check() {
+     d=$1
+ 
+-    # 1. Each sheet of the run holds the four rules of the scroll bar, and
++    # 1. Each sheet of the run holds the five rules of the scroll bar, and
+     # each rule holds a ground. This is the guard against an empty read.
+     for c_arm in $arms gtk4 gtk4-hsv d-none d-blend d-hsv; do
+-        for c_sel in "$bar" "$trough" "$thumb" "$grab"; do
++        for c_sel in "$bar" "$trough" "$thumb" "$grab" "$press"; do
+             if [ -z "$(row "$d" "$c_arm" "$c_sel" background-color)" ]; then
+                 echo "assert-scrollbar: $c_arm holds no rule '$c_sel'" >&2
+                 return 1
+@@ -348,6 +349,19 @@ check() {
+             fi
+         done
+     fi
++
++    # 11. The pressed thumb takes the hover row. The style folds the pressed
++    # state into the hover state before any colour pick.
++    for c_arm in $arms gtk4 gtk4-hsv d-none d-blend d-hsv; do
++        for c_prop in background-color background-image border; do
++            if [ "$(row "$d" "$c_arm" "$press" "$c_prop")" != \
++                 "$(row "$d" "$c_arm" "$grab" "$c_prop")" ]; then
++                echo "assert-scrollbar: the pressed thumb of $c_arm leaves" \
++                     "the hover row on $c_prop" >&2
++                return 1
++            fi
++        done
++    done
+     return 0
+ }
+ 
+@@ -459,11 +473,17 @@ else
+     blocked='the sheets hold no block of the browser,'
+ fi
+ 
++# The pressed row of the selected arm at the rest colour, which is the sheet
++# of an engine pair that drops the fold.
++paste selected "$press" background-color "$selected"
++control 'the fold of the pressed thumb'
++
+ rm -rf "$work/broken"
+-echo "assert-scrollbar: the four rules stand in $(echo $arms | wc -w) arms of" \
++echo "assert-scrollbar: the five rules stand in $(echo $arms | wc -w) arms of" \
+      "the light scheme, in $(echo $darms | wc -w) arms of the distinct" \
+      "scheme and in 2 sheets of GTK 4, the thumb holds the five slider keys," \
+      "the pointer key and the thumb key of the gradient, the trough holds one" \
+      "step of the base ladder under every key and never the window ladder of" \
+-     "the level bar, each border holds the ladder of its own fill," \
++     "the level bar, each border holds the ladder of its own fill, the" \
++     "pressed thumb holds the hover row," \
+      "$blocked and the check rejects each of the $broken control copies"
+diff --git a/gtk4/check/paths-shading.txt b/gtk4/check/paths-shading.txt
+index 26a7b1a3..16e47215 100644
+--- a/gtk4/check/paths-shading.txt
++++ b/gtk4/check/paths-shading.txt
+@@ -300,6 +300,7 @@ follow | theme_bg_color_breeze | window.background scrollbar | - |
+ pinned | - | window.background scrollbar range trough | - | 
+ pinned | theme_button_background_normal_breeze | window.background scrollbar range trough slider | - | 
+ pinned | - | window.background scrollbar range trough slider:hover | - | 
++pinned | - | window.background scrollbar range trough slider:active | - | 
+ pinned | theme_selected_bg_color_breeze | window.background scale trough highlight | - | 
+ pinned | theme_button_background_normal_breeze | window.background scale trough slider | - | 
+ # The slider of a scale that holds the focus, which each dialect names on its
+@@ -454,6 +455,7 @@ pinned | theme_button_background_normal_breeze | window.background scale:focus-w
+ pinned | - | window.background scrollbar range trough | - | 
+ pinned | theme_button_background_normal_breeze | window.background scrollbar range trough slider | - | 
+ pinned | - | window.background scrollbar range trough slider:hover | - | 
++pinned | - | window.background scrollbar range trough slider:active | - | 
+ follow | theme_base_color_breeze | window.background scrolledwindow.frame | - | 
+ follow | insensitive_selected_bg_color_breeze | window.background scrolledwindow.frame treeview.view:selected:disabled | - | 
+ follow | insensitive_selected_bg_color_breeze | window.background scrolledwindow.frame treeview.view:selected:disabled | - | 
+diff --git a/gtk4/check/paths.txt b/gtk4/check/paths.txt
+index fbac66e4..6cc4235b 100644
+--- a/gtk4/check/paths.txt
++++ b/gtk4/check/paths.txt
+@@ -293,6 +293,7 @@ follow | theme_bg_color_breeze | window.background scrollbar | - |
+ follow | theme_base_color_breeze | window.background scrollbar range trough | - |
+ follow | theme_button_background_normal_breeze | window.background scrollbar range trough slider | - |
+ follow | theme_button_background_normal_breeze | window.background scrollbar range trough slider:hover | - |
++follow | theme_button_background_normal_breeze | window.background scrollbar range trough slider:active | - |
+ follow | theme_selected_bg_color_breeze | window.background scale trough highlight | - |
+ follow | theme_button_background_normal_breeze | window.background scale trough slider | - |
+ # The slider of a scale that holds the focus, which each dialect names on its
+@@ -447,6 +448,7 @@ follow | theme_button_background_normal_breeze | window.background scale:focus-w
+ follow | theme_base_color_breeze | window.background scrollbar range trough | border:theme_base_color_breeze | 
+ follow | theme_button_background_normal_breeze | window.background scrollbar range trough slider | border:theme_button_background_normal_breeze | 
+ follow | theme_button_background_normal_breeze | window.background scrollbar range trough slider:hover | border:theme_button_background_normal_breeze | 
++follow | theme_button_background_normal_breeze | window.background scrollbar range trough slider:active | border:theme_button_background_normal_breeze | 
+ follow | theme_base_color_breeze | window.background scrolledwindow.frame | border:theme_bg_color_breeze | 
+ follow | insensitive_selected_bg_color_breeze | window.background scrolledwindow.frame treeview.view:selected:disabled | border-bottom-color:theme_bg_color_breeze | 
+ follow | insensitive_selected_bg_color_breeze | window.background scrolledwindow.frame treeview.view:selected:disabled | border-right-color:theme_bg_color_breeze | 
+diff --git a/gtk4/check/shades-cover.txt b/gtk4/check/shades-cover.txt
+index baf1ac64..b1f3da80 100644
+--- a/gtk4/check/shades-cover.txt
++++ b/gtk4/check/shades-cover.txt
+@@ -128,6 +128,9 @@ scrollbar > range > trough > slider | border | 0.750 |  |
+ scrollbar > range > trough > slider:hover | background-image | 1.040 1.030 0.980 1.030 |  |
+ scrollbar > range > trough > slider:hover | background-color | 1.030 |  |
+ scrollbar > range > trough > slider:hover | border | 0.750 |  |
++scrollbar > range > trough > slider:active | background-image | 1.040 1.030 0.980 1.030 |  |
++scrollbar > range > trough > slider:active | background-color | 1.030 |  |
++scrollbar > range > trough > slider:active | border | 0.750 |  |
+ switch | background-image | 0.930 0.900 1.040 0.900 |  |
+ switch | background-color | 0.900 |  |
+ switch | border | 0.750 |  |
+diff --git a/gtk4/check/shades-flat.txt b/gtk4/check/shades-flat.txt
+index 561f2034..49894038 100644
+--- a/gtk4/check/shades-flat.txt
++++ b/gtk4/check/shades-flat.txt
+@@ -95,6 +95,8 @@ scrollbar > range > trough | border | 0.750 |  |
+ scrollbar > range > trough > slider | border | 0.750 |  |
+ scrollbar > range > trough > slider:hover | background-color | 1.030 |  |
+ scrollbar > range > trough > slider:hover | border | 0.750 |  |
++scrollbar > range > trough > slider:active | background-color | 1.030 |  |
++scrollbar > range > trough > slider:active | border | 0.750 |  |
+ switch | background-color | 0.900 |  |
+ switch | border | 0.750 |  |
+ switch:checked | border | 0.750 |  |
+diff --git a/gtk4/check/shades-grad.txt b/gtk4/check/shades-grad.txt
+index ae4d3f90..18b85ced 100644
+--- a/gtk4/check/shades-grad.txt
++++ b/gtk4/check/shades-grad.txt
+@@ -132,6 +132,9 @@ scrollbar > range > trough > slider | border | 0.750 |  |
+ scrollbar > range > trough > slider:hover | background-image | 1.040 1.030 0.980 1.030 |  |
+ scrollbar > range > trough > slider:hover | background-color | 1.030 |  |
+ scrollbar > range > trough > slider:hover | border | 0.750 |  |
++scrollbar > range > trough > slider:active | background-image | 1.040 1.030 0.980 1.030 |  |
++scrollbar > range > trough > slider:active | background-color | 1.030 |  |
++scrollbar > range > trough > slider:active | border | 0.750 |  |
+ switch | background-image | 0.930 0.900 1.040 0.900 |  |
+ switch | background-color | 0.900 |  |
+ switch | border | 0.750 |  |
+diff --git a/gtk4/check/shades-opt.txt b/gtk4/check/shades-opt.txt
+index 7a5f75b9..ff10e88c 100644
+--- a/gtk4/check/shades-opt.txt
++++ b/gtk4/check/shades-opt.txt
+@@ -154,6 +154,9 @@ scrollbar > range > trough > slider | border | 0.750 |  |
+ scrollbar > range > trough > slider:hover | background-image | 1.040 1.030 0.980 1.030 |  |
+ scrollbar > range > trough > slider:hover | background-color | 1.030 |  |
+ scrollbar > range > trough > slider:hover | border | 0.750 |  |
++scrollbar > range > trough > slider:active | background-image | 1.040 1.030 0.980 1.030 |  |
++scrollbar > range > trough > slider:active | background-color | 1.030 |  |
++scrollbar > range > trough > slider:active | border | 0.750 |  |
+ switch | background-image | 0.930 0.900 1.040 0.900 |  |
+ switch | background-color | 0.900 |  |
+ switch | border | 0.750 |  |
+diff --git a/gtk4/check/shades.txt b/gtk4/check/shades.txt
+index cd22db38..dfe71ad8 100644
+--- a/gtk4/check/shades.txt
++++ b/gtk4/check/shades.txt
+@@ -130,6 +130,9 @@ scrollbar > range > trough > slider | border | 0.750 |  |
+ scrollbar > range > trough > slider:hover | background-image | 1.040 1.030 0.980 1.030 |  |
+ scrollbar > range > trough > slider:hover | background-color | 1.030 |  |
+ scrollbar > range > trough > slider:hover | border | 0.750 |  |
++scrollbar > range > trough > slider:active | background-image | 1.040 1.030 0.980 1.030 |  |
++scrollbar > range > trough > slider:active | background-color | 1.030 |  |
++scrollbar > range > trough > slider:active | border | 0.750 |  |
+ switch | background-image | 0.930 0.900 1.040 0.900 |  |
+ switch | background-color | 0.900 |  |
+ switch | border | 0.750 |  |
+diff --git a/gtk4/writer/widgets.cpp b/gtk4/writer/widgets.cpp
+index f3613a94..ca2890ee 100644
+--- a/gtk4/writer/widgets.cpp
++++ b/gtk4/writer/widgets.cpp
+@@ -1678,6 +1678,10 @@ Writer::scrollBar()
+                   scrollTone(spec.hover));
+     put(QStringLiteral("scrollbar > range > trough > slider:hover, "
+                        "scrollbar slider:hover"), hover);
++    // The Qt style paints a thumb under the button as a thumb under the
++    // pointer, so the pressed rule states the hover box.
++    put(QStringLiteral("scrollbar > range > trough > slider:active, "
++                       "scrollbar slider:active"), hover);
+ }
+ 
+ void

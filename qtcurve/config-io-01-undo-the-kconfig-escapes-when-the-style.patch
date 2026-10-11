@@ -1,0 +1,113 @@
+Undo the KConfig escapes when the style reads its config
+
+qtcWriteConfig stores every value through KConfig, which escapes the
+backslash, the control characters and a leading or a trailing space.
+QtCConfig takes the raw text after the first equals sign and undoes
+nothing. A value therefore comes back with its escapes, and the escape
+count grows by one level on each save.
+
+An application name that holds a backslash never matches the running
+application. The file name of a background image with a backslash never
+loads. The dialog shows the escaped text when the user opens it again.
+
+Add unescapeValue and call it on each value of the file. The function
+uses the KConfig rules for a value. It reads \\ as the backslash, \s as
+a space, \t, \n and \r as the white space characters, and \xNN as a
+byte. It keeps an unknown escape as the stored text, so a hand written
+path with a single backslash still reads as it stands.
+
+A probe writes each value through KConfig and reads it back with the new
+function. It returns 21 of 21 values unchanged, against 9 of 21 before
+the change, and three saves of one value give one byte sequence.
+
+The change sits on the branch work/config-io of the local tree, as commit 1 of 18.
+A new merge request on system/qtcurve takes that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/qt6/common/config_file.cpp b/qt6/common/config_file.cpp
+index 77d60851..ee4c4b59 100644
+--- a/qt6/common/config_file.cpp
++++ b/qt6/common/config_file.cpp
+@@ -599,6 +599,72 @@ private:
+     QMap<QString, QString> values;
+ };
+ 
++// Convert the stored text of one value to the text the writer gave.
++// The function uses the escape rules of KConfig, the writer of the file, and
++// it keeps an unknown escape as the stored text.
++static QString
++unescapeValue(const QString &val)
++{
++    if(!val.contains('\\'))
++        return val;
++
++    const int len=val.length();
++    QString   res;
++
++    res.reserve(len);
++    for(int i=0; i<len; ++i)
++    {
++        if(val[i]!='\\' || i+1==len)
++        {
++            res+=val[i];
++            continue;
++        }
++
++        const QChar esc(val[++i]);
++
++        switch(esc.unicode())
++        {
++            case 's':
++                res+=' ';
++                break;
++            case 't':
++                res+='\t';
++                break;
++            case 'n':
++                res+='\n';
++                break;
++            case 'r':
++                res+='\r';
++                break;
++            case '\\':
++                res+='\\';
++                break;
++            case 'x':
++            {
++                bool      ok=false;
++                const int code(i+2<len ? val.mid(i+1, 2).toInt(&ok, 16) : 0);
++
++                if(ok && code>=0)
++                {
++                    res+=QChar(char16_t(code));
++                    i+=2;
++                }
++                else
++                {
++                    res+='\\';
++                    res+=esc;
++                }
++                break;
++            }
++            default:
++                res+='\\';
++                res+=esc;
++        }
++    }
++
++    return res;
++}
++
+ QtCConfig::QtCConfig(const QString &filename)
+ {
+     QFile f(filename);
+@@ -612,7 +678,7 @@ QtCConfig::QtCConfig(const QString &filename)
+             line = stream.readLine();
+             int pos=line.indexOf('=');
+             if(-1!=pos)
+-                values[line.left(pos)]=line.mid(pos+1);
++                values[line.left(pos)]=unescapeValue(line.mid(pos+1));
+         }
+         f.close();
+     }

@@ -1,0 +1,40 @@
+Shade the border of a flat selection
+
+The border of a selected item takes its pen from the colour that fills
+the shape. A flat selection appearance fills the whole shape with that
+one colour, so the border carries no contrast and no edge appears. The
+box for the bordered edges then has no effect, and the value Raised
+takes the flat fill as well.
+
+The pen now takes the standard border shade of the selection colour
+while the fill is flat. The edge stands against the fill, so the box
+acts for every appearance. A selection with a gradient keeps the pen of
+before, and its paint does not move.
+
+The change sits on the branch work/style-paint of the local tree, as commit 15 of 21.
+A new merge request on system/qtcurve takes that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/qt6/style/qtcurve_primitive.cpp b/qt6/style/qtcurve_primitive.cpp
+index dc48ea43..2c4dabab 100644
+--- a/qt6/style/qtcurve_primitive.cpp
++++ b/qt6/style/qtcurve_primitive.cpp
+@@ -867,8 +867,16 @@ Style::drawPrimitivePanelItemViewItem(PrimitiveElement,
+                                   false, opts.selectionAppearance,
+                                   WIDGET_SELECTION, false);
+                 if (opts.borderSelection) {
++                    // A flat fill covers the whole shape, so the pen takes
++                    // the standard border shade to keep the contrast.
++                    QColor borderCol(color);
++                    if (qtcIsFlat(opts.selectionAppearance)) {
++                        QColor cols[TOTAL_SHADES + 1];
++                        shadeColors(color, cols);
++                        borderCol = cols[QTC_STD_BORDER];
++                    }
+                     pixPainter.setBrush(Qt::NoBrush);
+-                    pixPainter.setPen(color);
++                    pixPainter.setPen(borderCol);
+                     pixPainter.drawPath(buildPath(border, WIDGET_SELECTION,
+                                                   ROUNDED_ALL, radius));
+                 }

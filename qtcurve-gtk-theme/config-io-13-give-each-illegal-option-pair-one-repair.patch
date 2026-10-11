@@ -1,0 +1,71 @@
+Give each illegal option pair one repair
+
+Three options carry a glow form that needs the button effect, and the
+two builds answer the same illegal pair with two values. The style
+demotes the glow mouse-over to the thick coloured form and the glow
+default button indicator to the tint. Both demotions sit inside the
+block that CONFIG_DIALOG excludes. The dialog answers the first pair
+with the Plastik mouse-over and the second by promoting the button
+effect to Shadowed. A file that holds a glow with no button effect
+therefore renders one way and shows another.
+
+The focus repair holds a second fault. The reader forces every focus
+except Glow to Line once the round rises above extra. The next repair
+answers a missing button effect by turning a glow focus into the full
+one. The second repair rebuilds the pair that the first forbids, so one
+state reaches the style with two focus values.
+
+Answer each illegal pair with one repair, and run the repairs in both
+builds. Gather the three glow demotions under the button effect test.
+Place the round repair after them, so it sees the focus that the button
+effect leaves. A file that holds legal pairs reads exactly as it read
+before.
+
+The change sits on the branch work/config-io of the local tree, as commit 13 of 18.
+A new merge request on system/qtcurve takes that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/qt6/common/config_file.cpp b/qt6/common/config_file.cpp
+index 39b1bc69..8f1b5e29 100644
+--- a/qt6/common/config_file.cpp
++++ b/qt6/common/config_file.cpp
+@@ -1128,22 +1128,29 @@ void qtcCheckConfig(Options *opts)
+         opts->colorMenubarMouseOver=true;
+ */
+ 
+-#ifndef CONFIG_DIALOG
+-    if(MO_GLOW==opts->coloredMouseOver && EFFECT_NONE==opts->buttonEffect)
+-        opts->coloredMouseOver=MO_COLORED_THICK;
++    /* The three glow values need the button effect. One repair answers each
++       illegal pair, and both builds run it, so the dialog shows the value
++       that the style uses. */
++    if(EFFECT_NONE==opts->buttonEffect)
++    {
++        if(MO_GLOW==opts->coloredMouseOver)
++            opts->coloredMouseOver=MO_COLORED_THICK;
+ 
+-    if(IND_GLOW==opts->defBtnIndicator && EFFECT_NONE==opts->buttonEffect)
+-        opts->defBtnIndicator=IND_TINT;
++        if(IND_GLOW==opts->defBtnIndicator)
++            opts->defBtnIndicator=IND_TINT;
++
++        if(FOCUS_GLOW==opts->focus)
++            opts->focus=FOCUS_FULL;
++    }
+ 
++    /* A round above extra carries the glow focus alone. This repair runs
++       after the button effect repair, which can clear the glow. */
+     if(opts->round>ROUND_EXTRA && FOCUS_GLOW!=opts->focus)
+         opts->focus=FOCUS_LINE;
+ 
++#ifndef CONFIG_DIALOG
+     if(EFFECT_NONE==opts->buttonEffect)
+-    {
+         opts->etchEntry=false;
+-        if(FOCUS_GLOW==opts->focus)
+-            opts->focus=FOCUS_FULL;
+-    }
+ 
+ //     if(opts->squareScrollViews)
+ //         opts->highlightScrollViews=false;

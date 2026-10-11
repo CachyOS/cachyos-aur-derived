@@ -1,0 +1,539 @@
+firefox: hold every declaration of a mapped name to the value of its row
+
+assert-ff-agree.sh read all declarations of a custom property of the
+map in a sheet as one value. A second declaration thus failed the
+check, also at the value of the row. A rule for one element of the
+chrome must declare such a property again when a chrome rule sets it
+on that element. That chrome rule hides the value that the element
+takes from :root.
+
+Every declaration of a custom property of a row must now hold one
+value in a sheet. That value must equal the value of every colour key
+of the matching half. value() now prints each distinct value one time.
+agree() fails a row when one sheet gives more than one value for a
+name of the row. This check also covers a row with no colour key, for
+example the menuBorder row.
+
+Three controls run over copies of the distinct dark sheet. A copy that
+declares --panel-background-color again at the value of the sheet must
+pass. A copy that declares it again at #141618 must fail. A copy that
+sets the first declaration to #141618 must also fail. Before the
+controls, the run checks that the value of the sheet is not #141618.
+The build prints one line for each control.
+
+firefox: colour the selected tab label of Firefox 157
+
+Firefox 157 renames the custom property of the label colour of the
+selected tab. The label rule of 157 reads --tab-text-color-selected,
+and no rule of 157 reads --tab-selected-textcolor. The sheet wrote the
+old name alone. With the theme add-on, the label of 157 thus took the
+colour of the static theme. Without the add-on and with the native
+theme off, it took a default of the browser. With the native theme on,
+the default of the browser reads --toolbar-text-color, which the sheet
+sets to the colour of the old name.
+
+The windowText row of the map now holds the new name after the old
+name. The sheet thus sets both names to the colour of the row. Firefox
+156 reads the old name alone, so the old name stays.
+
+The pin of the properties holds the new name. Its header now names
+Firefox 155 and Firefox 157 as the sources of the pinned names. The
+floor of the name check becomes 37, which mkfloors.sh prints for this
+tree. The manifest does not change, because the colour keys of the row
+do not change.
+
+firefox: pin the accent stops of the selected tab to the highlight
+
+Firefox 157 sets browser.nova.enabled to true by default. Under that
+preference, the accent of the selected tab is a violet to orange
+gradient of two custom properties: --tab-border-color-selected-leading
+and --tab-border-color-selected-trailing. The separator under the
+account block of the app menu paints that gradient, with and without
+the theme add-on. Without the add-on and with the native theme off,
+the border of the selected tab paints it too. The sheet gave neither
+property a colour of the scheme.
+
+The highlight row of the map now holds the two names. The sheet thus
+sets both stops to the highlight colour, and each gradient becomes one
+solid line of that colour. assert-ff-agree.sh binds every name of a
+row to the colour keys of that row, so it checks the two new lines
+with no change. The floor of the name check becomes 39, which
+mkfloors.sh prints for this tree.
+
+firefox: pin the primary accent to the highlight ladder
+
+With the native theme on, the browser takes --color-accent-primary
+from the system colour AccentColor and --button-text-color-primary
+from AccentColorText. On the measured GTK desktop, AccentColor held the
+highlight text colour of the scheme and AccentColorText held the
+highlight. The Sign in button of the app menu thus painted a near black
+ground. The focus ring of the sidebar search reads the same token, and
+it drew near black on the dark sidebar.
+
+The sheet now pins --color-accent-primary to the highlight colour and
+--button-text-color-primary to the highlight text colour. The two names
+join the highlight row and the highlightText row of the map.
+assert-ff-agree.sh holds all names of a row to one colour, so the hover
+and the active names take two new rows. Their new roles read the
+highlight ladder at the steps of the hover ground and the pressed
+ground of a button.
+
+The new rows carry no colour key, so the manifest does not change. The
+floor of the name check becomes 43, which mkfloors.sh prints for this
+tree. The floor of the rows becomes 20, the row count of the built map.
+
+firefox: follow the round key for the radius tokens of the chrome
+
+Firefox 157 sets browser.nova.enabled to true by default. Under that
+preference, the radius tokens of tabs, buttons and toolbar buttons are
+24px, so these widgets render as pills. Without it they are 8px, on
+Firefox 156 and 157. Neither value follows the round key of QtCurve.
+
+The sheet now holds one more :root block after the icon rules. It pins
+nine radius tokens of the chrome to the radius that Gtk::radius() gives
+under the round key. Each token takes one widget kind: a tab, a button,
+a menu as a window, or a menu item. Each kind takes the size of a radius
+call of the GTK writer for that kind. Under round=extra, the tokens of
+tabs, buttons and menus take 4.5px, and the tokens of menu items take
+2.5px. The same pins apply under Firefox 156.
+
+The block pins no --menuitem-border-radius, because every menupopup and
+panel declares that token again, so a pin at the root moves nothing. The
+square flags of popup menus and tooltips map to no token. Gtk::radius()
+reads neither flag, and --popup-border-radius also sets the corners of
+the urlbar, which is an entry. The manifest of the static theme carries
+no radius, so it does not change.
+
+The contract of buildSheet() now names the radius block and the scroll
+bar rule of the sidebars. The floor of the name check becomes 52, which
+mkfloors.sh prints for this tree.
+
+firefox: hold the form popups to the popup colours of the sheet
+
+Firefox 157 gives the autocomplete popup of a form and the date and
+time picker the colour scheme of the page. Rules of the browser set
+--panel-background-color to Field on these two panels, and Field
+follows that scheme. A light page under a dark sheet thus gave both
+panels a white ground. Firefox 156 gave them the scheme of the content
+preference.
+
+The sheet now holds two rules after the popup shadow rule. The first
+rule declares the popup background, text and border of the map again
+on both panels, at the values of the menu rows. It also pins
+color-scheme to dark when the luminance of the window background is
+below 0.5, and to light when it is not. A probe showed that the three
+colour pins alone do not hold. The picker paints a Field body of its
+own, and the autocomplete rows keep the text of a light scheme.
+
+The rows take the colour of their list. A rule of the toolkit sets the
+colour of that list to FieldText. That rule does not read
+--panel-text-color. FieldText follows the pinned scheme and can differ
+from the popup text. The second rule sets the colour of the list to
+var(--panel-text-color), the text pin of the first rule. The sheet thus
+holds the autocomplete rows to the pinned popup text of both schemes.
+
+assert-ff-agree.sh accepts the repeated declarations of the first
+rule, because each one holds the value of its row. The rules add no
+name to the pin, because they declare no custom property outside the
+map.
+
+The changes sit on the branch work/firefox-theme-ff157 of the local
+tree, as commits 15 to 20 of 20. The branch holds those twenty commits
+above the head of work/gtk4-theme, which merge request !15 on
+system/qtcurve holds. The fork wyn/qtcurve holds work/firefox-theme.
+Merge request !29 on system/qtcurve holds that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/firefox/CMakeLists.txt b/firefox/CMakeLists.txt
+index 571fc2e6..ed839f49 100644
+--- a/firefox/CMakeLists.txt
++++ b/firefox/CMakeLists.txt
+@@ -152,7 +152,7 @@ add_custom_target(qtcurve-firefox-theme ALL DEPENDS ${qtc_ff_depends}
+ # no fault, so the run states the count that it must read. check/mkfloors.sh
+ # prints this line from one build, and no floor comes from a hand count. The
+ # sheet holds the shadow name under either setting, so the floor counts it.
+-set(qtc_ff_names 36)
++set(qtc_ff_names 52)
+ 
+ # The two sheets of the shipped schemes, which the checks below read. A run of
+ # a user writes the same text into a profile.
+@@ -172,7 +172,7 @@ add_custom_command(TARGET qtcurve-firefox-theme POST_BUILD
+ 
+ # The floor of the rows of the map, which assert-ff-agree.sh reads. A map of
+ # no row binds no colour, and every row binds one palette source.
+-set(qtc_ff_rows 18)
++set(qtc_ff_rows 20)
+ 
+ # The two arms of the theme must hold one palette, and the manifest must hold
+ # keys of the schema alone.
+diff --git a/firefox/check/assert-ff-agree.sh b/firefox/check/assert-ff-agree.sh
+index aad204e9..496ca770 100644
+--- a/firefox/check/assert-ff-agree.sh
++++ b/firefox/check/assert-ff-agree.sh
+@@ -3,10 +3,13 @@
+ # MINROWS: the two arms of the theme must hold one palette. LIGHT and DARK are
+ # the sheets of the build and MANIFEST is the manifest of the build. The run
+ # reads each one against a fresh run of the writer, then reads every row of
+-# MAP: the value of a custom property of a sheet must equal the value of every
+-# colour key of the matching half. The run repeats over two colour files that
+-# give the halves their own values, and it doctors a copy of the manifest at
+-# the end.
++# MAP. Every declaration of a custom property of a row must hold one value in a
++# sheet. That value must equal the value of every colour key of the matching
++# half.
++#
++# The run repeats over two colour files that give the halves their own values.
++# At the end, it doctors a copy of the manifest and copies of the dark sheet of
++# those files.
+ set -eu
+ usage='usage: assert-ff-agree.sh WRITER MAP LIGHT DARK MANIFEST LIGHTCOLORS DARKCOLORS MINROWS'
+ writer=${1:?$usage}
+@@ -21,6 +24,8 @@ minrows=${8:?$usage}
+ tmp=$(mktemp -d)
+ trap 'rm -rf "$tmp"' EXIT
+ status=0
++newline='
++'
+ 
+ fail() {
+     echo "assert-ff-agree: $1" >&2
+@@ -56,10 +61,11 @@ halves() {
+     return 0
+ }
+ 
+-# value FILE NAME: prints the value of the custom property NAME of the sheet
+-# FILE, and prints nothing when the sheet does not set it.
++# value FILE NAME: prints each distinct value of the custom property NAME of
++# the sheet FILE, one line for each value. It prints nothing when the sheet
++# does not set NAME.
+ value() {
+-    sed -n "s/^  $2: \\(.*\\) !important;\$/\\1/p" "$1"
++    sed -n "s/^  $2: \\(.*\\) !important;\$/\\1/p" "$1" | LC_ALL=C sort -u
+ }
+ 
+ # colour FILE KEY: prints the value of the colour key KEY of the manifest half
+@@ -88,6 +94,14 @@ agree() {
+                     a_bad=1
+                     continue
+                 fi
++                case $a_one$a_two in
++                    *"$newline"*)
++                        echo "assert-ff-agree: $a_name: $a_var holds more" \
++                             "than one value in one sheet of the row" \
++                             "$a_role" >&2
++                        a_bad=1
++                        continue;;
++                esac
+                 if [ -z "$a_light" ]; then
+                     a_light=$a_one
+                     a_dark=$a_two
+@@ -160,9 +174,61 @@ if agree control "$tmp/distinct-light.css" "$tmp/distinct-dark.css" \
+     fail "the check passed the control copy of the swapped key"
+ fi
+ 
++# The controls below doctor copies of the distinct dark sheet. A second
++# declaration at the value of the sheet must pass, and the planted value must
++# fail in either declaration.
++popup_var=--panel-background-color
++planted='#141618'
++popup=$(value "$tmp/distinct-dark.css" "$popup_var")
++if [ "$popup" = "$planted" ]; then
++    fail "the planted value equals $popup_var of the distinct dark sheet"
++fi
++
++# plant VALUE COPY: writes to COPY the distinct dark sheet and one more rule.
++# The rule declares $popup_var at VALUE in the line shape that value() reads.
++plant() {
++    cp "$tmp/distinct-dark.css" "$2"
++    {
++        echo
++        echo 'panel[type="autocomplete-richlistbox"] {'
++        printf '  %s: %s !important;\n' "$popup_var" "$1"
++        echo '}'
++    } >> "$2"
++}
++
++# expect NAME CODE COPY: runs the check over COPY in place of the distinct dark
++# sheet. It fails the run when the check gives a code other than CODE.
++expect() {
++    e_code=0
++    agree "$1" "$tmp/distinct-light.css" "$3" "$tmp/distinct-manifest.json" \
++        2> "$tmp/$1.log" || e_code=$?
++    if [ $e_code -ne "$2" ]; then
++        cat "$tmp/$1.log" >&2
++        fail "the check gives $e_code over the copy $1, not $2"
++    fi
++}
++
++plant "$popup" "$tmp/again.css"
++expect again 0 "$tmp/again.css"
++plant "$planted" "$tmp/element.css"
++expect element 1 "$tmp/element.css"
++root_line="  $popup_var: $planted !important;"
++sed "1,/^  $popup_var: /s/^  $popup_var: .* !important;\$/$root_line/" \
++    "$tmp/distinct-dark.css" > "$tmp/root.css"
++expect root 1 "$tmp/root.css"
++
+ if [ $status -eq 0 ]; then
+     echo "assert-ff-agree: the $rows rows of the map hold one value in the" \
+          "sheet and in the manifest of each half, over two colour file" \
+          "pairs, and the check rejects the swapped copy"
++    echo "assert-ff-agree: a copy of the distinct dark sheet declares" \
++         "$popup_var again at its value $popup, and the check passes it" \
++         "with the code 0"
++    echo "assert-ff-agree: a copy of the distinct dark sheet declares" \
++         "$popup_var again at $planted, and the check rejects it with the" \
++         "code 1"
++    echo "assert-ff-agree: a copy of the distinct dark sheet sets its first" \
++         "$popup_var line to $planted, and the check rejects it with the" \
++         "code 1"
+ fi
+ exit $status
+diff --git a/firefox/check/ff-varnames.txt b/firefox/check/ff-varnames.txt
+index c42afb3d..b9631c83 100644
+--- a/firefox/check/ff-varnames.txt
++++ b/firefox/check/ff-varnames.txt
+@@ -1,9 +1,9 @@
+ # The custom properties of the Firefox chrome that the generated sheet sets,
+-# pinned against Firefox 155. The chrome reads a declaration of a name that it
+-# knows, and a name outside this list paints nothing at all.
++# pinned against Firefox 155 and Firefox 157. The chrome reads a declaration
++# of a name that it knows, and a name outside this list paints nothing at all.
+ # Derivation: every name below stands in a token file of the chrome of Firefox
+-# 155.0, which omni.ja and browser/omni.ja hold. The files are
+-# tokens-shared.css, tokens-platform.css, browser-colors.css, toolbar.css,
++# 155.0 or of Firefox 157.0, which omni.ja and browser/omni.ja hold. The files
++# are tokens-shared.css, tokens-platform.css, browser-colors.css, toolbar.css,
+ # tab.tokens.css, toolbarbuttons.css, common-shared.css, browser.css, menu.css
+ # and urlbar/urlbarview.tokens.css. A refresh of the pin reads the same files
+ # of the next major.
+@@ -15,6 +15,7 @@
+ --tab-background-color-selected
+ --toolbar-text-color
+ --tab-selected-textcolor
++--tab-text-color-selected
+ --toolbarbutton-icon-fill
+ --toolbar-field-background-color
+ --toolbar-field-background-color-focus
+@@ -27,8 +28,14 @@
+ --focus-outline-color
+ --urlbarview-background-color-selected
+ --toolbarbutton-icon-fill-attention
++--tab-border-color-selected-leading
++--tab-border-color-selected-trailing
++--color-accent-primary
++--color-accent-primary-hover
++--color-accent-primary-active
+ --urlbarview-text-color-selected
+ --toolbarbutton-icon-fill-attention-text
++--button-text-color-primary
+ --panel-background-color
+ --panel-text-color
+ --panel-border-color
+@@ -43,3 +50,12 @@
+ --titlebar-button-size
+ --titlebar-button-spacing
+ --titlebar-button-end-spacing
++--tab-border-radius
++--button-border-radius
++--toolbarbutton-border-radius
++--panel-border-radius
++--popup-border-radius
++--border-radius-xsmall
++--border-radius-small
++--border-radius-medium
++--border-radius-large
+diff --git a/firefox/writer/ffmap.cpp b/firefox/writer/ffmap.cpp
+index ae9f2d2c..f5aae0d8 100644
+--- a/firefox/writer/ffmap.cpp
++++ b/firefox/writer/ffmap.cpp
+@@ -66,6 +66,7 @@ const char *const keysToolbar[] = { "toolbar", "tab_selected",
+ const char *const varsToolbarText[] = {
+     "--toolbar-text-color",
+     "--tab-selected-textcolor",
++    "--tab-text-color-selected",
+     "--toolbarbutton-icon-fill"
+ };
+ const char *const keysToolbarText[] = { "toolbar_text", "tab_text",
+@@ -105,7 +106,10 @@ const char *const keysFocus[] = { "toolbar_field_border_focus" };
+ 
+ const char *const varsSelected[] = {
+     "--urlbarview-background-color-selected",
+-    "--toolbarbutton-icon-fill-attention"
++    "--toolbarbutton-icon-fill-attention",
++    "--tab-border-color-selected-leading",
++    "--tab-border-color-selected-trailing",
++    "--color-accent-primary"
+ };
+ const char *const keysSelected[] = { "popup_highlight", "sidebar_highlight",
+                                      "toolbar_field_highlight", "tab_line",
+@@ -113,12 +117,17 @@ const char *const keysSelected[] = { "popup_highlight", "sidebar_highlight",
+ 
+ const char *const varsSelectedText[] = {
+     "--urlbarview-text-color-selected",
+-    "--toolbarbutton-icon-fill-attention-text"
++    "--toolbarbutton-icon-fill-attention-text",
++    "--button-text-color-primary"
+ };
+ const char *const keysSelectedText[] = { "popup_highlight_text",
+                                          "sidebar_highlight_text",
+                                          "toolbar_field_highlight_text" };
+ 
++const char *const varsSelectedHover[] = { "--color-accent-primary-hover" };
++
++const char *const varsSelectedActive[] = { "--color-accent-primary-active" };
++
+ const char *const varsPanel[] = { "--panel-background-color" };
+ const char *const keysPanel[] = { "popup" };
+ 
+@@ -165,6 +174,8 @@ const FfRow rows[] = {
+       QTC_FF_LIST(keysSelected) },
+     { FfRole::HighlightText, QTC_FF_LIST(varsSelectedText),
+       QTC_FF_LIST(keysSelectedText) },
++    { FfRole::HighlightHover, QTC_FF_LIST(varsSelectedHover), QTC_FF_NONE },
++    { FfRole::HighlightActive, QTC_FF_LIST(varsSelectedActive), QTC_FF_NONE },
+     { FfRole::Menu, QTC_FF_LIST(varsPanel), QTC_FF_LIST(keysPanel) },
+     { FfRole::MenuText, QTC_FF_LIST(varsPanelText),
+       QTC_FF_LIST(keysPanelText) },
+@@ -177,8 +188,9 @@ const FfRow rows[] = {
+ const char *const roleNames[] = {
+     "titlebar", "titlebarText", "titlebarInactive", "titlebarInactiveText",
+     "window", "windowText", "base", "text", "windowBorder", "buttonFocus",
+-    "highlight", "highlightText", "menu", "menuText", "menuBorder",
+-    "buttonHover", "buttonActive", "scrollThumb", "scrollTrack", "clear"
++    "highlight", "highlightText", "highlightHover", "highlightActive",
++    "menu", "menuText", "menuBorder", "buttonHover", "buttonActive",
++    "scrollThumb", "scrollTrack", "clear"
+ };
+ 
+ }
+@@ -229,6 +241,10 @@ ffColour(const Options &opts, const Palette &pal, FfRole role)
+         return pal.highlight;
+     case FfRole::HighlightText:
+         return pal.highlightText;
++    case FfRole::HighlightHover:
++        return pal.hl[hoverShade];
++    case FfRole::HighlightActive:
++        return pal.hl[activeShade];
+     case FfRole::Menu:
+         return pal.menu[ORIGINAL_SHADE];
+     case FfRole::MenuText:
+diff --git a/firefox/writer/ffmap.h b/firefox/writer/ffmap.h
+index 183dc001..93f6cba5 100644
+--- a/firefox/writer/ffmap.h
++++ b/firefox/writer/ffmap.h
+@@ -45,6 +45,8 @@ enum class FfRole {
+     ButtonFocus,
+     Highlight,
+     HighlightText,
++    HighlightHover,
++    HighlightActive,
+     Menu,
+     MenuText,
+     MenuBorder,
+diff --git a/firefox/writer/sheet.cpp b/firefox/writer/sheet.cpp
+index 2253574a..c5a5f325 100644
+--- a/firefox/writer/sheet.cpp
++++ b/firefox/writer/sheet.cpp
+@@ -103,6 +103,41 @@ iconFills()
+                           "}\n");
+ }
+ 
++/**
++ * Returns the :root block of the radius tokens of the chrome. Each token
++ * holds the radius of the round key for one widget kind, at the size of a
++ * radius call of widgets.cpp for that kind.
++ */
++QString
++radiusTokens(const Options &opts)
++{
++    const QString button = Gtk::radius(opts, 100, 25, WIDGET_STD_BUTTON);
++    const QString tab = Gtk::radius(opts, 80, 26, WIDGET_TAB_TOP);
++    const QString menu = Gtk::radius(opts, 240, 120, WIDGET_OTHER);
++    const QString item = Gtk::radius(opts, 200, 20, WIDGET_MENU_ITEM);
++    const struct {
++        const char *name;
++        const QString &value;
++    } tokens[] = {
++        { "--tab-border-radius", tab },
++        { "--button-border-radius", button },
++        { "--toolbarbutton-border-radius", button },
++        { "--panel-border-radius", menu },
++        { "--popup-border-radius", menu },
++        { "--border-radius-xsmall", item },
++        { "--border-radius-small", item },
++        { "--border-radius-medium", button },
++        { "--border-radius-large", item }
++    };
++    QString out = QStringLiteral("\n:root {\n");
++    for (const auto &token : tokens) {
++        out += QStringLiteral("  %1: %2 !important;\n")
++            .arg(QLatin1String(token.name), token.value);
++    }
++    out += QStringLiteral("}\n");
++    return out;
++}
++
+ /**
+  * The colour of the drop shadow of a popup, as one channel from 0 to 255. c1
+  * of qtcX11ShadowInit() in lib/utils/x11helpers.cpp holds 0.4 of the range,
+@@ -161,6 +196,31 @@ popupShadow(const Options &opts)
+         .arg(blur + spread);
+ }
+ 
++/**
++ * Returns the rules of the autocomplete popup of a form and of the date and
++ * time picker. The rules hold the popup colours of the map and a colour
++ * scheme that follows the polarity flag of pal.
++ */
++QString
++pagePanels(const Options &opts, const Palette &pal)
++{
++    return QStringLiteral("\npanel[type=\"autocomplete-richlistbox\"],\n"
++                          "#DateTimePickerPanel {\n"
++                          "  --panel-background-color: %1 !important;\n"
++                          "  --panel-text-color: %2 !important;\n"
++                          "  --panel-border-color: %3 !important;\n"
++                          "  color-scheme: %4 !important;\n"
++                          "}\n"
++                          "\npanel[type=\"autocomplete-richlistbox\"]"
++                          " richlistbox {\n"
++                          "  color: var(--panel-text-color) !important;\n"
++                          "}\n")
++        .arg(Gtk::hex(ffColour(opts, pal, FfRole::Menu)),
++             Gtk::hex(ffColour(opts, pal, FfRole::MenuText)),
++             Gtk::hex(ffColour(opts, pal, FfRole::MenuBorder)),
++             pal.dark ? QStringLiteral("dark") : QStringLiteral("light"));
++}
++
+ /**
+  * Returns the scroll bar rule of the sidebars of the browser. The rule takes
+  * !important, because a user rule of no !important loses to the author rule
+@@ -197,7 +257,9 @@ buildSheet(const Options &opts, const Palette &pal)
+     out += QStringLiteral("}\n");
+     out += toolboxImages(opts, pal);
+     out += iconFills();
++    out += radiusTokens(opts);
+     out += popupShadow(opts);
++    out += pagePanels(opts, pal);
+     out += sidebarScrollBar(opts, pal);
+     out += buildCaption(opts, pal);
+     return out;
+diff --git a/firefox/writer/sheet.h b/firefox/writer/sheet.h
+index fd5ab8ea..1be07cb0 100644
+--- a/firefox/writer/sheet.h
++++ b/firefox/writer/sheet.h
+@@ -33,8 +33,10 @@ namespace Firefox {
+  * Returns the text of the sheet that the writer owns in a profile. The sheet
+  * holds one header line, then one :root block of every custom property of
+  * the map. A titlebar gradient adds one rule of the tool box for each state
+- * of the window. The icon rules, the popup rule of the shadow setting and
+- * the caption rules end the sheet.
++ * of the window. The icon rules follow, and one more :root block then pins
++ * the radius tokens of the chrome to the round key. Then the sheet holds the
++ * popup rule of the shadow setting and the rules of the two page panels. The
++ * scroll bar rule of the sidebars and the caption rules end the sheet.
+  *
+  * \param opts  the QtCurve settings, which give the appearance and the ladders.
+  * \param pal   the colours of the live scheme or of a colour file.

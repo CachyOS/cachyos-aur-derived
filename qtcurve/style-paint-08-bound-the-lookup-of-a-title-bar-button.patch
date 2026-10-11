@@ -1,0 +1,115 @@
+Bound the lookup of a title bar button colour
+
+The colour table of the title bar buttons holds three blocks of nine
+entries. The reader accepts a file with one block or two blocks, and it
+clears the icon colour flag for one block alone. A file with two blocks
+therefore keeps the flag, and the paint of an inactive window then asks
+for the entries eighteen to twenty six. The paint reads the table with
+the inserting operator of the map. The icon then takes an invalid colour,
+and a paint of the constant style writes nine entries into the live
+options.
+
+The style now finds the entry, and it falls back to the colour of a
+configuration with no user colours. The dialog reads the same table in
+this manner. The reader also completes a short table from the block of
+the active window. An older QtCurve painted that block in both window
+states. A full table of twenty seven entries paints as before.
+
+The change sits on the branch work/style-paint of the local tree, as commit 8 of 21.
+A new merge request on system/qtcurve takes that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/qt6/common/config_file.cpp b/qt6/common/config_file.cpp
+index fa6bf8f0..bfd40ec3 100644
+--- a/qt6/common/config_file.cpp
++++ b/qt6/common/config_file.cpp
+@@ -1549,6 +1549,15 @@ bool qtcReadConfig(const QString &file, Options *opts, Options *defOpts, bool ch
+                     opts->titlebarButtons &= ~TITLEBAR_BUTTON_ICON_COLOR;
+                 } else if (cols.count() < (NUM_TITLEBAR_BUTTONS + 1)) {
+                     opts->titlebarButtons &= ~TITLEBAR_BUTTON_ICON_COLOR;
++                } else {
++                    // A file of an older QtCurve holds one block of icon
++                    // colours for the two window states. The icons of an
++                    // inactive window take that block as well.
++                    for (int i = cols.count();
++                         i < (NUM_TITLEBAR_BUTTONS * 3); ++i) {
++                        opts->titlebarButtonColors[i] =
++                            opts->titlebarButtonColors[i - NUM_TITLEBAR_BUTTONS];
++                    }
+                 }
+             } else {
+                 opts->titlebarButtons &= ~TITLEBAR_BUTTON_COLOR;
+diff --git a/qt6/style/qtcurve.cpp b/qt6/style/qtcurve.cpp
+index a64f9a2e..6536ff17 100644
+--- a/qt6/style/qtcurve.cpp
++++ b/qt6/style/qtcurve.cpp
+@@ -2748,8 +2748,11 @@ void Style::drawMdiControl(QPainter *p, const QStyleOptionTitleBar *titleBar, Su
+                         opts.titlebarButtons&TITLEBAR_BUTTON_COLOR));
+         const QColor *buttonColors=colored && !(opts.titlebarButtons&TITLEBAR_BUTTON_COLOR_SYMBOL)
+             ? m_titleBarButtonsCols[btn] : (useBtnCols ? btnCols : bgndCols);
+-        const QColor &icnColor=opts.titlebarButtons&TITLEBAR_BUTTON_ICON_COLOR
+-            ? opts.titlebarButtonColors[btn+(NUM_TITLEBAR_BUTTONS*(titleBar->state&State_Active ? 1 : 2))]
++        const QColor *userIcnColor=opts.titlebarButtons&TITLEBAR_BUTTON_ICON_COLOR
++            ? titlebarButtonColor(btn+(NUM_TITLEBAR_BUTTONS*(titleBar->state&State_Active ? 1 : 2)))
++            : nullptr;
++        const QColor &icnColor=userIcnColor
++            ? *userIcnColor
+             : colored && opts.titlebarButtons&TITLEBAR_BUTTON_COLOR_SYMBOL
+             ? m_titleBarButtonsCols[btn][ORIGINAL_SHADE]
+             : SC_TitleBarCloseButton==sc && hover && !sunken && !(opts.titlebarButtons&TITLEBAR_BUTTON_COLOR)
+@@ -2778,8 +2781,11 @@ void Style::drawDwtControl(QPainter *p, const State &state, const QRect &rect, E
+                     opts.titlebarButtons&TITLEBAR_BUTTON_COLOR));
+     const QColor *buttonColors=colored && !(opts.titlebarButtons&TITLEBAR_BUTTON_COLOR_SYMBOL)
+         ? m_titleBarButtonsCols[btn] : (useBtnCols ? btnCols : bgndCols);
+-    const QColor &icnColor=opts.dwtSettings&DWT_ICON_COLOR_AS_PER_TITLEBAR && opts.titlebarButtons&TITLEBAR_BUTTON_ICON_COLOR
+-        ? opts.titlebarButtonColors[btn+(NUM_TITLEBAR_BUTTONS/**(titleBar->state&State_Active ? 1 : 2)*/)]
++    const QColor *userIcnColor=opts.dwtSettings&DWT_ICON_COLOR_AS_PER_TITLEBAR && opts.titlebarButtons&TITLEBAR_BUTTON_ICON_COLOR
++        ? titlebarButtonColor(btn+(NUM_TITLEBAR_BUTTONS/**(titleBar->state&State_Active ? 1 : 2)*/))
++        : nullptr;
++    const QColor &icnColor=userIcnColor
++        ? *userIcnColor
+         : colored && opts.titlebarButtons&TITLEBAR_BUTTON_COLOR_SYMBOL
+         ? m_titleBarButtonsCols[btn][ORIGINAL_SHADE]
+         : (TITLEBAR_CLOSE==btn && !(opts.titlebarButtons&TITLEBAR_BUTTON_COLOR) && (hover || sunken)
+@@ -3716,12 +3722,27 @@ const QColor * Style::buttonColors(const QStyleOption *option) const
+     return m_buttonCols;
+ }
+ 
++// A configuration file can hold fewer colours than the title bar buttons need.
++// The lookup gives a null pointer for an absent entry, and the caller then
++// takes the colour of a configuration with no user colours.
++const QColor * Style::titlebarButtonColor(int entry) const
++{
++    TBCols::const_iterator col(opts.titlebarButtonColors.find(entry));
++
++    return col==opts.titlebarButtonColors.end() ? nullptr : &col->second;
++}
++
+ QColor Style::titlebarIconColor(const QStyleOption *option) const
+ {
+     if(option && option->version>=TBAR_VERSION_HACK)
+     {
+         if(opts.titlebarButtons&TITLEBAR_BUTTON_ICON_COLOR && option->version<TBAR_VERSION_HACK+(NUM_TITLEBAR_BUTTONS*3))
+-            return opts.titlebarButtonColors[option->version-TBAR_VERSION_HACK];
++        {
++            const QColor *col=titlebarButtonColor(option->version-TBAR_VERSION_HACK);
++
++            if(col)
++                return *col;
++        }
+         if(option->version<TBAR_VERSION_HACK+NUM_TITLEBAR_BUTTONS &&
+            coloredMdiButtons(option->state&State_Active, option->state&(State_MouseOver|State_Sunken)))
+             return m_titleBarButtonsCols[option->version-TBAR_VERSION_HACK][ORIGINAL_SHADE];
+diff --git a/qt6/style/qtcurve.h b/qt6/style/qtcurve.h
+index 4005c3c7..92ce90ce 100644
+--- a/qt6/style/qtcurve.h
++++ b/qt6/style/qtcurve.h
+@@ -325,6 +325,7 @@ private:
+                   EWidget tab, int round) const;
+     void shadeColors(const QColor &base, QColor *vals) const;
+     const QColor *buttonColors(const QStyleOption *option) const;
++    const QColor *titlebarButtonColor(int entry) const;
+     QColor titlebarIconColor(const QStyleOption *option) const;
+     const QColor *popupMenuCols(const QStyleOption *option=0L) const;
+     const QColor *checkRadioColors(const QStyleOption *option) const;
