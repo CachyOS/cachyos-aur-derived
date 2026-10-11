@@ -1,3 +1,6 @@
 ["swash"]
 source = "git"
 git = "https://github.com/ItsLemmy/swash.git"
+prefix = "v"
+from_pattern = 'Swash (.+)'
+to_pattern = '\1'
