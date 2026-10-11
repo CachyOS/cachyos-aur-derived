@@ -1,7 +1,7 @@
 pkgbase = jay
 	pkgdesc = A Wayland Compositor
 	pkgver = 1.15.0
-	pkgrel = 1
+	pkgrel = 2
 	url = https://github.com/mahkoh/jay
 	install = jay.install
 	arch = x86_64
