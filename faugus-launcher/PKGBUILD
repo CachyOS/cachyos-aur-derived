@@ -1,18 +1,16 @@
 # Maintainer: Faugus <felix.ribeiro@live.com>
 
 pkgname=faugus-launcher
-pkgver=1.22.8
+pkgver=2.4.4
 pkgrel=1
 pkgdesc="A simple and lightweight app for running Windows games using UMU-Launcher"
 arch=('any')
 url="https://github.com/Faugus/faugus-launcher"
 license=('MIT')
-depends=('python' 'python-gobject' 'python-requests' 'python-pillow' 'python-vdf' 'python-psutil' 'python-pygame' 'python-cairo' 'libcanberra' 'imagemagick' 'icoextract' 'libayatana-appindicator' 'vulkan-tools')
+depends=('python-gobject' 'python-requests' 'python-pillow' 'python-vdf' 'python-psutil' 'python-dbus' 'icoextract' 'gtk4' 'libadwaita' 'libmanette')
 makedepends=('meson')
-provides=('faugus-launcher')
-conflicts=('faugus-launcher')
-source=("https://github.com/Faugus/${pkgname}/archive/refs/tags/${pkgver}.tar.gz")
-sha256sums=('fe879f01617232125576b194cbac0ca6995cd65a5649daf7fe33d0a8a583d1a3')
+source=("${pkgname}-${pkgver}.tar.gz::https://github.com/Faugus/${pkgname}/archive/refs/tags/${pkgver}.tar.gz")
+sha256sums=('68194b24e98cddf4efc32fb7bbdb67a5aec84f53a25e8a04d36ce9851de54e9b')
 
 build() {
     cd "${pkgname}-${pkgver}"

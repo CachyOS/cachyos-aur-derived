@@ -1,5 +1,4 @@
 [brave-bin]
-source = "github"
-github = "brave/brave-browser"
-use_latest_release = true
-prefix = "v"
+source = "regex"
+url = "https://brave-browser-apt-release.s3.brave.com/dists/stable/main/binary-amd64/Packages"
+regex = 'Version: (\S+)'

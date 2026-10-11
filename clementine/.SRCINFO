@@ -1,6 +1,6 @@
 pkgbase = clementine
 	pkgdesc = A modern music player and library organizer
-	pkgver = 1.4.1+78+gb55eca391
+	pkgver = 1.4.2
 	pkgrel = 1
 	url = https://github.com/clementine-player/Clementine
 	arch = x86_64

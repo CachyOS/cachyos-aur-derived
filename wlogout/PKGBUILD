@@ -20,5 +20,5 @@ package() {
     DESTDIR="$pkgdir" ninja -C build install
     install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
 }
-md5sums=('2d129a847cdf9aa212b834f690f86e4a'
-         'SKIP')
+sha256sums=('70742b32479ae34ed544ce1fe5b6d92845857d4c4dfe55fccd4eb993f0dd0d9e'
+            'SKIP')

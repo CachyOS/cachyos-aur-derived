@@ -1,3 +1,4 @@
 [qlcplus]
 source = "git"
 git = "https://github.com/mcallegari/qlcplus.git"
+prefix = "QLC+_"

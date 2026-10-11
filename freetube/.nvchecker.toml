@@ -1,3 +1,5 @@
 [freetube]
 source = "git"
 git = "https://github.com/FreeTubeApp/FreeTube.git"
+from_pattern = 'v?([\d.]+)-beta'
+to_pattern = '\1'

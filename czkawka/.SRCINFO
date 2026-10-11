@@ -1,6 +1,6 @@
 pkgbase = czkawka
 	pkgdesc = Multi functional app to find duplicates, empty folders, similar images etc.
-	pkgver = 12.0.0
+	pkgver = 12.0.2
 	pkgrel = 1
 	url = https://github.com/qarmin/czkawka
 	arch = aarch64
@@ -21,8 +21,8 @@ pkgbase = czkawka
 	depends = libgcc
 	depends = libheif
 	optdepends = ffmpeg: Compare video files
-	source = git+https://github.com/qarmin/czkawka.git#tag=12.0.0
-	b2sums = 194333f6dd67c10b04dc1f330d70c50d3223f321c0f4f8800d34536dfcfc972a5f84b8d6a1876c42ab656e26c745b68ff44f5faa5f1ed75d8624ffff1df400d7
+	source = git+https://github.com/qarmin/czkawka.git#tag=12.0.2
+	b2sums = 98ce421af54a5f486d69f6f1f779beeaf196d04c953790d76bf675cca2046b5f4a14e44969f95c9754e65a77193abfd0ea40e209dd2d1dbb851ff4c2e603ff7c
 
 pkgname = czkawka-cli
 	pkgdesc = Multi functional app to find duplicates, empty folders, similar images etc. (CLI)

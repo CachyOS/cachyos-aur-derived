@@ -2,8 +2,12 @@
 # shellcheck disable=SC2034,SC2154,SC2164
 
 pkgbase=apparmor.d
-pkgname=(apparmor.d apparmor.d.enforced)
-pkgver=0.4909.0
+pkgname=(
+  apparmor.d
+  apparmor.d-base
+  apparmor.d-tools
+)
+pkgver=0.4914.0
 pkgrel=1
 pkgdesc="Full set of apparmor profiles"
 arch=('x86_64' 'armv6h' 'armv7h' 'aarch64')
@@ -13,7 +17,7 @@ depends=('apparmor>=4.1.3' 'apparmor<5.0.0')
 makedepends=('go' 'git' 'just')
 source=("https://github.com/roddhjav/$pkgbase/releases/download/v$pkgver/$pkgbase-$pkgver.tar.gz"
         "https://github.com/roddhjav/$pkgbase/releases/download/v$pkgver/$pkgbase-$pkgver.tar.gz.asc")
-sha512sums=('de76927a5ed831f3e5427bc4856994fc27a991e8504633b47c418682220b4a6e0e0467fd02cd7da9055f825fd3b82fb938618ad81dc909963a34cd1bc089813b'
+sha512sums=('a0a8fcfc97bad1bad5d8bbdd708d41e2a596a4c719dabf883981d43bf485be2ab841f926a898c03dd3aefde7ecdb1055907f65559023bdbb44d41fb4504cf479'
             'SKIP')
 
 # The public key is found at https://pujol.io/keys
@@ -27,50 +31,28 @@ build() {
   export CGO_CXXFLAGS="${CXXFLAGS}"
   export CGO_LDFLAGS="${LDFLAGS}"
   export GOPATH="${srcdir}"
-  export GOFLAGS="-buildmode=pie -trimpath -ldflags=-linkmode=external -mod=readonly -modcacherw -tags=dev"
+  export GOFLAGS="-buildmode=pie -trimpath -ldflags=-linkmode=external -mod=readonly -modcacherw"
   export DISTRIBUTION=arch
-  local -A modes=(
-    # Mapping of modes to just build target
-    [default]=complain
-    [enforced]=enforce
-  )
-  for mode in "${!modes[@]}"; do
-    just build=".build/$mode" "${modes[$mode]}"
-  done
-}
-
-_conflicts() {
-  local mode="$1"
-  local pattern=".$mode"
-  if [[ "$mode" == "default" ]]; then
-    pattern=""
-  else
-    echo "$pkgbase"
-  fi
-  for pkg in "${pkgname[@]}"; do
-    if [[ "$pkg" == "${pkgbase}${pattern}" ]]; then
-      continue
-    fi
-    echo "$pkg"
-  done
-}
-
-_install() {
-  local mode="${1:?}"
-  cd "$srcdir/$pkgbase-$pkgver"
-  just build=".build/$mode" destdir="$pkgdir" install
+  just prebuild
 }
 
 package_apparmor.d() {
-  mode=default
-  pkgdesc="$pkgdesc (complain mode)"
-  mapfile -t conflicts < <(_conflicts $mode)
-  _install $mode
+  depends=('apparmor' 'apparmor.d-base' 'apparmor.d-tools')
+  arch=("any")
+  cd "$srcdir/$pkgbase-$pkgver"
+  just destdir="$pkgdir" install-profiles
 }
 
-package_apparmor.d.enforced() {
-  mode=enforced
-  pkgdesc="$pkgdesc (enforced mode)"
-  mapfile -t conflicts < <(_conflicts $mode)
-  _install $mode
+package_apparmor.d-base() {
+  pkgdesc="$pkgdesc (base abstractions, tunables, and booleans)"
+  arch=("any")
+  cd "$srcdir/$pkgbase-$pkgver"
+  just destdir="$pkgdir" install-base
 }
+
+package_apparmor.d-tools() {
+  pkgdesc="$pkgdesc (userland toolings)"
+  cd "$srcdir/$pkgbase-$pkgver"
+  just destdir="$pkgdir" install-tools
+}
+

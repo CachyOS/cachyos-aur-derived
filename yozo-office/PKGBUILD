@@ -23,6 +23,7 @@ license=('LicenseRef-custom')
 arch=('x86_64')
 source=("${pkgbase}-${pkgver}.deb::https://dl.yozosoft.com/yozo/project/file/${_relver}/${pkgbase}_${pkgver}_amd64.deb")
 sha256sums=('495375f2d122fb362ca7deb971f800a6090993deb77dbb4ae86624dcae098567')
+
 prepare() {
     cd "${srcdir}"
     # Extracting data.tar.xz ...

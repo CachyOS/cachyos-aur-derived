@@ -1,4 +1,6 @@
 [cromite-bin]
-source = "git"
-git = "https://github.com/foutrelis/chromium-launcher.git"
-prefix = "v"
+source = "github"
+github = "uazo/cromite"
+use_latest_release = true
+from_pattern = 'v?([\d.]+)-.*'
+to_pattern = '\1'

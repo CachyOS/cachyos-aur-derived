@@ -1,0 +1,4 @@
+[kwin-effect-rounded-corners]
+source = "git"
+git = "https://github.com/matinlotfali/KDE-Rounded-Corners.git"
+prefix = "v"

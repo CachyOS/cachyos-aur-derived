@@ -1,3 +1,6 @@
 [libsrm]
 source = "git"
 git = "https://github.com/CuarzoSoftware/SRM.git"
+prefix = "v"
+from_pattern = '([\d.]+)-(\d+)'
+to_pattern = '\1_\2'

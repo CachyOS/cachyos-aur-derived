@@ -1,0 +1,23 @@
+pkgbase = swash
+	pkgdesc = Fast screenshot annotator and lightweight image editor
+	pkgver = 1.5.0
+	pkgrel = 1
+	url = https://github.com/ItsLemmy/swash
+	arch = x86_64
+	arch = aarch64
+	license = GPL-3.0-or-later
+	makedepends = meson
+	makedepends = ninja
+	makedepends = pkgconf
+	depends = cairo
+	depends = gdk-pixbuf2
+	depends = glib2
+	depends = glibc
+	depends = gtk4>=4.10
+	depends = libadwaita>=1.6
+	optdepends = tesseract: OCR text recognition
+	options = !debug
+	source = swash-1.5.0.tar.gz::https://github.com/ItsLemmy/swash/archive/refs/tags/v1.5.0.tar.gz
+	sha256sums = 43e79fd54c6c9dc6045cfe337ba44986902ce69788c794252c46b4297aad5c61
+
+pkgname = swash

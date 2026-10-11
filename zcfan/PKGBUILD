@@ -9,8 +9,8 @@ license=('MIT')
 arch=('any')
 depends=()
 makedepends=()
-source=("https://github.com/cdown/zcfan/archive/${pkgver}.zip")
-md5sums=('b7be2686483f5b09b6e0460c74850eb7')
+source=("$pkgname-$pkgver.zip::https://github.com/cdown/zcfan/archive/${pkgver}.zip")
+sha256sums=('e3bcac89d3c458d3df9772b060ee5f5e0ba6137162c99ca7f86dd5a5c8734d29')
 
 build() {
     cd -- "${srcdir?}/$pkgname-$pkgver"

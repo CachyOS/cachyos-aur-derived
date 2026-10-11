@@ -4,13 +4,13 @@ pkgbase = zfsbootmenu-sb
 	pkgrel = 2
 	url = https://github.com/KorewaKiyo/zfsbootmenu-sb
 	arch = any
-	license = GPL2
+	license = GPL-2.0-or-later
 	makedepends = git
 	depends = sbsigntools
 	depends = perl
 	optdepends = zfsbootmenu: For ZBM
 	optdepends = zfsbootmenu-efi-bin: For ZBM
-	source = git+https://github.com/KorewaKiyo/zfsbootmenu-sb.git
+	source = git+https://github.com/KorewaKiyo/zfsbootmenu-sb.git#commit=d8b4f30c27380b8231c207fa7984527d085029a8
 	sha256sums = SKIP
 
 pkgname = zfsbootmenu-sb

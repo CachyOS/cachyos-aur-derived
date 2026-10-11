@@ -1,13 +1,12 @@
 pkgbase = ab-download-manager
 	pkgdesc = A Download Manager that speeds up your downloads
-	pkgver = 1.9.2
+	pkgver = 1.10.4
 	pkgrel = 1
 	url = https://abdownloadmanager.com
-	arch = any
+	arch = x86_64
 	license = Apache-2.0
 	makedepends = git
-	makedepends = java-environment=21
-	makedepends = gradle
+	makedepends = java-environment=25
 	depends = libxrender
 	depends = libxtst
 	depends = harfbuzz
@@ -15,9 +14,9 @@ pkgbase = ab-download-manager
 	depends = gtk3
 	optdepends = libappindicator-gtk3: tray icon support
 	conflicts = abdownloadmanager-bin
-	source = ab-download-manager::git+https://github.com/amir1376/ab-download-manager.git#tag=v1.9.2
+	source = ab-download-manager::git+https://github.com/amir1376/ab-download-manager.git#tag=v1.10.4
 	source = abdownloadmanager.desktop
-	sha256sums = ed8763fc5efc2462d4df1fb9ecfedfad67486296cff95ce37adab7025ef20427
+	sha256sums = d54e0c4c61ff82d96b1671e3097cc13815dc83065f3b6469a755bc85c90eb89a
 	sha256sums = d194cf142921d78c8a2a8c6c2b3a8b41bf2545eb2c7147a8f866946528227031
 
 pkgname = ab-download-manager

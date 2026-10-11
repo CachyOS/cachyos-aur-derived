@@ -1,0 +1,4 @@
+[chatgpt-desktop-bin]
+source = "regex"
+url = "https://persistent.oaistatic.com/codex-app-prod/linux/deb/dists/stable/main/binary-amd64/Packages"
+regex = 'Version: ([0-9][0-9.]+)'

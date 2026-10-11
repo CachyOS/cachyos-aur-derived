@@ -5,7 +5,7 @@ pkgbase = zcfan
 	url = https://github.com/cdown/zcfan
 	arch = any
 	license = MIT
-	source = https://github.com/cdown/zcfan/archive/1.4.0.zip
-	md5sums = b7be2686483f5b09b6e0460c74850eb7
+	source = zcfan-1.4.0.zip::https://github.com/cdown/zcfan/archive/1.4.0.zip
+	sha256sums = e3bcac89d3c458d3df9772b060ee5f5e0ba6137162c99ca7f86dd5a5c8734d29
 
 pkgname = zcfan

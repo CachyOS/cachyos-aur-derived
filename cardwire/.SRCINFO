@@ -1,0 +1,35 @@
+pkgbase = cardwire
+	pkgdesc = GPU manager for Wayland systems using eBPF LSM hooks
+	pkgver = 0.12.3
+	pkgrel = 1
+	url = https://github.com/OpenGamingCollective/cardwire
+	arch = x86_64
+	license = GPL-3.0-only
+	makedepends = bpf-linker>=0.11.0-2
+	makedepends = clang
+	makedepends = llvm-libs>=23.1
+	makedepends = pkgconf
+	makedepends = rust
+	makedepends = rust-src
+	depends = dbus
+	depends = fontconfig
+	depends = glib2
+	depends = glibc
+	depends = hicolor-icon-theme
+	depends = hwdata
+	depends = libgcc
+	depends = libglvnd
+	depends = libxcb
+	depends = libxkbcommon
+	depends = sqlite
+	depends = systemd
+	depends = systemd-libs
+	depends = upower
+	depends = vulkan-icd-loader
+	depends = wayland
+	depends = xdg-utils
+	options = !lto
+	source = cardwire-0.12.3.tar.gz::https://github.com/OpenGamingCollective/cardwire/archive/refs/tags/v0.12.3.tar.gz
+	sha256sums = 3cb5d7195806d07f3466b4bf29bd874a9519199442741c9d3cd4518633657fd6
+
+pkgname = cardwire

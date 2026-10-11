@@ -1,3 +1,6 @@
 [louvre]
 source = "git"
 git = "https://github.com/CuarzoSoftware/Louvre.git"
+prefix = "v"
+from_pattern = '([\d.]+)-(\d+)'
+to_pattern = '\1_\2'

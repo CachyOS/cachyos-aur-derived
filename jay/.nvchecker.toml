@@ -1,3 +1,4 @@
 [jay]
 source = "git"
 git = "https://github.com/mahkoh/jay.git"
+prefix = "v"
