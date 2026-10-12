@@ -3,5 +3,4 @@ source = "github"
 github = "gperftools/gperftools"
 use_max_release = true
 prefix = "gperftools-"
-from_pattern = 'gperftools-(.+)'
-to_pattern = '\1'
+
