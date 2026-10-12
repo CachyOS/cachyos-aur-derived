@@ -2,5 +2,4 @@
 source = "github"
 github = "openzfs/zfs"
 use_max_release = true
-from_pattern = 'zfs-(.+)'
-to_pattern = '\1'
+prefix = "zfs-"
