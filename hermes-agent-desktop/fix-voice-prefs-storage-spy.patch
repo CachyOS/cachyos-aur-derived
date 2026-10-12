@@ -1,8 +1,7 @@
 diff --git a/apps/desktop/src/store/voice-prefs.test.ts b/apps/desktop/src/store/voice-prefs.test.ts
 --- a/apps/desktop/src/store/voice-prefs.test.ts
 +++ b/apps/desktop/src/store/voice-prefs.test.ts
-@@ -16,13 +16,17 @@
-   applyVoiceStopPhraseFromConfig
+@@ -17,12 +17,16 @@
  } from './voice-prefs'
  
 +// jsdom methods live on the prototype; the Node fallback has own methods.

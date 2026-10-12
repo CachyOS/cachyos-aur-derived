@@ -1,28 +1,22 @@
 pkgbase = hermes-agent
 	pkgdesc = Locally-run AI agent with tool use, web browsing, and automation
-	pkgver = 0.21.5+2026.9.24
-	pkgrel = 1
+	pkgver = 0.21.7
+	pkgrel = 2
 	url = https://github.com/NousResearch/hermes-agent
+	install = hermes-agent.install
 	arch = x86_64
 	license = MIT
 	makedepends = npm
-	makedepends = rsync
-	depends = python311
-	depends = nodejs
+	makedepends = cmake
+	depends = python>=3.14
+	depends = nodejs>=22.22
 	depends = uv
 	depends = ripgrep
 	depends = ffmpeg
-	depends = nss
-	depends = at-spi2-core
-	depends = cups
-	depends = libdrm
-	depends = libxkbcommon
-	depends = mesa
-	depends = pango
-	depends = cairo
-	depends = alsa-lib
-	options = !debug
-	source = hermes-agent-2026.9.24.tar.gz::https://github.com/NousResearch/hermes-agent/archive/refs/tags/v2026.9.24.tar.gz
-	sha256sums = 15b15ce4e6ec8ea424a081823709d1e17f0943e7b42b59597d24ebb94cbd1742
+	depends = agent-browser
+	optdepends = chromium: local browser automation (or google-chrome)
+	optdepends = google-chrome: local browser automation (or chromium)
+	source = hermes-agent-0.21.7.tar.gz::https://github.com/NousResearch/hermes-agent/archive/refs/tags/v0.21.7.tar.gz
+	sha256sums = fcf5fc29d3088764a5a293910f75f43dc736b5655ed410d7339cf94cc1462459
 
 pkgname = hermes-agent
