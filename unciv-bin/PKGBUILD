@@ -2,8 +2,8 @@
 
 pkgname=unciv-bin
 _pkgname=Unciv
-pkgver=4.20.15
-pkgrel=0
+pkgver=4.22.10
+pkgrel=1
 pkgdesc="Open-source remake of Civilization V"
 url="https://github.com/yairm210/Unciv"
 license=('MPL-2.0')
@@ -19,9 +19,9 @@ source=(
 noextract=(
 	"$_pkgname-$pkgver.jar"
 )
-md5sums=('07f6071b2f7b18114f6f8dc4e1ed504f'
+md5sums=('e612a331db25c62616f01f8ece87c786'
          '4e40a32a88810cc334abd0a5485e9846'
-         '86ca102b57c403d8186ca2c42adf913a')
+         'a1052a12970fcda1c1a352953c10b56f')
 
 package() {
   install -Dm755 Unciv.sh "$pkgdir/usr/bin/$_pkgname"
