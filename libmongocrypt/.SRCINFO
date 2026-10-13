@@ -1,6 +1,6 @@
 pkgbase = libmongocrypt
 	pkgdesc = C library for client side and queryable encryption in MongoDB
-	pkgver = 1.17.3
+	pkgver = 1.20.5
 	pkgrel = 1
 	url = https://github.com/mongodb/libmongocrypt
 	arch = x86_64
@@ -10,12 +10,12 @@ pkgbase = libmongocrypt
 	makedepends = git
 	provides = libkms_message.so
 	provides = libmongocrypt.so
-	source = libmongocrypt-1.17.3.tar.gz::https://github.com/mongodb/libmongocrypt/archive/1.17.3.tar.gz
-	source = libmongocrypt-1.17.3-mongoc.tar.gz::https://github.com/mongodb/mongo-c-driver/archive/refs/tags/2.1.0.tar.gz
-	source = libmongocrypt-1.17.3-freebsd-LICENSE::https://github.com/freebsd/freebsd-src/raw/e7c6cef9514d3bb1f14a30a5ee871231523e43db/lib/libc/stdlib/merge.c
-	source = libmongocrypt-1.17.3-dirent-LICENSE::https://github.com/tronkko/dirent/raw/a3e9db58aa4be4972054e77a455c916ffea2e42c/LICENSE
-	b2sums = 0d72045def57fad4b3bf0c0fd20844c6e91062d532a9bb2f5a2ae0c009c2a0fa4b61d6a9b85bd36a300d2be3627cbe51abd46dc4706d3c9aa74c8ab0e6bdd06b
-	b2sums = 88aee37e9d92180fd3226a0f3ef9f85f3e40572682189a42800d10db38688ff2e39c5ede12e672827009f0f0e07224de21931f3e74a7b4d32249e9cdc37174a1
+	source = libmongocrypt-1.20.5.tar.gz::https://github.com/mongodb/libmongocrypt/archive/1.20.5.tar.gz
+	source = libmongocrypt-1.20.5-mongoc.tar.gz::https://github.com/mongodb/mongo-c-driver/archive/refs/tags/2.3.3.tar.gz
+	source = libmongocrypt-1.20.5-freebsd-LICENSE::https://github.com/freebsd/freebsd-src/raw/e7c6cef9514d3bb1f14a30a5ee871231523e43db/lib/libc/stdlib/merge.c
+	source = libmongocrypt-1.20.5-dirent-LICENSE::https://github.com/tronkko/dirent/raw/a3e9db58aa4be4972054e77a455c916ffea2e42c/LICENSE
+	b2sums = 768e31c77da91ad0cd9ee0f62c920abe21c8c5b971a4e6e8ad7832c4821ea4e34eb8ca938d459cca360a33cf354333571e7946b0a563e4c4362e4a7c62ecf900
+	b2sums = 1aed87f8557e958ccd4779353d49c87a809588bb387441c64c0cd61c82290fef169ff164722fa6c016dbe76217fe074a90d74c4cccf4bf4b46ff207e73dad126
 	b2sums = 3299a8abcb532c5322dd69d2f4ad39245124c1b79f0c2c347626698bc4106c00b2cbd1781676eba879e54c3e079488bb8b649aada0b3f0edc552b1a047907e10
 	b2sums = 60ae76d99f94549a84bfe9681e8c79b00993b9d2eabfefde2382c9ff7677f4395f84d67995b0a680cdb033475a0a561b092b6b3ef9b039e037b9f4a45a373a86
 
