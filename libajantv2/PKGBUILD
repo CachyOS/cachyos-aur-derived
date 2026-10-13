@@ -3,7 +3,7 @@
 pkgbase=libajantv2
 pkgname=('libajantv2' 'ajantv2-tools'  'ajantv2-dkms')
 pkgdesc="Open-source SDK for discovering, interrogating and controlling NTV2 professional video I/O devices from AJA Video Systems, Inc"
-pkgver=17.5.0
+pkgver=18.0.0
 pkgrel=1
 epoch=1
 arch=("x86_64" "aarch64")
@@ -12,7 +12,7 @@ license=(MIT)
 makedepends=("cmake" "git")
 options=('debug')
 source=("libajantv2::git+https://github.com/aja-video/libajantv2.git#tag=ntv2_${pkgver//./_}")
-sha256sums=("SKIP")
+sha256sums=('c6b0ffa158a33db18bb4d2511126d5064c4e501f4fba407fd3e97d27dce6488c')
 
 prepare() {
   cd libajantv2
