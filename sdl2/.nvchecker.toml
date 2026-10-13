@@ -1,4 +1,5 @@
 [sdl2]
-source = "repology"
-repology = "sdl2"
-repo = "vcpkg"
+source = "git"
+git = "https://github.com/libsdl-org/SDL.git"
+include_regex = 'release-2\.\d+\.\d+'
+prefix = "release-"

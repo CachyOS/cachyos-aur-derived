@@ -1,3 +1,5 @@
 [kotatogram-desktop-bin]
 source = "git"
 git = "https://github.com/kotatogram/kotatogram-desktop.git"
+include_regex = 'k\d+\.\d+\.\d+'
+prefix = "k"

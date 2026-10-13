@@ -1,3 +1,6 @@
 [lib32-gperftools]
 source = "git"
 git = "https://github.com/gperftools/gperftools.git"
+include_regex = 'gperftools-\d+\.\d+(\.\d+)?'
+exclude_regex = 'gperftools-\d+\.\d+\.9\d'
+prefix = "gperftools-"

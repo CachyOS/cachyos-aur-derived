@@ -1,4 +1,4 @@
 [fluxer]
 source = "jq"
-url = "https://api.fluxer.app/dl/desktop/stable/linux/x64/latest"
+url = "https://pkgs.fluxer.com/desktop/stable/linux/x64/latest.json"
 filter = ".version"
