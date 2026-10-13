@@ -8,7 +8,7 @@
 # Contributor: Daniel Kozak <kozzi11@gmail.com>
 
 pkgname=(gcc14 gcc14-libs gcc14-fortran)
-pkgver=14.3.1+r516+g5998566829ee
+pkgver=14.4.0
 _commit=5998566829eed9f39a316be877a7ce61c7e710ed
 pkgrel=1
 pkgdesc='The GNU Compiler Collection (14.x.x)'
