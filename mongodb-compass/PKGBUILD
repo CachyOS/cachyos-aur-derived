@@ -2,9 +2,8 @@
 _target='compass'
 _edition=''
 pkgname="mongodb-$_target"
-_pkgver='1.49.4'
-pkgver="$(printf '%s' "$_pkgver" | tr '-' '.')"
-pkgrel='1'
+pkgver=1.49.4
+pkgrel=1
 pkgdesc='The official GUI for MongoDB'
 arch=('x86_64' 'armv7h' 'aarch64')
 url='https://www.mongodb.com/products/compass'
@@ -14,7 +13,7 @@ depends=("$_electronpkg" 'krb5' 'libmongocrypt>=1.12.0' 'libsecret' 'lsb-release
 makedepends=('git' 'npm>=11.4.1' 'python' 'unzip')
 optdepends=('org.freedesktop.secrets')
 source=(
-	"$pkgname-$pkgver.tar.gz::https://github.com/mongodb-js/compass/archive/v$_pkgver.tar.gz"
+	"$pkgname-$pkgver.tar.gz::https://github.com/mongodb-js/compass/archive/v$pkgver.tar.gz"
 	'hadron-build-ffmpeg.diff'
 	'fix-argv.diff'
 	'disable-update-checks.diff'
@@ -26,7 +25,7 @@ b2sums=('7b43ec35587551024b9e3898d9ad53481461c4d862b33a516ada2ac65cb010cd46cb051
         '2abf7d270582feb99bfee914928cdf9dbae18b11edd787dd906d36f43d9e6752720636b4dab82149aaf55f021acb90768e853ceaed140cd321f85b65685fcdb2'
         '27ebe4d1a0fe054aedcb3f412dfdc1ea2461308683c45599f63d4c094682baa7f7b9e1f2b447d1172ceec4fe46b0fdc2e5af8f800fe8a0a4572d3027e5ecd962')
 
-_sourcedirectory="compass-$_pkgver"
+_sourcedirectory="compass-$pkgver"
 
 prepare() {
 	cd "$srcdir/$_sourcedirectory/"

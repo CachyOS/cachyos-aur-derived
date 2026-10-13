@@ -1,9 +1,9 @@
 # Maintainer: Daniel Peukert <daniel@peukert.cc>
 # Contributor: Martin Reboredo <yakoyoku@gmail.com>
 pkgname='libmongocrypt'
-pkgver='1.17.3'
+pkgver=1.17.3
 _mongocver='2.1.0'
-pkgrel='1'
+pkgrel=1
 pkgdesc='C library for client side and queryable encryption in MongoDB'
 arch=('x86_64' 'aarch64')
 url="https://github.com/mongodb/$pkgname"

@@ -1,8 +1,8 @@
 # Maintainer: nl6720 <nl6720@archlinux.org>
 
 pkgname='shim-signed'
-pkgver='16.1+fedora+8'
-pkgrel='1'
+pkgver=16.1+fedora+8
+pkgrel=1
 pkgdesc='Initial UEFI bootloader that handles chaining to a trusted full bootloader under secure boot environments (prebuilt x64 and AA64 binaries from Fedora)'
 url='https://koji.fedoraproject.org/koji/packageinfo?packageID=14502'
 arch=('any')

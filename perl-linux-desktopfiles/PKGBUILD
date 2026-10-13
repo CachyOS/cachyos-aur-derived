@@ -2,8 +2,8 @@
 # Generator : CPANPLUS::Dist::Arch 1.32
 
 pkgname='perl-linux-desktopfiles'
-pkgver='0.26'
-pkgrel='1'
+pkgver=0.26
+pkgrel=1
 pkgdesc="Linux::DesktopFiles - a very fast Perl module for parsing the Linux desktop files."
 arch=('any')
 license=('PerlArtistic' 'GPL')

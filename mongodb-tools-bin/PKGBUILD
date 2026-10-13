@@ -2,10 +2,10 @@
 #Maintainer: Rafael Fontenelle <rafaeff at gnome dot org>
 
 pkgname="mongodb-tools-bin"
-pkgver="100.17.0"
+pkgver=100.17.0
 _basever="8.3"
 _basedist="noble"
-pkgrel="2"
+pkgrel=2
 pkgdesc="The MongoDB tools provide import, export, and diagnostic capabilities."
 arch=("x86_64" "aarch64")
 url="https://github.com/mongodb/mongo-tools"
