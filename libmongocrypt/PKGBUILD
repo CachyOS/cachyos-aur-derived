@@ -1,8 +1,8 @@
 # Maintainer: Daniel Peukert <daniel@peukert.cc>
 # Contributor: Martin Reboredo <yakoyoku@gmail.com>
 pkgname='libmongocrypt'
-pkgver=1.20.5
-_mongocver='2.3.3'
+pkgver=1.21.0
+_mongocver='2.5.6'
 pkgrel=1
 pkgdesc='C library for client side and queryable encryption in MongoDB'
 arch=('x86_64' 'aarch64')
@@ -16,8 +16,8 @@ source=(
 	"$pkgname-$pkgver-freebsd-LICENSE::https://github.com/freebsd/freebsd-src/raw/e7c6cef9514d3bb1f14a30a5ee871231523e43db/lib/libc/stdlib/merge.c"
 	"$pkgname-$pkgver-dirent-LICENSE::https://github.com/tronkko/dirent/raw/a3e9db58aa4be4972054e77a455c916ffea2e42c/LICENSE"
 )
-b2sums=('768e31c77da91ad0cd9ee0f62c920abe21c8c5b971a4e6e8ad7832c4821ea4e34eb8ca938d459cca360a33cf354333571e7946b0a563e4c4362e4a7c62ecf900'
-        '1aed87f8557e958ccd4779353d49c87a809588bb387441c64c0cd61c82290fef169ff164722fa6c016dbe76217fe074a90d74c4cccf4bf4b46ff207e73dad126'
+b2sums=('c0c80ab155e68a10ba8df1975b6c0ba726ebe25a551e5b7a577e0cb6555c8860c19da44f50efd2bc30d0074c2aa8419b30261c02cc3865d651aea4efa84a69c4'
+        'd30442a424524e68aa345e367c248c2c4f0c254c5da50a479e3e48b81c29ed923257d7ee108cf012c773ec5834b14557cbd08fa9e187e33c5d607180d83d0f78'
         '3299a8abcb532c5322dd69d2f4ad39245124c1b79f0c2c347626698bc4106c00b2cbd1781676eba879e54c3e079488bb8b649aada0b3f0edc552b1a047907e10'
         '60ae76d99f94549a84bfe9681e8c79b00993b9d2eabfefde2382c9ff7677f4395f84d67995b0a680cdb033475a0a561b092b6b3ef9b039e037b9f4a45a373a86')
 
