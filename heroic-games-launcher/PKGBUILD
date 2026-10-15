@@ -1,10 +1,10 @@
 # Adapted from `heroic-games-launcher` PKGBUILD at <https://aur.archlinux.org/pkgbase/heroic-games-launcher/>, originally maintained by Fabio 'Lolix' Loli <fabio.loli@disroot.org> -> https://github.com/FabioLolix
 
 _electron=electron43
-pkgver=2.22.3
+pkgver=2.22.4
 
 pkgname=heroic-games-launcher
-pkgrel=2
+pkgrel=1
 pkgdesc="An Open Source Launcher for GOG, Epic Games and Amazon Games"
 arch=(x86_64)
 url=https://heroicgameslauncher.com/
@@ -39,7 +39,7 @@ source=(
     "${pkgname}::git+https://github.com/Heroic-Games-Launcher/HeroicGamesLauncher.git#tag=v${pkgver}"
     "heroic.sh"
 )
-sha256sums=('0846c998e8a39dc146f1273f4e7a587f172e3075f7de42dc936fe845b70b2f10'
+sha256sums=('a628cc8fb1bf533c7a437f32c7d21bf55dc990ac247c304a33e259870fa12a49'
             'df5fb2b5afc70f46a63913846c4f5d55372584a1468173833fe5106db2303c07')
 
 prepare() {
