@@ -1,0 +1,7 @@
+[Desktop Entry]
+Exec=krefresh all
+Name=krefresh
+NoDisplay=true
+StartupNotify=false
+Type=Application
+X-KDE-GlobalAccel-CommandShortcut=true
