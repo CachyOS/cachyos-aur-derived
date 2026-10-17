@@ -1,0 +1,62 @@
+pkgbase = pcsx2
+	pkgdesc = PlayStation 2 emulator
+	pkgver = 2.8.2
+	pkgrel = 1
+	url = https://github.com/PCSX2/pcsx2
+	install = pcsx2.install
+	arch = x86_64
+	license = GPL-3.0-or-later
+	makedepends = 7zip
+	makedepends = clang
+	makedepends = cmake
+	makedepends = extra-cmake-modules
+	makedepends = git
+	makedepends = libpipewire
+	makedepends = libpulse
+	makedepends = lld
+	makedepends = llvm
+	makedepends = ninja
+	makedepends = qt6-tools
+	makedepends = qt6-wayland
+	makedepends = vulkan-headers
+	makedepends = patchelf
+	depends = curl
+	depends = dbus
+	depends = freetype2
+	depends = glibc
+	depends = hicolor-icon-theme
+	depends = kddockwidgets
+	depends = libbacktrace
+	depends = libgcc
+	depends = libglvnd
+	depends = libjpeg-turbo
+	depends = libpcap
+	depends = libpng
+	depends = libstdc++
+	depends = libwebp
+	depends = libxi
+	depends = libxrandr
+	depends = libx11
+	depends = lz4
+	depends = qt6-base
+	depends = rapidyaml
+	depends = sdl3
+	depends = shaderc
+	depends = systemd-libs
+	depends = zlib
+	depends = zstd
+	depends = freetype2
+	optdepends = alsa-utils: Sound player for RetroAchievements
+	optdepends = gstreamer: Backup sound player for RetroAchievements
+	source = pcsx2::git+https://github.com/PCSX2/pcsx2.git#tag=v2.8.2
+	source = pcsx2_patches::git+https://github.com/PCSX2/pcsx2_patches.git
+	source = plutovg::git+https://github.com/sammycage/plutovg.git#tag=v1.3.3
+	source = plutosvg::git+https://github.com/sammycage/plutosvg.git#tag=v0.0.8
+	source = rapidyaml::git+https://github.com/biojppm/rapidyaml.git#tag=v0.11.1
+	sha256sums = ced18ccca7f76be045d36107e44e20215b82632c8013f0297d20ab339861b9c1
+	sha256sums = SKIP
+	sha256sums = 03b09bab72cea11e56814b0821e7e046934d72ee224c10c91653fde8fb4aae31
+	sha256sums = 9a9fda98d8f6b462f744711584264cd463ac9cee8fd7a01f08e5e954f5452ef2
+	sha256sums = c4126a8a4490203864ba9fd43cefd924bdd4e408443a6245c69677e49c49f92b
+
+pkgname = pcsx2
