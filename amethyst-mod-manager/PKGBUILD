@@ -70,6 +70,12 @@ prepare() {
 
     sed -i 's/import LOOT.loot as loot/import loot/' 'src/LOOT/loot_sorter.py'
 
+    # Run from the private application directory without a global .pth file.
+    sed -i \
+        -e "s|python3 -m run_qt|/usr/bin/python /usr/lib/${pkgname}/run_qt.py|" \
+        -e "s|python3 -m cli|/usr/bin/python /usr/lib/${pkgname}/cli.py|" \
+        "${pkgname}" "${pkgname}-cli"
+
     pushd "native/amethyst_filegraph"
     export RUSTUP_TOOLCHAIN=stable
     cargo fetch --locked --target host-tuple
@@ -88,8 +94,10 @@ build() {
     cp -f "${CARGO_TARGET_DIR}/release/libamethyst_filegraph.so" "../../src/amethyst_filegraph.abi3.so"
     popd
 
-    # Build amethyst laucher
-    arch-meson ./ build
+    # Keep application modules and the native extension out of site-packages.
+    arch-meson ./ build \
+        -Dpython.purelibdir="/usr/lib/${pkgname}" \
+        -Dpython.platlibdir="/usr/lib/${pkgname}"
     meson compile -C build
 }
 
@@ -97,24 +105,4 @@ package() {
     cd "${_pkgname}-${pkgver}"
 
     meson install -C build --destdir "$pkgdir"
-
-    # Fix meson.build dumping everything into `site-packages`
-    echo "Correcting install path..."
-
-    local site_packages=$(python -c "import sysconfig; print(sysconfig.get_path('purelib'))")
-    local src_root="${pkgdir}${site_packages}"
-    local target_dir="${src_root}/${pkgname}"
-
-    mv "${src_root}" "${src_root}-temp"
-    mkdir -p "${src_root}"
-    mv "${src_root}-temp" "${target_dir}"
-
-    echo "${pkgname}" >"${src_root}/${pkgname}.pth"
-
-    # Amend launch scripts
-    echo '#!/bin/sh' >"$pkgdir/usr/bin/${pkgname}"
-    echo 'exec /usr/bin/python3 -m '"${pkgname}"'.run_qt "$@"' >>"$pkgdir/usr/bin/${pkgname}"
-
-    echo '#!/bin/sh' >"$pkgdir/usr/bin/${pkgname}-cli"
-    echo 'exec /usr/bin/python3 -m '"${pkgname}"'.cli "$@"' >>"$pkgdir/usr/bin/${pkgname}-cli"
 }
