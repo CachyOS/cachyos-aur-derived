@@ -1,4 +1,6 @@
 [cursor-bin]
+# Dev track (Cursor nightly). The stable download endpoint lags this one,
+# so the scheduled updater never opened a PR while nightly had already moved.
 source = "jq"
-url = "https://api2.cursor.sh/updates/api/download/stable/linux-x64/cursor"
+url = "https://api2.cursor.sh/updates/api/update/linux-x64/cursor/0.0.0/deadbeef/dev"
 filter = ".version"
