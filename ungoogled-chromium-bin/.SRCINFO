@@ -1,7 +1,7 @@
 pkgbase = ungoogled-chromium-bin
 	pkgdesc = A lightweight approach to removing Google web service dependency
 	pkgver = 155.0.8059.84
-	pkgrel = 1
+	pkgrel = 2
 	url = https://github.com/ungoogled-software/ungoogled-chromium
 	arch = x86_64
 	license = BSD
@@ -45,6 +45,8 @@ pkgbase = ungoogled-chromium-bin
 	depends = brotli
 	depends = libjpeg-turbo
 	depends = openh264
+	depends = simdutf
+	depends = highway
 	depends = dav1d
 	depends = flac
 	depends = libdrm
@@ -53,6 +55,7 @@ pkgbase = ungoogled-chromium-bin
 	depends = libwebp
 	depends = minizip
 	depends = opus
+	depends = double-conversion
 	depends = libxslt
 	depends = harfbuzz
 	depends = freetype2
@@ -66,7 +69,7 @@ pkgbase = ungoogled-chromium-bin
 	provides = chromedriver=155.0.8059.84
 	conflicts = chromium
 	conflicts = chromedriver
-	source = https://github.com/ungoogled-software/ungoogled-chromium-archlinux/releases/download/155.0.8059.84-1/ungoogled-chromium-155.0.8059.84-1-x86_64.pkg.tar.zst
+	source = https://github.com/ungoogled-software/ungoogled-chromium-archlinux/releases/download/155.0.8059.84-2/ungoogled-chromium-155.0.8059.84-2-x86_64.pkg.tar.zst
 	sha256sums = a1e534e519916d6df1efbf6b897b9efa1f28080794c80676a019327ce08030a6
 
 pkgname = ungoogled-chromium-bin
