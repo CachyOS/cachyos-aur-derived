@@ -2,7 +2,7 @@
 
 pkgname=ungoogled-chromium-bin
 pkgver=155.0.8059.84
-pkgrel=1
+pkgrel=2
 pkgdesc="A lightweight approach to removing Google web service dependency"
 arch=('x86_64')
 url="https://github.com/ungoogled-software/ungoogled-chromium"
