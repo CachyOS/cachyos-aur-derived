@@ -3,38 +3,69 @@
 # The Python environment is bundled because upstream pins a large, partly native
 # dependency set. uv's relocatable mode keeps the packaged environment usable
 # after makepkg moves it under /opt.
+#
+# Runtime tools Arch already ships (python, nodejs, npm, uv, ffmpeg, ripgrep,
+# and a system Chrome/Chromium) stay as package dependencies. package() builds a
+# read-only PM store of /usr/bin symlinks (system-tools.py) and points
+# install-stamp.json runtimeDir at it, so PM treats pacman tools as installed
+# (PM never counts a bare PATH copy). The launcher disables lazy PM installs;
+# keep-venv-interpreter.patch keeps Hermes children on the venv python, not the
+# store's system python symlink (that entry exists only for uvx).
+#
+# /opt is root-owned and HERMES_DISABLE_LAZY_INSTALLS=1, so opt-in extras that
+# users commonly hit must be preinstalled here. Ship: all + messaging, plus
+# anthropic (Anthropic / anthropic_messages proxies), edge-tts + ddgs +
+# doc-extract (default TTS / free search / documents), and gateway extensions
+# (feishu, matrix, dingtalk, wecom, teams, google-chat). Anything else
+# (bedrock, voice, fal, …) needs a rebuild with more --extra flags or a
+# writable install — `sudo` + re-packaging, not runtime lazy install.
+#
+# system-tools.py / keep-venv-interpreter.patch adapted from jabla's
+# hermes-agent-bin (thanks).
 pkgname=hermes-agent
-pkgver=0.21.5+2026.9.24
-_tagver=${pkgver#*+}
+pkgver=0.22.5
 pkgrel=1
 pkgdesc="Locally-run AI agent with tool use, web browsing, and automation"
 arch=('x86_64')
 url="https://github.com/NousResearch/hermes-agent"
 license=('MIT')
+install=$pkgname.install
 depends=(
-    'python311'
-    'nodejs'
+    'python>=3.14'
+    'nodejs>=22.22'
+    'npm'
     'uv'
     'ripgrep'
     'ffmpeg'
-    'nss'
-    'at-spi2-core'
-    'cups'
-    'libdrm'
-    'libxkbcommon'
-    'mesa'
-    'pango'
-    'cairo'
-    'alsa-lib'
+    'agent-browser'
 )
-
-makedepends=('npm' 'rsync')
-source=("${pkgname}-${_tagver}.tar.gz::https://github.com/NousResearch/hermes-agent/archive/refs/tags/v${_tagver}.tar.gz")
-sha256sums=('15b15ce4e6ec8ea424a081823709d1e17f0943e7b42b59597d24ebb94cbd1742')
+optdepends=(
+    'chromium: local browser automation (or google-chrome)'
+    'google-chrome: local browser automation (or chromium)'
+)
+# cmake: matrix → mautrix[encryption] → python-olm ships a vendored libolm that
+# still declares cmake_minimum_required < 3.5; CMake ≥ 4 refuses that unless
+# CMAKE_POLICY_VERSION_MINIMUM is raised (set in build()).
+makedepends=('cmake' 'git')
+source=(
+    "${pkgname}-${pkgver}.tar.gz::${url}/archive/refs/tags/v${pkgver}.tar.gz"
+    'keep-venv-interpreter.patch'
+    'system-tools.py'
+)
+sha256sums=('a8f67e5ec14fea681acef6cc7ff1553f002bb6101fd2df22bfdd4b7eecc54eb2'
+            '516bee4492e4d6f6e4310703bdec7e88229a1b0ddb828542f297d4e6e226c427'
+            '5950d73a49526767dfac20084d8c5597b7ebf5c16e7bff99e31dc4d7fe0d139d')
 options=('!debug')
 
+prepare() {
+  cd "${pkgname}-${pkgver}"
+
+  # --fuzz=0: a hunk whose context drifted must fail loudly.
+  patch --batch --fuzz=0 -Np1 -i "${srcdir}/keep-venv-interpreter.patch"
+}
+
 build() {
-  cd "${pkgname}-${_tagver}"
+  cd "${pkgname}-${pkgver}"
 
   # Keep package manager caches out of the builder's $HOME.
   export npm_config_cache="$srcdir/npm-cache"
@@ -50,45 +81,58 @@ build() {
   npm run build --workspace ui-tui
 
   UV_PYTHON_DOWNLOADS=never uv venv \
-    --python /usr/bin/python3.11 \
+    --python /usr/bin/python3 \
     --relocatable \
+    --clear \
     venv
 
-  # Install exactly what upstream's uv.lock pins.
+  # python-olm (matrix) + other sdists; keep downloads off system Python.
+  CMAKE_POLICY_VERSION_MINIMUM=3.5 \
   UV_PYTHON_DOWNLOADS=never \
     UV_PROJECT_ENVIRONMENT="$PWD/venv" \
-    uv sync --locked --no-dev --no-install-project --extra all,messaging
+    uv sync --frozen --no-dev --no-install-project \
+      --extra all \
+      --extra messaging \
+      --extra anthropic \
+      --extra edge-tts \
+      --extra ddgs \
+      --extra doc-extract \
+      --extra feishu \
+      --extra matrix \
+      --extra dingtalk \
+      --extra wecom \
+      --extra teams \
+      --extra google-chat
 }
 
 check() {
-  cd "${pkgname}-${_tagver}"
+  cd "${pkgname}-${pkgver}"
 
   test -s hermes_cli/web_dist/index.html
   test -s ui-tui/dist/entry.js
-  PYTHONPATH="$PWD" venv/bin/python -c 'import hermes_cli.main'
+  PYTHONPATH="$PWD" venv/bin/python -c \
+    'import hermes_cli.main, anthropic, edge_tts, ddgs, lark_oapi, mautrix, defusedxml'
 }
 
 package() {
-  cd "${pkgname}-${_tagver}"
+  cd "${pkgname}-${pkgver}"
 
   # Install to /opt
   _optdir="$pkgdir/opt/$pkgname"
   install -d "$_optdir"
 
-  # Copy application files
-  rsync -a --exclude='__pycache__' --exclude='.git' \
-  --exclude='node_modules' --exclude='web/src' \
-  --exclude='web/package.json' --exclude='web/package-lock.json' \
-  --exclude='web/vite.config.ts' --exclude='web/tsconfig*.json' \
-  --exclude='web/eslint.config.js' --exclude='web/README.md' \
-  --exclude='ui-tui/src' --exclude='ui-tui/node_modules' \
-  --exclude='scripts/tests' --exclude='scripts/install.*' \
-  --exclude='build' --exclude='/venv' \
-  . "$_optdir/"
-
-  # Copied separately so the excludes above don't strip files from
-  # third-party packages inside the venv.
-  cp -a venv "$_optdir/"
+  # Copy application files (bsdtar; avoids an rsync makedepend).
+  # Exclude tests — they bloat /opt and trigger namcap false positives.
+  bsdtar -C . -cf - \
+    --exclude='__pycache__' --exclude='.git' \
+    --exclude='node_modules' --exclude='web/src' \
+    --exclude='web/package.json' --exclude='web/package-lock.json' \
+    --exclude='web/vite.config.ts' --exclude='web/tsconfig*.json' \
+    --exclude='web/eslint.config.js' --exclude='web/README.md' \
+    --exclude='ui-tui/src' --exclude='ui-tui/node_modules' \
+    --exclude='scripts/tests' --exclude='scripts/install.*' \
+    --exclude='tests' --exclude='build' \
+    . | bsdtar -C "$_optdir" -xf -
 
   echo "console.log('skipping build, using prebuilt dist/entry.js')" > "$_optdir/ui-tui/scripts/build.mjs"
 
@@ -102,27 +146,89 @@ package() {
   if [ -d "ui-tui/dist" ]; then
     cp -a ui-tui/dist/* "$_tuidir/"
   fi
+  # namcap: world-readable/executable tree for packaged TUI assets
+  chmod -R a+rX "$_optdir/ui-tui/dist" "$_tuidir" 2>/dev/null || true
+  # uv leaves a world-writable lock inside the venv; drop it from the package
+  rm -f "$_optdir/venv/.lock"
 
-  install -d "$_optdir/venv/lib/python3.11/site-packages"
+  # Declare this tree as package-manager-owned (pacman/AUR). Without a stamp,
+  # startup classifies the install as "unknown-managed" and PM drift against a
+  # leftover ~/.hermes/tools/facts.json prints a rebuild-artifact remedy.
+  # write_install_stamp.py's CLI only admits docker|nix|desktop-app|apt-termux;
+  # Arch uses the same "package-manager" steward desktop already documents.
+  # runtimeDir points PM at the system-tools store below (absolute; not relative).
+  # GitHub archives are made with `git archive`, which records the tagged
+  # commit in the tar header and its commit time as the entries' mtime.
+  # Reading both here lets CI bump pkgver alone.
+  local _tarball="${srcdir}/${pkgname}-${pkgver}.tar.gz"
+  local _commit _commit_date
+  _commit="$(git get-tar-commit-id < <(gzip -dc "$_tarball"))"
+  [[ $_commit =~ ^[0-9a-f]{40}$ ]]
+  _commit_date="$(python3 -I -c 'import sys, tarfile; print(tarfile.open(sys.argv[1]).next().mtime)' "$_tarball")"
+  [[ $_commit_date =~ ^[0-9]+$ ]]
+  _built_at="$(date -u -d "@${SOURCE_DATE_EPOCH:-$(date +%s)}" '+%Y-%m-%dT%H:%M:%SZ')"
+  _runtime_dir="/opt/$pkgname/system-store/tools"
+  cat > "$_optdir/install-stamp.json" <<EOF
+{
+  "schemaVersion": 2,
+  "commit": "${_commit}",
+  "commitDate": ${_commit_date},
+  "branch": null,
+  "builtAt": "${_built_at}",
+  "dirty": false,
+  "source": "aur",
+  "distribution": "package-manager",
+  "updateMechanism": "external",
+  "runtimeDir": "${_runtime_dir}",
+  "baseVersion": "${pkgver}",
+  "displayVersion": "${pkgver}",
+  "distance": 0,
+  "payload": "bootstrap",
+  "tag": null
+}
+EOF
+
+  # PM store of tools depends=() provides (symlinks into /usr/bin).
+  venv/bin/python -B "${srcdir}/system-tools.py" "$_optdir" "$_optdir/system-store/tools"
+
+  install -d "$_optdir/venv/lib/python3.14/site-packages"
   {
       echo "import sys; sys.path.insert(0, \"/opt/$pkgname\")"
-  } > "$_optdir/venv/lib/python3.11/site-packages/hermes.pth"
+  } > "$_optdir/venv/lib/python3.14/site-packages/hermes.pth"
 
   install -d "$pkgdir/usr/bin"
   {
-    echo "#!/bin/bash"
-    echo "unset PYTHONPATH"
-    echo "unset PYTHONHOME"
+    echo '#!/bin/bash'
+    echo 'unset PYTHONPATH'
+    echo 'unset PYTHONHOME'
     echo ': "${XDG_DATA_HOME:=$HOME/.local/share}"'
+    # Root-owned /opt must not grow a PM store; Arch packages supply tools.
     echo 'export HERMES_DISABLE_LAZY_INSTALLS=1'
     echo 'export HERMES_LAZY_INSTALL_TARGET="$XDG_DATA_HOME/hermes-agent/python"'
+    # TUI prefers an explicit node; PM store covers the rest.
+    echo ': "${HERMES_NODE:=/usr/bin/node}"'
+    echo 'export HERMES_NODE'
+    # Prefer system Chrome/Chromium — blocks PM Chromium auto-download.
+    echo 'if [[ -z "${AGENT_BROWSER_EXECUTABLE_PATH:-}" ]]; then'
+    echo '  for browser in google-chrome-stable google-chrome chromium; do'
+    echo '    if browser_path="$(type -P "${browser}")"; then'
+    echo '      export AGENT_BROWSER_EXECUTABLE_PATH="${browser_path}"'
+    echo '      break'
+    echo '    fi'
+    echo '  done'
+    echo 'fi'
+    echo 'if [[ -z "${AGENT_BROWSER_EXECUTABLE_PATH:-}" ]]; then'
+    echo '  printf "%s\n" "hermes: No Chrome/Chromium on PATH. Install chromium or google-chrome, or set AGENT_BROWSER_EXECUTABLE_PATH. Browser downloads are disabled." >&2'
+    echo 'fi'
     echo "exec /opt/$pkgname/venv/bin/python -m hermes_cli.main" '"$@"'
   } > "$pkgdir/usr/bin/hermes"
 
   chmod 755 "$pkgdir/usr/bin/hermes"
+  # system-store + patched tree must stay world-readable
+  chmod -R a+rX "$_optdir/system-store" "$_optdir/hermes_cli/_launchers.py"
 
   # /opt is root-owned, so Python can't cache bytecode at runtime.
-  /usr/bin/python3.11 -m compileall -f -q -j0 \
+  /usr/bin/python3 -m compileall -f -q -j0 \
     -s "$pkgdir" -p / "$_optdir"
 
   install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
