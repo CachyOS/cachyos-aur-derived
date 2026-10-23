@@ -1,0 +1,15 @@
+--- a/apps/desktop/electron/bootstrap-runner.ts
++++ b/apps/desktop/electron/bootstrap-runner.ts
+@@ -318,6 +318,12 @@
+   pinCommit = true,
+   _download = downloadInstallScript
+ }) {
++  if (process.env.HERMES_DESKTOP_PACKAGE_MANAGED_RUNTIME === '1') {
++    throw new Error(
++      'Package-managed desktop uses the hermes-agent system package; runtime bootstrap is disabled and the agent tree is read-only.'
++    )
++  }
++
+   // 1. Dev shortcut: prefer a local checkout's installer so we can iterate
+   //    without pushing. SOURCE_REPO_ROOT comes from main.ts (path.resolve
+   //    of APP_ROOT/../..).
