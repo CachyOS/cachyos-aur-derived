@@ -10,7 +10,7 @@ pkgbase = hermes-agent-desktop
 	checkdepends = uv
 	makedepends = git
 	makedepends = npm
-	depends = electron42
+	depends = electron44
 	depends = hermes-agent>=0.22.5
 	depends = hicolor-icon-theme
 	depends = libnotify
