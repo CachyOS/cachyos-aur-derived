@@ -1,0 +1,6 @@
+# SPDX-FileCopyrightText: 2026 Recipe contributors
+# SPDX-License-Identifier: 0BSD
+# Update these compatibility versions together with the RustDesk source pins.
+[ffmpeg-rustdesk]
+source = "manual"
+manual = "7.1.1"

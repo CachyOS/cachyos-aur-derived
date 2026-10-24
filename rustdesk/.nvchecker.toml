@@ -1,0 +1,6 @@
+# SPDX-FileCopyrightText: 2026 Recipe contributors
+# SPDX-License-Identifier: 0BSD
+# Update these compatibility versions together with the RustDesk source pins.
+[rustdesk]
+source = "manual"
+manual = "1.5.0"
