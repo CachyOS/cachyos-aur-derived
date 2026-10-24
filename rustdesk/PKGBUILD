@@ -1,0 +1,201 @@
+# SPDX-FileCopyrightText: 2026 Recipe contributors
+# SPDX-License-Identifier: 0BSD
+pkgname=rustdesk
+pkgver=1.5.0
+pkgrel=6
+pkgdesc='Remote desktop application with Flutter UI and hardware codecs'
+arch=('x86_64')
+url='https://rustdesk.com'
+license=('AGPL-3.0-only')
+depends=(
+  'alsa-lib'
+  'aom'
+  'at-spi2-core'
+  'cairo'
+  'dbus'
+  'fontconfig'
+  'gdk-pixbuf2'
+  'glib2'
+  'glibc'
+  'gst-plugin-pipewire'
+  'gst-plugins-base'
+  'gst-plugins-base-libs'
+  'gstreamer'
+  'gtk3'
+  'hicolor-icon-theme'
+  'libayatana-appindicator'
+  'libdrm'
+  'libepoxy'
+  'libgcc'
+  'libpulse'
+  'libstdc++'
+  'libva'
+  'libvpx'
+  'libx11'
+  'libxcb'
+  'libxfixes'
+  'libxkbcommon'
+  'libxtst'
+  'libyuv'
+  'opus'
+  'pango'
+  'procps-ng'
+  'wayland'
+  'xdg-user-dirs'
+  'xdg-utils'
+  'xdotool'
+  'zlib'
+)
+makedepends=(
+  'cargo'
+  'clang'
+  'cmake'
+  'ffmpeg-rustdesk=7.1.1'
+  'flutter-rust-bridge-codegen1=1.80.1'
+  'fvm'
+  'git'
+  'ninja'
+  'pkgconf'
+  'wayland-protocols'
+)
+checkdepends=('desktop-file-utils')
+optdepends=(
+  'intel-media-driver: VA-API hardware video support on recent Intel GPUs'
+  'libva-intel-driver: VA-API hardware video support on older Intel GPUs'
+  'libva-mesa-driver: VA-API hardware video support on supported Mesa GPUs'
+  'libva-utils: inspect VA-API codec support'
+  'nvidia-utils: NVIDIA hardware video support'
+)
+# Mixed Rust/C++ objects; Rust's release profile still enables its own LTO.
+options=('!lto')
+_commit=fada664df7a294d1d1a9ca3e7cd3637069122f17
+# Source archives omit submodule contents; this pin matches _commit's gitlink.
+_hbb_commit=229b904508364c8997aad0fb5af57effac859f60
+# Match upstream .github/workflows/{bridge,flutter-build}.yml respectively.
+_flutter_bridge=3.22.3
+_flutter_app=3.24.5
+source=(
+  "rustdesk-$_commit.tar.gz::https://codeload.github.com/rustdesk/rustdesk/tar.gz/$_commit"
+  "hbb_common-$_hbb_commit.tar.gz::https://codeload.github.com/rustdesk/hbb_common/tar.gz/$_hbb_commit"
+  'libyuv.pc'
+  'libwebm-cstdint.patch'
+  'flutter-rpath.patch'
+)
+sha256sums=(
+  '251c82c41378d55823cfc37203b75280f6c442deadb6428cb02e3a28486efcb4'
+  '4902cb2429d3ab7f055a7833c966d63b8531d3912a0423bd27cfe81fee000356'
+  'c339defc017d160e591cf6572028684eef5fb221a02307cd7a2fe4f853d80d8f'
+  'de9a5893fcbc875c0bc840766cb8655ff60ecad619dcc0e58298c6d0f34c8f56'
+  'a68d4fe3c3697ad6cb3ebf85750088602d82727296426323c81665aaae7481b1'
+)
+
+_set_build_environment() {
+  # Keep SDKs and caches local, including the Cargo checkout patched below.
+  export CARGO_HOME="$srcdir/cargo-home"
+  export RUSTUP_TOOLCHAIN=stable
+  export CARGO_TARGET_DIR=target
+  export PUB_CACHE="$srcdir/pub-cache"
+  export FVM_CACHE_PATH="$srcdir/fvm"
+  # ffmpeg-rustdesk supplies this layout; no vcpkg bootstrap is needed.
+  export VCPKG_ROOT=/usr/lib/rustdesk-ffmpeg
+  export PKG_CONFIG_PATH="$srcdir/pkgconfig"
+  export LIBCLANG_PATH=/usr/lib
+}
+
+prepare() {
+  _set_build_environment
+  cd "rustdesk-$_commit" || return
+  # Use bundle-relative library paths instead of Flutter's build-directory paths.
+  patch --batch -Np1 -i "$srcdir/flutter-rpath.patch"
+  if [[ -L libs/hbb_common ]]; then
+    rm libs/hbb_common
+  else
+    rmdir libs/hbb_common
+  fi
+  ln -s "$srcdir/hbb_common-$_hbb_commit" libs/hbb_common
+  # Build-only adapter for Arch's libyuv, consumed by linux-pkg-config.
+  install -Dm644 "$srcdir/libyuv.pc" "$srcdir/pkgconfig/libyuv.pc"
+  cargo fetch --locked --target "$CARCH-unknown-linux-gnu"
+
+  # The locked libwebm source needs an explicit <cstdint> include. Patch only
+  # this package's Cargo checkout, preserving any global Cargo cache.
+  local _webm_sources=(
+    "$CARGO_HOME"/git/checkouts/rust-webm-*/*/src/sys/libwebm/mkvparser/mkvparser.cc
+  )
+  if (( ${#_webm_sources[@]} != 1 )) || [[ ! -f ${_webm_sources[0]} ]]; then
+    printf '%s\n' 'Expected exactly one locked rust-webm mkvparser.cc checkout' >&2
+    return 1
+  fi
+  if ! grep -Fq '#include <cstdint>' "${_webm_sources[0]}"; then
+    patch --batch -Np0 -d "$(dirname "${_webm_sources[0]}")" \
+      -i "$srcdir/libwebm-cstdint.patch"
+  fi
+
+  # Follow upstream's distinct bridge/application SDK versions; no fvm global.
+  fvm install "$_flutter_bridge"
+  fvm install "$_flutter_app"
+  "$FVM_CACHE_PATH/versions/$_flutter_app/bin/flutter" --disable-analytics
+  local _sdk="$FVM_CACHE_PATH/versions/$_flutter_app"
+  # Upstream also applies this 3.24.4-named patch to the 3.24.5 SDK.
+  local _dropdown_patch="$PWD/.github/patches/flutter_3.24.4_dropdown_menu_enableFilter.diff"
+  if ! git -C "$_sdk" apply --reverse --check "$_dropdown_patch" 2>/dev/null; then
+    git -C "$_sdk" apply "$_dropdown_patch"
+  fi
+}
+
+build() {
+  _set_build_environment
+  cd "rustdesk-$_commit" || return
+  local _original_path="$PATH"
+  export PATH="$FVM_CACHE_PATH/versions/$_flutter_bridge/bin:$_original_path"
+  flutter --disable-analytics
+  # Upstream bridge.yml uses extended_text 13 with the older SDK's Dart.
+  # Restore 14 below before resolving dependencies for the application SDK.
+  sed -i 's/extended_text: 14.0.0/extended_text: 13.0.0/' flutter/pubspec.yaml
+  (cd flutter && flutter pub get)
+  # Old ffigen needs Clang's resource headers explicitly to resolve stdbool.h.
+  flutter-rust-bridge-codegen1 \
+    --rust-input src/flutter_ffi.rs \
+    --dart-output flutter/lib/generated_bridge.dart \
+    --c-output flutter/macos/Runner/bridge_generated.h \
+    --llvm-path /usr/lib \
+    --llvm-compiler-opts="-I$(clang -print-resource-dir)/include"
+  sed -i 's/extended_text: 13.0.0/extended_text: 14.0.0/' flutter/pubspec.yaml
+
+  export PATH="$FVM_CACHE_PATH/versions/$_flutter_app/bin:$_original_path"
+  (cd flutter && flutter pub get)
+  # Use system software codecs; hwcodec uses the private patched FFmpeg above.
+  cargo build --frozen --release --lib \
+    --features flutter,hwcodec,linux-pkg-config,unix-file-copy-paste
+  (cd flutter && flutter build linux --release)
+}
+
+check() {
+  cd "rustdesk-$_commit" || return
+  desktop-file-validate res/rustdesk.desktop res/rustdesk-link.desktop
+  test -s flutter/build/linux/x64/release/bundle/rustdesk
+  test -s flutter/build/linux/x64/release/bundle/lib/librustdesk.so
+  # The version command exits before GUI initialization and exercises library loading.
+  local _version
+  _version=$(flutter/build/linux/x64/release/bundle/rustdesk --version)
+  [[ $_version == "$pkgver" ]]
+}
+
+package() {
+  cd "rustdesk-$_commit" || return
+  # Keep Flutter's engine, plugins and assets together for relative loading.
+  install -d "$pkgdir/usr/lib/rustdesk" "$pkgdir/usr/bin"
+  cp -a flutter/build/linux/x64/release/bundle/. "$pkgdir/usr/lib/rustdesk/"
+  ln -s ../lib/rustdesk/rustdesk "$pkgdir/usr/bin/rustdesk"
+  install -Dm644 res/rustdesk.service "$pkgdir/usr/lib/systemd/system/rustdesk.service"
+  install -Dm644 res/rustdesk.desktop "$pkgdir/usr/share/applications/rustdesk.desktop"
+  install -Dm644 res/rustdesk-link.desktop "$pkgdir/usr/share/applications/rustdesk-link.desktop"
+  local _icon_size
+  for _icon_size in 32 128; do
+    install -Dm644 "res/${_icon_size}x${_icon_size}.png" \
+      "$pkgdir/usr/share/icons/hicolor/${_icon_size}x${_icon_size}/apps/rustdesk.png"
+  done
+  install -Dm644 res/128x128@2x.png "$pkgdir/usr/share/icons/hicolor/256x256/apps/rustdesk.png"
+  install -Dm644 res/scalable.svg "$pkgdir/usr/share/icons/hicolor/scalable/apps/rustdesk.svg"
+  install -Dm644 LICENCE "$pkgdir/usr/share/licenses/$pkgname/LICENCE"
+}
