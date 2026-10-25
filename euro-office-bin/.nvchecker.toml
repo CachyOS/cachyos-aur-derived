@@ -1,0 +1,7 @@
+[euro-office-bin]
+source = "github"
+github = "Euro-Office/DesktopEditors"
+use_latest_release = true
+prefix = "v"
+from_pattern = '^([\d.]+)-(\d+)$'
+to_pattern = '\1_\2'
