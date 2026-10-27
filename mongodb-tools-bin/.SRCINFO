@@ -1,6 +1,6 @@
 pkgbase = mongodb-tools-bin
 	pkgdesc = The MongoDB tools provide import, export, and diagnostic capabilities.
-	pkgver = 100.19.1
+	pkgver = 100.20.0
 	pkgrel = 1
 	url = https://github.com/mongodb/mongo-tools
 	arch = x86_64
@@ -8,11 +8,11 @@ pkgbase = mongodb-tools-bin
 	license = Apache
 	depends = openssl
 	depends = krb5
-	provides = mongodb-tools=100.19.1
+	provides = mongodb-tools=100.20.0
 	conflicts = mongodb-tools
-	source_x86_64 = mongodb-org-tools_100.19.1_x86_64.deb::https://repo.mongodb.org/apt/ubuntu/dists/noble/mongodb-org/8.3/multiverse/binary-amd64/mongodb-database-tools_100.19.1_amd64.deb
-	sha256sums_x86_64 = 4bb0482aced31090b9ab1615b75db90ec3eea91c01ba45d03454748cc3658b69
-	source_aarch64 = mongodb-org-tools_100.19.1_aarch64.deb::https://repo.mongodb.org/apt/ubuntu/dists/noble/mongodb-org/8.3/multiverse/binary-arm64/mongodb-database-tools_100.19.1_arm64.deb
-	sha256sums_aarch64 = c91464898fe859f0b49b0e46340ee2cbcef48fe5751e1a46c9d63309e651bdfa
+	source_x86_64 = mongodb-org-tools_100.20.0_x86_64.deb::https://repo.mongodb.org/apt/ubuntu/dists/noble/mongodb-org/8.3/multiverse/binary-amd64/mongodb-database-tools_100.20.0_amd64.deb
+	sha256sums_x86_64 = ac3c856a55695615bdffe02bcfd8592108493a26a7a2bed5dd8709405f840d24
+	source_aarch64 = mongodb-org-tools_100.20.0_aarch64.deb::https://repo.mongodb.org/apt/ubuntu/dists/noble/mongodb-org/8.3/multiverse/binary-arm64/mongodb-database-tools_100.20.0_arm64.deb
+	sha256sums_aarch64 = 0884051f2d7e9eb3cfb8f5c9166d4e61c70d4c55e50778ee7a7c637999097ed2
 
 pkgname = mongodb-tools-bin
