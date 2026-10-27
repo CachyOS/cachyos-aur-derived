@@ -1,0 +1,4 @@
+[fluxer]
+source = "jq"
+url = "https://pkgs.fluxer.com/desktop/stable/linux/x64/latest.json"
+filter = ".version"

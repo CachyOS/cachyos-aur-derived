@@ -1,0 +1,5 @@
+[cardwire]
+source = "github"
+github = "OpenGamingCollective/cardwire"
+use_latest_release = true
+prefix = "v"

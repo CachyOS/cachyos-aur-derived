@@ -1,3 +1,5 @@
 [gcc14]
 source = "git"
 git = "https://sourceware.org/git/gcc.git"
+include_regex = 'releases/gcc-14\.\d+\.\d+'
+prefix = "releases/gcc-"

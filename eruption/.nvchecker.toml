@@ -1,4 +1,4 @@
 [eruption]
-source = "git"
-git = "https://github.com/eruption-project/eruption.git"
-prefix = "v"
+source = "regex"
+url = "https://raw.githubusercontent.com/eruption-project/eruption/master/eruption/Cargo.toml"
+regex = '(?m)^version = "([^"]+)"'

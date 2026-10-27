@@ -1,0 +1,8 @@
+[hermes-agent-desktop]
+source = "github"
+github = "NousResearch/hermes-agent"
+use_max_release = true
+# Since v0.22.0 tags are plain semver; older releases were tagged by date
+# (v2026.9.24). Skip the date tags so they don't sort above semver ones.
+include_regex = 'v\d{1,3}\.\d+\.\d+'
+prefix = "v"

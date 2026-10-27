@@ -1,4 +1,0 @@
-[neofetch]
-source = "git"
-git = "https://github.com/dylanaraps/neofetch.git"
-use_max_tag = true

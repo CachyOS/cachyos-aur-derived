@@ -1,4 +1,2 @@
 ["speedtest++"]
-source = "git"
-git = "https://github.com/taganaka/SpeedTest.git"
-prefix = "v"
+source = "manual"

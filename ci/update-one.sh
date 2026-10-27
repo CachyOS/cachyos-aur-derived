@@ -15,7 +15,18 @@ if [[ ! -f "$pkg/PKGBUILD" ]]; then
   exit 1
 fi
 
-pkgctl version upgrade "$pkg"
+# .update-hook.sh updates values that pkgctl cannot derive from pkgver
+# (commit hashes, bundled dependency versions) before checksums are computed.
+if [[ -f "$pkg/.update-hook.sh" ]]; then
+  pkgctl version upgrade --no-update-checksums "$pkg"
+  (
+    cd "$pkg"
+    bash ./.update-hook.sh
+    updpkgsums
+  )
+else
+  pkgctl version upgrade "$pkg"
+fi
 
 (
   cd "$pkg"

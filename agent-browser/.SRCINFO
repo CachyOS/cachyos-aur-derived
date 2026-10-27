@@ -1,0 +1,16 @@
+pkgbase = agent-browser
+	pkgdesc = Headless browser automation CLI for AI agents
+	pkgver = 0.39.4
+	pkgrel = 1
+	url = https://github.com/vercel-labs/agent-browser
+	arch = x86_64
+	license = Apache-2.0
+	depends = glibc
+	optdepends = chromium: browser to automate (or google-chrome)
+	optdepends = google-chrome: browser to automate (or chromium)
+	options = !strip
+	options = !debug
+	source = https://registry.npmjs.org/agent-browser/-/agent-browser-0.39.4.tgz
+	sha256sums = 5668d856b797d4a5b1fea6cf9cf087c0aefcc157e328b56718bee5c8a712e9aa
+
+pkgname = agent-browser

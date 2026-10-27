@@ -1,13 +1,14 @@
 pkgbase = protonplus
 	pkgdesc = A modern compatibility tools manager
-	pkgver = 0.6.5
-	pkgrel = 1
+	pkgver = 0.6.8
+	pkgrel = 2
 	url = https://github.com/Vysp3r/ProtonPlus
 	arch = x86_64
 	license = GPL-3.0-or-later
 	checkdepends = appstream-glib
 	makedepends = meson
 	makedepends = vala
+	depends = appstream
 	depends = gtk4
 	depends = json-glib
 	depends = libadwaita
@@ -16,7 +17,7 @@ pkgbase = protonplus
 	depends = libsoup3
 	depends = libnotify
 	depends = sdl3
-	source = protonplus-0.6.5.tar.gz::https://github.com/Vysp3r/ProtonPlus/archive/refs/tags/v0.6.5.tar.gz
-	sha256sums = e0ece0fa3388c9fd72b617cabc8bc9e64846ccaa1e025aa94d83c1a94ca8a8a0
+	source = protonplus-0.6.8.tar.gz::https://github.com/Vysp3r/ProtonPlus/archive/refs/tags/v0.6.8.tar.gz
+	sha256sums = 9635706b4649032add033fcedf6db8dcbafe20c63789523c10a4764cb08fd2c7
 
 pkgname = protonplus

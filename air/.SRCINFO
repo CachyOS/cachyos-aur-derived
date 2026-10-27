@@ -9,7 +9,7 @@ pkgbase = air
 	depends = glibc
 	depends = go
 	options = !lto
-	source = air::git+https://github.com/air-verse/air.git#commit=a8f644ca6547e9f04870570377614beb428ed6e6
-	b2sums = 92a7e2b7851fc1a1a69ece540b9acf0c87ab99aa09d89788c5dad71f9a5d3b1e3ee51bc1d4a36c257413733a6028d542ce0157a747ed38e9df5c5d653ed2028a
+	source = air::git+https://github.com/air-verse/air.git#tag=v1.67.4
+	b2sums = 4a0f94235504732b2e694c34c33e6c032e6a9d0f568073df86e23e754cc8e298fb1edfc4417eebd4d65b77e621ff120e408016a366fb79cb98d3ae343cd8e9ee
 
 pkgname = air

@@ -1,3 +1,7 @@
 [libajantv2]
 source = "git"
 git = "https://github.com/aja-video/libajantv2.git"
+include_regex = 'ntv2_\d+_\d+_\d+'
+prefix = "ntv2_"
+from_pattern = '_'
+to_pattern = '.'

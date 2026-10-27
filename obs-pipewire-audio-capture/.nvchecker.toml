@@ -1,0 +1,3 @@
+[obs-pipewire-audio-capture]
+source = "git"
+git = "https://github.com/dimtpap/obs-pipewire-audio-capture.git"

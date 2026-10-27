@@ -1,0 +1,3 @@
+[agent-browser]
+source = "npm"
+npm = "agent-browser"

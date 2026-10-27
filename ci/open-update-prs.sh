@@ -89,6 +89,12 @@ reset_to_base() {
   git reset --hard "origin/$base_branch"
 }
 
+publish_failed() {
+  printf 'publish failed: %s\n' "$1" >>.ci/update-check/update-failures.txt
+  printf 'Publishing update failed for %s\n' "$1" >&2
+  reset_to_base
+}
+
 count=0
 while IFS= read -r pkg; do
   [[ -n "$pkg" ]] || continue
@@ -102,7 +108,8 @@ while IFS= read -r pkg; do
   safe_version="$(printf '%s' "$new_version" | tr -c 'A-Za-z0-9._-' '-')"
   branch="bot/update/${pkg}-${safe_version}"
 
-  pr_number="$(gh pr list --head "$branch" --state open --json number --jq '.[0].number // empty')"
+  pr_number="$(gh pr list --head "$branch" --state open --json number --jq '.[0].number // empty')" \
+    || { publish_failed "$pkg"; continue; }
   if [[ -n "$pr_number" ]]; then
     printf 'PR #%s is already open for %s; skipping\n' "$pr_number" "$pkg"
     continue
@@ -131,23 +138,24 @@ while IFS= read -r pkg; do
 
   git add "$pkg/PKGBUILD" "$pkg/.SRCINFO"
   git commit -m "${pkg}: update to ${new_version}"
-  git push --force-with-lease origin "$branch"
+  # No open PR uses this branch (checked above), so a leftover one can be overwritten.
+  git push --force origin "$branch" || { publish_failed "$pkg"; continue; }
 
   created_pr=false
-  pr_number="$(gh pr list --head "$branch" --state open --json number --jq '.[0].number // empty')"
+  pr_number="$(gh pr list --head "$branch" --state open --json number --jq '.[0].number // empty')" || pr_number=""
   if [[ -n "$pr_number" ]]; then
     gh pr edit "$pr_number" \
       --title "${pkg}: update to ${new_version}" \
       --body-file "$body_file" \
-      --base "$base_branch"
+      --base "$base_branch" || { publish_failed "$pkg"; continue; }
   else
     gh pr create \
       --title "${pkg}: update to ${new_version}" \
       --body-file "$body_file" \
       --base "$base_branch" \
-      --head "$branch"
+      --head "$branch" || { publish_failed "$pkg"; continue; }
     created_pr=true
-    pr_number="$(gh pr list --head "$branch" --state open --json number --jq '.[0].number // empty')"
+    pr_number="$(gh pr list --head "$branch" --state open --json number --jq '.[0].number // empty')" || pr_number=""
   fi
 
   close_superseded_update_prs "$pkg" "$branch" "$new_version" "$pr_number"

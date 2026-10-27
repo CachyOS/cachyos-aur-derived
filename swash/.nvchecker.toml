@@ -1,3 +1,4 @@
 ["swash"]
 source = "git"
 git = "https://github.com/ItsLemmy/swash.git"
+prefix = "v"

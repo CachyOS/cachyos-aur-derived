@@ -1,4 +1,0 @@
-[github-copilot-app-bin]
-source = "git"
-git = "https://github.com/github/app.git"
-prefix = "v"

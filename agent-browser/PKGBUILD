@@ -1,0 +1,35 @@
+# Maintainer: Guru <anjanaya@gmail.com>
+pkgname=agent-browser
+pkgver=0.39.4
+pkgrel=1
+pkgdesc="Headless browser automation CLI for AI agents"
+arch=('x86_64')
+url="https://github.com/vercel-labs/agent-browser"
+license=('Apache-2.0')
+depends=('glibc')
+optdepends=(
+  'chromium: browser to automate (or google-chrome)'
+  'google-chrome: browser to automate (or chromium)'
+)
+options=('!strip' '!debug')
+# The npm tarball carries upstream's prebuilt CLI for every platform. Ship only
+# the x86_64 glibc binary and the skill data it reads next to it.
+source=("https://registry.npmjs.org/${pkgname}/-/${pkgname}-${pkgver}.tgz")
+sha256sums=('5668d856b797d4a5b1fea6cf9cf087c0aefcc157e328b56718bee5c8a712e9aa')
+
+package() {
+  cd package
+
+  local _libdir="/usr/lib/${pkgname}"
+  install -Dm755 "bin/${pkgname}-linux-x64" "${pkgdir}${_libdir}/bin/${pkgname}-linux-x64"
+  cp -r --no-preserve=ownership skill-data skills "${pkgdir}${_libdir}/"
+  find "${pkgdir}${_libdir}" -type d -exec chmod 755 {} + \
+    -o -type f ! -path "*/bin/*" -exec chmod 644 {} +
+
+  # Same as upstream's global npm install: the command points straight at the
+  # native binary, which finds skill-data relative to its resolved path.
+  install -d "${pkgdir}/usr/bin"
+  ln -s "${_libdir}/bin/${pkgname}-linux-x64" "${pkgdir}/usr/bin/${pkgname}"
+
+  install -Dm644 LICENSE "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+}

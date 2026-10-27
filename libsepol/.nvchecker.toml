@@ -1,3 +1,4 @@
 [libsepol]
 source = "git"
 git = "https://github.com/SELinuxProject/selinux.git"
+include_regex = '\d+\.\d+(\.\d+)?'

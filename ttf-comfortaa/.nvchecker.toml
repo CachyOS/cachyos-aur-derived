@@ -1,3 +1,2 @@
 [ttf-comfortaa]
-source = "git"
-git = "https://github.com/googlefonts/comfortaa.git"
+source = "manual"

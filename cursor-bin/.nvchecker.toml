@@ -1,3 +1,4 @@
 [cursor-bin]
-source = "git"
-git = "https://gitlab.archlinux.org/archlinux/packaging/packages/code.git"
+source = "jq"
+url = "https://api2.cursor.sh/updates/api/download/stable/linux-x64/cursor"
+filter = ".version"

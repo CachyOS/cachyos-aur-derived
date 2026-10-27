@@ -1,3 +1,0 @@
-[zfs-dkms]
-source = "git"
-git = "https://github.com/zfsonlinux/zfs.git"

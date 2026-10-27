@@ -3,8 +3,8 @@
 # Generator  : CPANPLUS::Dist::Arch 1.30
 
 pkgname='perl-boolean'
-pkgver='0.46'
-pkgrel='1'
+pkgver=0.46
+pkgrel=1
 pkgdesc="Boolean support for Perl"
 arch=('any')
 license=('PerlArtistic' 'GPL')
