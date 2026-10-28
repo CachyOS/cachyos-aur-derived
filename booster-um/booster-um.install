@@ -1,0 +1,22 @@
+# Colors
+R='\033[1;31m' # Red
+G='\033[1;32m' # Green
+B='\033[1;34m' # Blue
+Y='\033[1;33m' # Yellow
+NC='\033[0m'   # No color
+
+_print_divider() {
+  (( ${divider:-0} )) || { printf '%.0s-' {1..50}; echo; }
+}
+
+post_upgrade() {
+  local old_version="${2:0:5}"
+
+  if [ "$old_version" = "1.7.1" ]; then
+    _print_divider
+    echo -e "${R}==>${NC} ${R}Attention!${NC} The booster-um ${R}configuration has been updated!${NC}"
+    echo -e "${Y}==>${NC} Please check the new configuration here: ${B}https://github.com/Zile995/booster-um/blob/main/config/CONFIG.md${NC}"
+    echo -e "${Y}==>${NC} After changing/updating the configuration, run the ${G}booster-um -G${NC} command again!"
+    _print_divider
+  fi
+}
