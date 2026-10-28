@@ -2,8 +2,8 @@
 _target='compass'
 _edition=''
 pkgname="mongodb-$_target"
-pkgver=1.53.1
-pkgrel=2
+pkgver=1.53.2
+pkgrel=1
 pkgdesc='The official GUI for MongoDB'
 arch=('x86_64' 'armv7h' 'aarch64')
 url='https://www.mongodb.com/products/compass'
@@ -19,7 +19,7 @@ source=(
 	'disable-update-checks.diff'
 	'update-dependencies.diff'
 )
-b2sums=('11991a257ce7dc38d7c4d5946d26f9b088130db8abcff3d5572f8406812052e36363b1b3e93167d82917c009e833207443ad5ff68b659dcf7d087e9dca8b3a9c'
+b2sums=('6fdc741da5261926b3bf412aecca20c1f5dfcc97c560f39b323cd212fd6638272051a1681185b30fe858c8d7bef8b5e091473b76a46d3abeb18b82ccde108f07'
         '56e2476e1543109bd543861b9f487f8f30399df6937f4343d108a9d0e99d457b2abc1df30def601f7c19ac611a2379e67649cf2619cea5825da5d839b00d56e1'
         '925dbea3aa18e5ac3529276f0c5d4c42d7ae5cb81cc9e5df3b411af751b8314e9a20bd0c5c7af144d2cdd11a26634a11aa7c064545d96003566640f5005375df'
         '2abf7d270582feb99bfee914928cdf9dbae18b11edd787dd906d36f43d9e6752720636b4dab82149aaf55f021acb90768e853ceaed140cd321f85b65685fcdb2'
