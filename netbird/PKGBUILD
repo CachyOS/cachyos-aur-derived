@@ -4,7 +4,7 @@
 # Contributor: brody <archfan@brodix.de>
 
 pkgname=netbird
-pkgver=0.81.4
+pkgver=0.82.0
 pkgrel=1
 pkgdesc='WireGuard-based overlay network: client'
 url='https://github.com/netbirdio/netbird'
@@ -16,7 +16,7 @@ optdepends=('resolvconf: Private DNS')
 replaces=(wiretrustee)
 install=netbird.install
 source=("$pkgname-$pkgver.tar.gz::https://github.com/netbirdio/netbird/archive/refs/tags/v$pkgver.tar.gz")
-sha256sums=('c735ffec7dece473e61c8764fec7a5cb971bacc766620e9639c97c9a249bbcbb')
+sha256sums=('9553375fdd487572a4fdfeefd4cce95622686a80b8f0d10077c9913bebefe021')
 
 prepare() {
   cd "$srcdir/$pkgname-$pkgver"
