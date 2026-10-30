@@ -11,10 +11,6 @@ arch=('any')
 url="https://github.com/pixelb/ps_mem"
 license=('LGPL-2.1-or-later')
 depends=('python')
-#makedepends=('git')
-#source=("${pkgname}::git+https://github.com/pixelb/${pkgname}.git#commit=bfc18bf3d2af0e04")
-#sha256sums=('SKIP')
-# author appears to be doing real releases now
 source=("$pkgname-$pkgver.tgz::https://github.com/pixelb/ps_mem/archive/v$pkgver.tar.gz")
 sha256sums=('ad8bf87f9b9acd9b0b4997445bd99a8eeace4d816b207d56b03c5a83fec00514')
 
