@@ -2,7 +2,7 @@
 
 pkgname=claude-desktop
 pkgver=4.4212.0
-pkgrel=1
+pkgrel=2
 pkgdesc="Official Claude AI desktop app from Anthropic"
 arch=('x86_64' 'aarch64')
 url="https://claude.ai/download"
@@ -47,9 +47,11 @@ depends_x86_64=('qemu-system-x86' 'edk2-ovmf')
 depends_aarch64=('qemu-system-aarch64' 'edk2-aarch64')
 
 # recommended from .deb
-optdepends=('gnome-keyring: credential storage via Secret Service (GNOME)'
+optdepends=('bubblewrap: sandboxing for built-in Claude Code sessions'
+            'gnome-keyring: credential storage via Secret Service (GNOME)'
             'kwallet: credential storage (KDE Plasma)'
             'libayatana-appindicator: system tray icon'
+            'libpipewire: screen sharing on Wayland'
             'xdg-desktop-portal-gtk: portal backend for GTK desktops'
             'xdg-desktop-portal-kde: portal backend for KDE Plasma')
 options=('!strip' '!debug')
