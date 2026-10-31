@@ -54,7 +54,7 @@ jobs:
 
       - name: Install depends
         run: |
-          pacman -Syu --noconfirm devtools pacman-contrib github-cli jq python-jq nvchecker sudo
+          pacman -Syu --noconfirm devtools pacman-contrib github-cli jq python-jq python-packaging nvchecker sudo
 
       - name: Configure build user
         run: |
