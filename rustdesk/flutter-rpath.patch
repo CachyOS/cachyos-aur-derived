@@ -1,0 +1,20 @@
+# SPDX-FileCopyrightText: 2026 Recipe contributors
+# SPDX-License-Identifier: 0BSD
+--- a/flutter/linux/CMakeLists.txt
++++ b/flutter/linux/CMakeLists.txt
+@@ -16,6 +16,7 @@
+ 
+ # Load bundled libraries from the lib/ directory relative to the binary.
+ set(CMAKE_INSTALL_RPATH "$ORIGIN/lib")
++set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
+ 
+ # Root filesystem for cross-building.
+ if(FLUTTER_TARGET_PLATFORM_SYSROOT)
+@@ -167,6 +168,7 @@
+ 
+ # Generated plugin build rules, which manage building the plugins and adding
+ # them to the application.
++set(CMAKE_INSTALL_RPATH "$ORIGIN")
+ include(flutter/generated_plugins.cmake)
+ 
+ 
