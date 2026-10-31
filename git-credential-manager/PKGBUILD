@@ -1,0 +1,78 @@
+# Maintainer: MojArch
+
+pkgname=git-credential-manager
+pkgver=3.0.2
+pkgrel=2
+pkgdesc="A secure Git credential helper built on .NET"
+arch=('x86_64')
+url="https://github.com/git-ecosystem/git-credential-manager"
+license=('MIT')
+depends=('glib2' 'icu' 'krb5' 'libsecret' 'openssl' 'zlib')
+makedepends=('clang' 'dotnet-sdk-10.0' 'git')
+optdepends=('fontconfig: GUI credential prompts'
+            'libice: GUI credential prompts'
+            'libsm: GUI credential prompts'
+            'libx11: GUI credential prompts'
+            'webkit2gtk-4.1: Microsoft authentication broker (msauthUseBroker)')
+conflicts=(git-credential-manager-bin)
+options=(!strip !debug)
+
+source=(
+    "${pkgname}-${pkgver}.tar.gz::${url}/archive/refs/tags/v${pkgver}.tar.gz"
+)
+sha512sums=('f8fbdd5b9f00bdc0372458e8048428633754b1fa2f329a458c23e8863b89b8de7ddcd9a03fbfb966e2cdaf528fb2fe5a9e3f3817ec38fa004c36851a06ce432e')
+
+build() {
+    cd "${pkgname}-${pkgver}"
+
+    export DOTNET_CLI_HOME="${srcdir}/.dotnet"
+    export HOME="${srcdir}/.home"
+    export DOTNET_NOLOGO=1
+    export DOTNET_CLI_TELEMETRY_OPTOUT=1
+
+    mkdir -p "$DOTNET_CLI_HOME" "$HOME"
+
+    local rid='linux-x64'
+
+    # Run only the upstream publish step; the .deb and tarballs built by
+    # build/linux/build.sh are not needed for packaging.
+    NuGetAudit=false build/linux/publish.sh \
+        --configuration Release \
+        --runtime "$rid" \
+        --version "$pkgver"
+}
+
+package() {
+    cd "${pkgname}-${pkgver}"
+
+    local publish_dir="out/publish/git-credential-manager/release_linux-x64"
+
+    if [[ ! -d "$publish_dir" ]]; then
+        error "Published output directory not found: $publish_dir"
+        error "Available publish directories:"
+        find out/publish -maxdepth 3 -type d -print 2>/dev/null || true
+        return 1
+    fi
+
+    if [[ ! -f "$publish_dir/git-credential-manager" ]]; then
+        error "Expected executable not found in $publish_dir"
+        find "$publish_dir" -maxdepth 2 -type f -print
+        return 1
+    fi
+
+    install -d "$pkgdir/usr/lib/$pkgname"
+    install -d "$pkgdir/usr/bin"
+    install -d "$pkgdir/usr/share/licenses/$pkgname"
+
+    # Install the complete published payload, including any required
+    # companion files produced by the distribution build.
+    cp -a "$publish_dir/." "$pkgdir/usr/lib/$pkgname/"
+
+    chmod 755 "$pkgdir/usr/lib/$pkgname/git-credential-manager"
+
+    ln -s "/usr/lib/$pkgname/git-credential-manager" \
+        "$pkgdir/usr/bin/git-credential-manager"
+
+    install -Dm644 LICENSE \
+        "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

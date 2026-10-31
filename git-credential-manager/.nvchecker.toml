@@ -1,0 +1,4 @@
+[git-credential-manager]
+source = "git"
+git = "https://github.com/git-ecosystem/git-credential-manager.git"
+prefix = "v"
