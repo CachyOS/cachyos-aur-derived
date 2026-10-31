@@ -1,6 +1,6 @@
 [upd72020x-fw]
-source = "git"
-git = "https://git.disroot.org/glektarssza/aur-upd72020x-fw.git"
-include_regex = 'v\d+\.\d+\.\d+-\d+'
-from_pattern = 'v(\d+\.\d+\.\d+)-\d+'
+source = "aur"
+aur = "upd72020x-fw"
+strip_release = true
+from_pattern = '^\d+:(.+)$'
 to_pattern = '\1'
