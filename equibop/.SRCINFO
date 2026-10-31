@@ -1,7 +1,7 @@
 pkgbase = equibop
 	pkgdesc = A custom Discord desktop app with Equicord pre-installed
 	pkgver = 3.3.2
-	pkgrel = 1
+	pkgrel = 2
 	url = https://github.com/Equicord/Equibop
 	arch = x86_64
 	arch = aarch64
@@ -20,7 +20,7 @@ pkgbase = equibop
 	source = https://github.com/Equicord/Equibop/archive/refs/tags/v3.3.2.tar.gz
 	source = equibop.desktop
 	source = equibop.sh
-	sha256sums = ef92b3de7a44e77191decf2f86798b296de16cb02b5672311ce3774cbb9ada36
+	sha256sums = 81a5967f696f4ccf218f8b625623f54d043c676024cdcc29a574431d89922d3d
 	sha256sums = 2df1651c56f3ac253b679db81500474f54e9887321db0daa4d3ac2a1ebad5f4d
 	sha256sums = e14f0ca9fc0bfeacbc0e8acb874c10e759f9077cb1552d179bdef471331a1736
 
