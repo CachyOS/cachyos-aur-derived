@@ -1,7 +1,7 @@
 pkgbase = lib32-lapack
 	pkgdesc = Linear Algebra PACKage (32-bit)
 	pkgver = 3.12.1
-	pkgrel = 1
+	pkgrel = 2
 	url = https://www.netlib.org/lapack
 	arch = x86_64
 	license = BSD-3-Clause
