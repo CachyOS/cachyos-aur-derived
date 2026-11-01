@@ -1,16 +1,16 @@
 pkgbase = lha
 	pkgdesc = A compression and archive utility for LH-7 format archives
 	pkgver = 1.14i_ac20260722
-	pkgrel = 1
+	pkgrel = 2
 	epoch = 1
 	url = http://lha.osdn.jp
 	arch = x86_64
-	license = custom:lha
+	license = LicenseRef-lha
 	makedepends = git
 	depends = glibc
-	source = git+https://github.com/jca02266/lha.git#commit=4f193b1e98700aa2bc9dfeef11943efc1f036154
+	source = git+https://github.com/jca02266/lha.git#commit=16619b066b189ef289bb8b07b37d1c38d550da99
 	source = LICENSE
-	sha256sums = 07b6123eab286ad8fb7ee8500a71d496e2452bb57cfaffd931cc6c7b97dddbbe
+	sha256sums = 8d8c526f2b9027d58882c99c79a62e0186d982b3cb163705a53a098bb0a5cb31
 	sha256sums = c88f52b7b6b223d1347c6721c24b63ba947baa1756e3713e1fff220e974b9120
 
 pkgname = lha
