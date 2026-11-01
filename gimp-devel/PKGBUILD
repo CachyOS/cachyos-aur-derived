@@ -4,7 +4,7 @@ _pkgname=gimp
 pkgname=${_pkgname}-devel
 pkgver=3.2.0rc3
 _pkgver=3.2.0-RC3
-pkgrel=1
+pkgrel=2
 pkgdesc='GNU Image Manipulation Program (development release)'
 url='https://www.gimp.org/'
 arch=('x86_64' 'i686' 'aarch64' 'armv7h')
@@ -63,6 +63,7 @@ depends=(
 makedepends=(
   'alsa-lib'
   'appstream'
+  'bash-completion'
   'cfitsio'
   'ghostscript'
   'gi-docgen'
@@ -103,7 +104,7 @@ build() {
     --buildtype=plain
     --prefix=/usr
     --sysconfdir=/etc
-    --libexecdir=/usr/bin \
+    --libexecdir=/usr/bin
     -Dopenmp=enabled
     -Dcheck-update=no
     -Dbug-report-url='https://aur.archlinux.org/packages/gimp-devel'
