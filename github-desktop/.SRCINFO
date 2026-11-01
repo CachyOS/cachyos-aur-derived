@@ -1,12 +1,12 @@
 pkgbase = github-desktop
 	pkgdesc = GUI for managing Git and GitHub
 	pkgver = 3.4.14
-	pkgrel = 2
+	pkgrel = 3
 	url = https://desktop.github.com
 	arch = x86_64
 	license = MIT
 	makedepends = python-setuptools
-	makedepends = nodejs-lts-iron
+	makedepends = nodejs-lts-jod
 	makedepends = npm
 	makedepends = xorg-server-xvfb
 	makedepends = yarn
