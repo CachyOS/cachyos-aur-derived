@@ -2,7 +2,7 @@
 # Maintainer: Caroline Snyder <hirpeng@gmail.com>
 pkgname=pori
 pkgver=0.2.0
-pkgrel=1
+pkgrel=2
 pkgdesc="Pori: Systemd Mount Manager"
 arch=('x86_64')
 url="https://github.com/Seafoam-Labs/Pori"
@@ -16,20 +16,28 @@ depends=(
     'polkit'
     'udisks2'
 )
-makedepends=('zig>=0.16')
+makedepends=('zig')
 
 # Source tarball from GitHub release
 source=("${pkgname}-${pkgver}.tar.gz::https://github.com/Seafoam-Labs/Pori/archive/v${pkgver}.tar.gz")
 
 sha256sums=('34ca896f1514978473985af30f32168de2407f73a17cc84a780248ab7cb17350')
 
+prepare() {
+  cd "$srcdir/Pori-${pkgver}/Pori.Ui"
+
+  # try to fetch dependencies into cache while we have network access
+  ZIG_GLOBAL_CACHE_DIR="$srcdir/zig-global-cache" \
+    zig build --fetch --cache-dir "$srcdir/zig-cache"
+}
+
 build() {
   cd "$srcdir/Pori-${pkgver}/Pori.Ui"
 
-  zig build --verbose \
+  ZIG_GLOBAL_CACHE_DIR="$srcdir/zig-global-cache" \
+    zig build --verbose \
     --prefix "$srcdir/Pori-${pkgver}/out" \
     --cache-dir "$srcdir/zig-cache" \
-    --global-cache-dir "$srcdir/zig-global-cache" \
     -Dcpu=baseline \
     -Doptimize=ReleaseSafe
 }
