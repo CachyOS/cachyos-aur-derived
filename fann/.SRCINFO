@@ -1,7 +1,7 @@
 pkgbase = fann
 	pkgdesc = Fast Artificial Neural Network Library
 	pkgver = 2.2.0
-	pkgrel = 7
+	pkgrel = 8
 	url = https://leenissen.dk/fann/
 	arch = x86_64
 	license = LGPL-2.1-or-later
