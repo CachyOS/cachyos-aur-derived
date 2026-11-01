@@ -1,56 +1,68 @@
 # Maintainer: Maxim Devaev <mdevaev@gmail.com>
 
-_commit=84f1ebe188fb0405c259d153c570daa4d3f48a67
+# hardcoded as usual..
+_commit=6c3176e0f7ad8d669287b91e5e4c509cf3218f5f
 pkgname=qtcurve
 pkgver=20261006
-pkgrel=1
-pkgdesc="A configurable set of widget styles for KDE and Gtk (Qt6 fork)"
+pkgrel=2
+pkgdesc="A configurable widget style for Qt6 with KDE Frameworks integration"
 arch=(x86_64)
 url="https://invent.kde.org/system/qtcurve"
-license=(GPL)
+license=('LGPL-2.1-only OR LGPL-3.0-only')
 groups=(qtcurve)
 depends=(
-	qt5-base
-	qt5-svg
-	qt5-x11extras
-	qt6-base
-	qt6-svg
-	libxcb
-	gtk2
-	libx11
-	gcc-libs
-	frameworkintegration
+    frameworkintegration
+    gcc-libs
+    glibc
+    karchive
+    kconfig
+    kconfigwidgets
+    kguiaddons
+    ki18n
+    kiconthemes
+    kio
+    kwidgetsaddons
+    kwindowsystem
+    kxmlgui
+    libx11
+    libxcb
+    qt6-base
+    qt6-svg
 )
 makedepends=(
-	git
-	cmake
-	extra-cmake-modules
-	kio
-	kconfig
+    cmake
+    extra-cmake-modules
+    git
 )
 conflicts=(
-	qtcurve-gtk2
-	qtcurve-kde
-	qtcurve-qt5
-	qtcurve-utils
+    qtcurve-gtk2
+    qtcurve-kde
+    qtcurve-qt5
+    qtcurve-utils
 )
 source=("git+https://invent.kde.org/system/qtcurve.git#commit=$_commit")
-md5sums=('bcfffd4a03e12898a0451f672018b8e9')
+sha256sums=('c04f39e8cfd207a1f55b7b1cba8d39d58678fea4ed3ba3fc6a9044bd4847b7c2')
 
+prepare() {
+    # kf6 support needs to be enabled via kwin
+    sed -i 's/set(QTC_QT6_ENABLE_KWIN ON)/set(QTC_QT6_ENABLE_KWIN OFF)/' \
+        "$pkgname/qt6/CMakeLists.txt"
+}
 
 build() {
-	cd "$srcdir/$pkgname"
-	rm -rf build
-	mkdir build
-	cd build
-	cmake .. \
-		-DCMAKE_INSTALL_PREFIX=/usr \
-		-DENABLE_QT5=ON \
-		-DENABLE_QT6=ON
-	make
+    cmake -B build -S "$pkgname" \
+        -DCMAKE_BUILD_TYPE=None \
+        -DCMAKE_INSTALL_PREFIX=/usr \
+        -DENABLE_QT4=OFF \
+        -DENABLE_QT5=OFF \
+        -DENABLE_QT6=ON \
+        -DENABLE_GTK2=OFF \
+        -DQTC_QT6_ENABLE_KDE=ON \
+        -DBUILD_TESTING=OFF \
+        -Wno-dev
+    cmake --build build
 }
 
 package() {
-	cd "$srcdir/$pkgname/build"
-	make DESTDIR="$pkgdir/" install
+    DESTDIR="$pkgdir" cmake --install build
 }
