@@ -1,0 +1,37 @@
+pkgbase = fcitx5-lotus
+	pkgdesc = Vietnamese input method for fcitx5
+	pkgver = 3.5.6
+	pkgrel = 1
+	url = https://github.com/LotusInputMethod/fcitx5-lotus
+	install = fcitx5-lotus.install
+	arch = x86_64
+	license = GPL-3.0-or-later
+	makedepends = cmake
+	makedepends = go
+	makedepends = extra-cmake-modules
+	makedepends = gcc
+	makedepends = git
+	makedepends = libx11
+	makedepends = python
+	makedepends = librsvg
+	depends = acl
+	depends = fcitx5
+	depends = fcitx5-configtool
+	depends = fcitx5-gtk
+	depends = fcitx5-qt
+	depends = libinput
+	depends = hicolor-icon-theme
+	depends = glibc
+	depends = libstdc++
+	depends = libgcc
+	depends = libudev.so
+	depends = python-qtpy
+	depends = python-dbus
+	provides = fcitx5-lotus
+	conflicts = fcitx5-lotus
+	source = git+https://github.com/LotusInputMethod/fcitx5-lotus.git#tag=v3.5.6
+	source = git+https://github.com/LotusInputMethod/bamboo-core.git
+	sha256sums = 6d1e3565f90d1d2dcfee3d0bf58753eddb937f64cb05972640d785a096ff6d57
+	sha256sums = SKIP
+
+pkgname = fcitx5-lotus
