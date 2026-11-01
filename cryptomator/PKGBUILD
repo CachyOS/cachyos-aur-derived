@@ -6,46 +6,53 @@
 
 pkgname=cryptomator
 pkgver=1.19.6
-pkgrel=1
+pkgrel=2
 pkgdesc="Multiplatform transparent client-side encryption of your files in the cloud."
-arch=('any')
+arch=('x86_64' 'aarch64')
 url="https://cryptomator.org/"
 license=('GPL3')
 depends=('fuse3' 'alsa-lib' 'hicolor-icon-theme' 'libxtst' 'libnet' 'libxrender')
 makedepends=('maven' 'unzip')
 optdepends=('keepassxc-cryptomator: Use KeePassXC to store vault passwords' 'ttf-hanazono: Install this font when using Japanese system language')
-_jdkver=25.0.2+10
-_jfxver=25.0.2
+_jdkver=26.0.1+8
+_jfxver=25.0.5
 _src_app_dir=cryptomator-${pkgver//_/-}
 source=("cryptomator-${pkgver//_/-}.tar.gz::https://github.com/cryptomator/cryptomator/archive/refs/tags/${pkgver//_/-}.tar.gz"
         "cryptomator-${pkgver//_/-}.tar.gz.asc::https://github.com/cryptomator/cryptomator/releases/download/${pkgver//_/-}/cryptomator-${pkgver//_/-}.tar.gz.asc");
-source_x86_64=("jdk-${_jdkver}.tar.gz::https://github.com/adoptium/temurin${_jdkver:0:2}-binaries/releases/download/jdk-${_jdkver//\+/%2B}/OpenJDK${_jdkver:0:2}U-jdk_x64_linux_hotspot_${_jdkver//\+/_}.tar.gz"
-               "openjfx-${_jfxver}.zip::https://download2.gluonhq.com/openjfx/${_jfxver}/openjfx-${_jfxver}_linux-x64_bin-jmods.zip")
-source_aarch64=("jdk-${_jdkver}.tar.gz::https://github.com/adoptium/temurin${_jdkver:0:2}-binaries/releases/download/jdk-${_jdkver//\+/%2B}/OpenJDK${_jdkver:0:2}U-jdk_aarch64_linux_hotspot_${_jdkver//\+/_}.tar.gz"
-                "openjfx-${_jfxver}.zip::https://download2.gluonhq.com/openjfx/${_jfxver}/openjfx-${_jfxver}_linux-aarch64_bin-jmods.zip")
-noextract=("jdk-${_jdkver}.tar.gz" "openjfx-${_jfxver}.zip")
+source_x86_64=("jdk-${_jdkver}-x86_64.tar.gz::https://github.com/adoptium/temurin${_jdkver:0:2}-binaries/releases/download/jdk-${_jdkver//\+/%2B}/OpenJDK${_jdkver:0:2}U-jdk_x64_linux_hotspot_${_jdkver//\+/_}.tar.gz"
+               "openjfx-${_jfxver}-x86_64.zip::https://download2.gluonhq.com/openjfx/${_jfxver}/openjfx-${_jfxver}_linux-x64_bin-jmods.zip")
+source_aarch64=("jdk-${_jdkver}-aarch64.tar.gz::https://github.com/adoptium/temurin${_jdkver:0:2}-binaries/releases/download/jdk-${_jdkver//\+/%2B}/OpenJDK${_jdkver:0:2}U-jdk_aarch64_linux_hotspot_${_jdkver//\+/_}.tar.gz"
+                "openjfx-${_jfxver}-aarch64.zip::https://download2.gluonhq.com/openjfx/${_jfxver}/openjfx-${_jfxver}_linux-aarch64_bin-jmods.zip")
+noextract=("jdk-${_jdkver}-x86_64.tar.gz" "openjfx-${_jfxver}-x86_64.zip"
+           "jdk-${_jdkver}-aarch64.tar.gz" "openjfx-${_jfxver}-aarch64.zip")
 sha256sums=('8cf31cbd7f5c825c4a4d931c2a02a718f6a5044ef85cb9de434d2ad125bbf3e8'
             'SKIP')
+sha256sums_x86_64=('8e512f13e575a43655fc92319436c94890c137b9035cc6bd6f9cf24239704d3a'
+                   'fbb768a16c23a453c420ba55bbc2a689c708bc6456ef77c1e4f69823b95f9e9f')
+sha256sums_aarch64=('613f9b2861dea937b24d5eca745ef8567733b377d0bb612195acaad0e3f61360'
+                    'c85722f3f26059e1bbe689bb8ada4434dfaf68fa9fc8e64bac6a95da1828de01')
 options=('!strip')
 
 validpgpkeys=('58117AFA1F85B3EEC154677D615D449FE6E6A235')
+
+prepare() {
+  tar xfz "jdk-${_jdkver}-${CARCH}.tar.gz"
+
+  mkdir -p "openjfx-${_jfxver}-jmods"
+  unzip -o -j "openjfx-${_jfxver}-${CARCH}.zip" \*/javafx.base.jmod \*/javafx.controls.jmod \*/javafx.fxml.jmod \*/javafx.graphics.jmod -d "openjfx-${_jfxver}-jmods"
+}
 
 build() {
   export JAVA_HOME="${srcdir}/jdk-${_jdkver}"
   JMODS_PATH="${srcdir}/openjfx-${_jfxver}-jmods"
   #JEP 493
-  if ! $(${JAVA_HOME}/bin/jlink --help | grep -q "Linking from run-time image enabled"); then
+  if ! "${JAVA_HOME}/bin/jlink" --help | grep -q "Linking from run-time image enabled"; then
       JMODS_PATH="${JMODS_PATH}:${JAVA_HOME}/jmods:"
   fi
 
-  tar xfz "jdk-${_jdkver}.tar.gz"
-
-  mkdir "openjfx-${_jfxver}-jmods"
-  unzip -j "openjfx-${_jfxver}.zip" \*/javafx.base.jmod \*/javafx.controls.jmod \*/javafx.fxml.jmod \*/javafx.graphics.jmod -d "openjfx-${_jfxver}-jmods"
-
   cd "${srcdir}/${_src_app_dir}"
 
-  mvn -B clean package -DskipTests -Plinux
+  mvn -B clean package -DskipTests
 
   cp LICENSE.txt target
   cp target/cryptomator-*.jar target/mods
@@ -62,6 +69,8 @@ build() {
     --strip-debug \
     --compress=zip-0
 
+  "$JAVA_HOME/bin/java" ../dist/common/RemoveDistrustedCaCerts.java runtime/lib/security/cacerts
+
   ##Note: jpackage does not allow -beta suffixes, have to strip those
   "$JAVA_HOME/bin/jpackage" \
     --type app-image \
@@ -74,7 +83,7 @@ build() {
     --vendor "Skymatic GmbH" \
     --copyright "(C) 2016 - 2026 Skymatic GmbH" \
     --java-options "--enable-preview" \
-    --java-options '--enable-native-access=javafx.graphics,org.cryptomator.jfuse.linux.amd64,org.cryptomator.jfuse.linux.aarch64,org.purejava.appindicator' \
+    --java-options '--enable-native-access=javafx.graphics,org.cryptomator.frontend.fuse,org.cryptomator.jfuse.linux.amd64,org.cryptomator.jfuse.linux.aarch64,org.purejava.appindicator' \
     --java-options "-Xss5m" \
     --java-options "-Xmx256m" \
     --java-options "-Dfile.encoding=\"utf-8\"" \
