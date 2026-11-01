@@ -1,4 +1,0 @@
-["scenefx0.3"]
-source = "git"
-git = "https://github.com/wlrfx/scenefx.git"
-include_regex = '0\.3(\.\d+)*'
