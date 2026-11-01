@@ -1,7 +1,7 @@
 pkgbase = jitsi
 	pkgdesc = An audio/video SIP VoIP phone and instant messenger written in Java (formerly SIP-Communicator)
 	pkgver = 2.11.5633
-	pkgrel = 1
+	pkgrel = 2
 	url = https://desktop.jitsi.org/Main/HomePage
 	arch = x86_64
 	license = Apache
@@ -13,7 +13,7 @@ pkgbase = jitsi
 	options = zipman
 	options = !libtool
 	options = docs
-	source = https://github.com/jitsi/jitsi/archive/5633.tar.gz
+	source = jitsi-2.11.5633.tar.gz::https://github.com/jitsi/jitsi/archive/5633.tar.gz
 	source = jitsi.desktop
 	source = jitsi.sh
 	sha256sums = ad2ad72ac0103190f2ecd180861a12370cca1a8ca5c57474eff2967e2ca8c01e
