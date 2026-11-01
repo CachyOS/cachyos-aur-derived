@@ -3,7 +3,7 @@
 
 pkgname='perl-linux-desktopfiles'
 pkgver=0.26
-pkgrel=1
+pkgrel=2
 pkgdesc="Linux::DesktopFiles - a very fast Perl module for parsing the Linux desktop files."
 arch=('any')
 license=('PerlArtistic' 'GPL')
