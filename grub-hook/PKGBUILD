@@ -2,7 +2,7 @@
 
 pkgname=grub-hook
 pkgver=2.1
-pkgrel=1
+pkgrel=2
 pkgdesc="Pacman hook to update GRUB after a kernel update"
 arch=('any')
 url="https://wiki.archlinux.org/index.php/Pacman#Hooks"
