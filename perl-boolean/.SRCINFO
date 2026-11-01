@@ -1,7 +1,7 @@
 pkgbase = perl-boolean
 	pkgdesc = Boolean support for Perl
 	pkgver = 0.46
-	pkgrel = 1
+	pkgrel = 2
 	url = https://metacpan.org/release/boolean
 	arch = any
 	license = PerlArtistic
