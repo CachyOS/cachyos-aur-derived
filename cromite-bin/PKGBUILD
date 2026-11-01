@@ -2,7 +2,7 @@
 
 pkgname=cromite-bin
 pkgver=153.0.8010.37
-pkgrel=1
+pkgrel=2
 _cromite_commit='11507ac1061b5ea227806f5e84db5a57df6ccf6a'
 _launcher_ver=8
 pkgdesc='Cromite a Bromite fork with ad blocking and privacy enhancements (binary release)'
