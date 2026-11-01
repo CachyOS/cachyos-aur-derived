@@ -1,7 +1,7 @@
 pkgbase = czkawka
 	pkgdesc = Multi functional app to find duplicates, empty folders, similar images etc.
 	pkgver = 12.0.2
-	pkgrel = 1
+	pkgrel = 2
 	url = https://github.com/qarmin/czkawka
 	arch = aarch64
 	arch = armv7h
