@@ -1,7 +1,7 @@
 pkgbase = modprobed-db
 	pkgdesc = Keeps track of EVERY kernel module ever used - useful for make localmodconfig
 	pkgver = 2.51
-	pkgrel = 1
+	pkgrel = 2
 	url = https://wiki.archlinux.org/index.php/Modprobed-db
 	install = readme.install
 	arch = any
