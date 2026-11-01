@@ -5,7 +5,7 @@
 
 pkgname=nouveau-fw
 pkgver=340.108
-pkgrel=1
+pkgrel=2
 pkgdesc="This package provides video & pgraph firmwares for all NVIDIA chipsets that need them"
 url='http://nouveau.freedesktop.org/'
 arch=('any')

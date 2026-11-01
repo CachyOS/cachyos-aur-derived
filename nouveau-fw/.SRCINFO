@@ -1,7 +1,7 @@
 pkgbase = nouveau-fw
 	pkgdesc = This package provides video & pgraph firmwares for all NVIDIA chipsets that need them
 	pkgver = 340.108
-	pkgrel = 1
+	pkgrel = 2
 	url = http://nouveau.freedesktop.org/
 	arch = any
 	license = custom
