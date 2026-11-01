@@ -1,7 +1,7 @@
 pkgbase = refind-theme-nord
 	pkgdesc = Simple theme inspired by the Nord palette
 	pkgver = 1.1.0
-	pkgrel = 1
+	pkgrel = 2
 	url = https://github.com/jaltuna/refind-theme-nord
 	install = refind-theme-nord.install
 	arch = any

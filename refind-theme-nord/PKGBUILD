@@ -2,7 +2,7 @@
 
 pkgname=refind-theme-nord
 pkgver=1.1.0
-pkgrel=1
+pkgrel=2
 pkgdesc="Simple theme inspired by the Nord palette"
 arch=('any')
 url="https://github.com/jaltuna/refind-theme-nord"
