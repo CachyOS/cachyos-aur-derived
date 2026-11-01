@@ -1,12 +1,13 @@
-#!/usr/bin/env sh
-if [ $EUID -eq 0 ];then
-	echo "It's not recomended to run XDM as root, as it can cause problems"
+#!/bin/sh
+if [ "$(id -u)" -eq 0 ]; then
+	echo "It's not recommended to run XDM as root, as it can cause problems" >&2
 fi
 if [ -f "$HOME/.xdmanrc" ]; then
-	source "$HOME/.xdmanrc"
+	. "$HOME/.xdmanrc"
 fi
-if [ "x$XDMAN_JAVA_HOME" != "x" ]; then
-	"$XDMAN_JAVA_HOME/bin/java" -Dsun.java2d.xrender=false -jar /usr/share/java/xdman/xdman.jar $@
+if [ -n "$XDMAN_JAVA_HOME" ]; then
+	JAVA="$XDMAN_JAVA_HOME/bin/java"
 else
-	java -Dsun.java2d.xrender=false -jar /usr/share/java/xdman/xdman.jar $@
+	JAVA=java
 fi
+exec "$JAVA" -Dsun.java2d.xrender=false -jar /usr/share/java/xdman/xdman.jar "$@"

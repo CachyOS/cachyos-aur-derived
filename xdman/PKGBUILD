@@ -6,36 +6,56 @@
 _gitname=xdm
 pkgname=xdman
 pkgver=9.0.8
-pkgrel=1
+pkgrel=2
 epoch=1
 pkgdesc="Xtreme Download Manager: download manager with multiple browser integrations"
-arch=('i686' 'x86_64')
+arch=('x86_64')
 url="https://xtremedownloadmanager.com/"
-depends=('ffmpeg' 'java-runtime>=11' 'python' 'sh' 'youtube-dl')
-makedepends=('java-environment>=11' 'maven')
-license=('GPL2')
+license=('GPL-3.0-only')
+depends=('java-runtime>=25' 'hicolor-icon-theme' 'bash')
+makedepends=('jdk25-openjdk' 'maven')
 source=("$pkgname-$pkgver.tar.gz::https://github.com/subhra74/$_gitname/archive/refs/tags/$pkgver.tar.gz"
-        "$pkgname.desktop"
-        "$pkgname.png"
         "$pkgname.sh")
 b2sums=('2d5a87872e0a941408b7265fdc1740c8ff0d64ecdc689734860d37f57d4c39db4cb83ea5e3b14087eba75ff8fb48a85063b604fe91f8e6f80f2c938b5cbbd99f'
-        '7f13326c9df4da0af296d46ea50b86578e91be2e65d8ff417d4c050ab212a73e6d2e62b6731ebe39743e314fc65a1da40c094fb483dbf489a4161dcab2652aaf'
-        'a8529919e8fcdb77c525d1b7c6a5dc612746ff9e03bf7a94af34cc31995a581d06982e54c03c8bbd382baafc12c043a8c71880fecaf20d0416ff5cd75b2b7dbb'
-        '788ae28b70bc510b0c865bebd5f53d857820908421d40b2ecc76b390e6f5de55c2f76a93c2cc4017cbcd7df7cf4855a0243217abfccc9843dde88188fe6c3fc0')
+        'a7cdd20c94a7463c78c9d87b1884c2f029e498648f93f0292275db941d83707aaf781dd8fda506122cd42b5726258ae53d9adb618048519b5ad1cd52b0ad43fd')
+
+prepare() {
+    # xdm-app is compiled with JDK 25
+    cat > toolchains.xml <<END
+<?xml version="1.0" encoding="UTF-8"?>
+<toolchains>
+  <toolchain>
+    <type>jdk</type>
+    <provides>
+      <version>25</version>
+    </provides>
+    <configuration>
+      <jdkHome>/usr/lib/jvm/java-25-openjdk</jdkHome>
+    </configuration>
+  </toolchain>
+</toolchains>
+END
+}
 
 build() {
-	cd $_gitname-$pkgver/app
-	mvn package
+    cd "$_gitname-$pkgver"
+    export JAVA_HOME=/usr/lib/jvm/java-25-openjdk
+    mvn -B -t "$srcdir/toolchains.xml" -Dmaven.repo.local="$srcdir/m2" \
+        -pl xdm-app -am package -DskipTests
 }
 
 package() {
-	install -Dm644 $_gitname-$pkgver/app/target/$pkgname.jar -t "$pkgdir/usr/share/java/$pkgname/"
+    cd "$_gitname-$pkgver"
+    install -Dm644 xdm-app/target/xdm-app.jar "$pkgdir/usr/share/java/$pkgname/$pkgname.jar"
+    install -Dm755 "$srcdir/$pkgname.sh" "$pkgdir/usr/bin/$pkgname"
 
-	# symlink necessary dependencies
-	ln -s /usr/bin/ffmpeg "$pkgdir/usr/share/java/$pkgname/"
-	ln -s /usr/bin/youtube-dl "$pkgdir/usr/share/java/$pkgname/"
+    sed -e "s|^Exec=.*|Exec=$pkgname %U|" -e "s|^Icon=.*|Icon=$pkgname|" \
+        packaging/linux/xdm-app.desktop > "$pkgname.desktop"
+    install -Dm644 "$pkgname.desktop" -t "$pkgdir/usr/share/applications/"
 
-	install -Dm755 $pkgname.sh "$pkgdir/usr/bin/$pkgname"
-	install -Dm644 $pkgname.png -t "$pkgdir/usr/share/pixmaps/"
-	install -Dm644 $pkgname.desktop -t "$pkgdir/usr/share/applications/"
+    local _size
+    for _size in 16 24 32 48 64 128 256 512; do
+        install -Dm644 "xdm-app/src/main/resources/images/xdm-logo-$_size.png" \
+            "$pkgdir/usr/share/icons/hicolor/${_size}x${_size}/apps/$pkgname.png"
+    done
 }

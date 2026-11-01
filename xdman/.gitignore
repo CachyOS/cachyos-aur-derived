@@ -2,8 +2,6 @@
 !.gitignore
 !.SRCINFO
 !PKGBUILD
-!xdman.desktop
-!xdman.png
 !xdman.sh
 
 !.nvchecker.toml
