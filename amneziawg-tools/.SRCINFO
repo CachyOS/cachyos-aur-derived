@@ -1,7 +1,7 @@
 pkgbase = amneziawg-tools
 	pkgdesc = AmneziaWG is a contemporary version of the popular VPN protocol, WireGuard.
 	pkgver = 3.1.20260812
-	pkgrel = 1
+	pkgrel = 2
 	url = https://github.com/amnezia-vpn/amneziawg-tools
 	arch = x86_64
 	license = GPL-2.0
