@@ -1,7 +1,7 @@
 pkgbase = adjustor
 	pkgdesc = Adjustor, a userspace program for managing the TDP of handheld devices.
 	pkgver = 4.0.1
-	pkgrel = 1
+	pkgrel = 2
 	url = https://github.com/hhd-dev/adjustor
 	arch = x86_64
 	license = GPL-3.0-or-later
@@ -9,7 +9,6 @@ pkgbase = adjustor
 	makedepends = python-installer
 	makedepends = python-setuptools
 	makedepends = python-wheel
-	makedepends = python-fuse
 	depends = python
 	depends = python-rich
 	depends = python-pyroute2
