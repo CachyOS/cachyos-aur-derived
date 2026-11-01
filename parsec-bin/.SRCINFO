@@ -1,7 +1,7 @@
 pkgbase = parsec-bin
 	pkgdesc = Remotely connect to a gaming pc for a low latency remote computing experience
 	pkgver = 150_97c
-	pkgrel = 2
+	pkgrel = 3
 	url = http://parsec.app
 	arch = x86_64
 	license = custom
