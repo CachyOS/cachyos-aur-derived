@@ -1,7 +1,7 @@
 pkgbase = qogir-icon-theme
 	pkgdesc = A colorful design icon theme for linux desktops
 	pkgver = 2025.02.15
-	pkgrel = 1
+	pkgrel = 2
 	url = https://www.pling.com/p/1296407
 	arch = any
 	license = GPL-3.0
