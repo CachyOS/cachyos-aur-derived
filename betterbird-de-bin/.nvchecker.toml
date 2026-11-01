@@ -1,2 +1,4 @@
 [betterbird-de-bin]
-source = "manual"
+source = "regex"
+url = "https://www.betterbird.eu/downloads/"
+regex = 'Current version: Betterbird [\d.]+ ESR \(([\d.]+esr)-bb\d+'
