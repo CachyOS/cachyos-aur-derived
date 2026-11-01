@@ -1,7 +1,7 @@
 pkgbase = obs-vkcapture
 	pkgdesc = OBS Linux Vulkan/OpenGL game capture
 	pkgver = 1.5.6
-	pkgrel = 1
+	pkgrel = 2
 	url = https://github.com/nowrep/obs-vkcapture
 	arch = x86_64
 	license = GPL-2.0-or-later
