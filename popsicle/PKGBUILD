@@ -2,7 +2,7 @@
 
 pkgname=popsicle
 pkgver=1.3.3
-pkgrel=2
+pkgrel=3
 pkgdesc="Linux utility for flashing multiple USB devices in parallel, written in Rust"
 url="https://github.com/pop-os/popsicle"
 arch=(x86_64 i686 aarch64 armv7h)
