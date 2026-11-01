@@ -3,7 +3,7 @@
 _pkgname=srm
 pkgname=lib${_pkgname}
 pkgver=0.13.0_1
-pkgrel=1
+pkgrel=2
 pkgdesc="C library that simplifies the development of Linux DRM/KMS applications"
 arch=('x86_64')
 url="https://github.com/CuarzoSoftware/SRM"
