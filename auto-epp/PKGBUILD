@@ -1,7 +1,7 @@
 # Maintainer: Jothi Prasath <jothiprasath2@gmail.com>
 pkgname=auto-epp
 pkgver=1.2.1
-pkgrel=2
+pkgrel=3
 pkgdesc="Automatic EPP Changer for amd-pstate-epp"
 arch=('any')
 url="https://github.com/jothi-prasath/auto-epp"
