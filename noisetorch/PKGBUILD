@@ -9,7 +9,7 @@
 
 pkgname=noisetorch
 pkgver=0.12.2
-pkgrel=4
+pkgrel=5
 pkgdesc='Real-time microphone noise suppression on Linux.'
 arch=('x86_64')
 url=https://github.com/noisetorch/NoiseTorch
