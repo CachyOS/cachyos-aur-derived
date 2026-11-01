@@ -1,7 +1,7 @@
 pkgbase = libcapi
 	pkgdesc = Modular libcapi20
 	pkgver = 3.2.3
-	pkgrel = 2
+	pkgrel = 3
 	url = https://www.tabos.org/
 	arch = i686
 	arch = x86_64
@@ -14,4 +14,3 @@ pkgbase = libcapi
 	sha512sums = SKIP
 
 pkgname = libcapi
-
