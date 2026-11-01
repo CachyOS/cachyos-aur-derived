@@ -8,26 +8,25 @@
 
 pkgname=mailspring
 pkgver=1.26.2
-pkgrel=1
+pkgrel=2
 pkgdesc="A beautiful, fast and maintained fork of Nylas Mail by one of the original authors."
 arch=(x86_64)
 license=(GPL-3.0-only)
 url="https://github.com/Foundry376/Mailspring"
 depends=(alsa-lib gtk3 nss glibc)
-makedepends=(git npm nodejs-lts-iron grunt-cli python chrpath)
+makedepends=(git npm nodejs-lts-jod python chrpath)
 source=("git+https://github.com/Foundry376/Mailspring.git#tag=${pkgver}")
 sha256sums=('f1e560d32e026eaa392ad0f6be49a8c3380c82844bcc6677ce7a60452a47e7e0')
 
 prepare() {
   cd Mailspring
-  sed -i "/await createRpmInstaller/d" app/build/build.js
-  sed -i "s/execstack --clear-execstack//g" app/script/mkdeb
+  npm install --no-audit --no-fund
 }
 
 build() {
   cd Mailspring
-  npm install
-  npm run-script build
+  # Skip the .deb/.rpm installers
+  npm run-script build -- --skip-installers
 }
 
 package() {
@@ -40,24 +39,21 @@ package() {
 
   cd app/build/resources/linux
 
-  install -D Mailspring.desktop.in "${pkgdir}/usr/share/applications/Mailspring.desktop"
-  install -D mailspring.appdata.xml.in "${pkgdir}/usr/share/metainfo/mailspring.appdata.xml"
+  local _subst=(
+    -e 's/<%= productName %>/Mailspring/g'
+    -e 's/<%= description %>/Email client/g'
+    -e 's/<%= name %>/mailspring/g'
+    -e 's/<%= desktopName %>/Mailspring.desktop/g'
+  )
+  install -d "${pkgdir}/usr/share/applications" "${pkgdir}/usr/share/metainfo"
+  sed "${_subst[@]}" Mailspring.desktop.in > "${pkgdir}/usr/share/applications/Mailspring.desktop"
+  sed "${_subst[@]}" mailspring.metainfo.xml.in > "${pkgdir}/usr/share/metainfo/mailspring.metainfo.xml"
 
-  sed -i 's/<%= productName %>/Mailspring/g' "${pkgdir}/usr/share/applications/Mailspring.desktop"
-  sed -i 's/<%= description %>/Email client/g' "${pkgdir}/usr/share/applications/Mailspring.desktop"
-  sed -i 's/<%= productName %>/Mailspring/g' "${pkgdir}/usr/share/metainfo/mailspring.appdata.xml"
+  local _size
+  for _size in 16 32 64 128 256 512; do
+    install -Dm644 "icons/${_size}.png" "${pkgdir}/usr/share/icons/hicolor/${_size}x${_size}/apps/mailspring.png"
+  done
 
-  #for s in 16 32 64 128 256 512; do
-  #  install -Dm0644 "icons/$s.png" "${pkgdir}/usr/share/icons/hicolor/$s/apps/mailspring.png"
-  #done
-
-  install -Dm0644 "icons/16.png" "${pkgdir}/usr/share/icons/hicolor/16x16/apps/mailspring.png"
-  install -Dm0644 "icons/32.png" "${pkgdir}/usr/share/icons/hicolor/32x32/apps/mailspring.png"
-  install -Dm0644 "icons/64.png" "${pkgdir}/usr/share/icons/hicolor/64x64/apps/mailspring.png"
-  install -Dm0644 "icons/128.png" "${pkgdir}/usr/share/icons/hicolor/128x128/apps/mailspring.png"
-  install -Dm0644 "icons/256.png" "${pkgdir}/usr/share/icons/hicolor/256x256/apps/mailspring.png"
-  install -Dm0644 "icons/512.png" "${pkgdir}/usr/share/icons/hicolor/512x512/apps/mailspring.png"
-
-  #Insecure RPATH '/opt/openssl/lib' in file ('opt/mailspring/resources/app.asar.unpacked/mailsync.bin')
+  # Insecure RPATH '/opt/openssl/lib' in mailsync.bin
   chrpath --delete "${pkgdir}/opt/mailspring/resources/app.asar.unpacked/mailsync.bin"
 }

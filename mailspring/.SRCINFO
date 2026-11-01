@@ -1,14 +1,13 @@
 pkgbase = mailspring
 	pkgdesc = A beautiful, fast and maintained fork of Nylas Mail by one of the original authors.
 	pkgver = 1.26.2
-	pkgrel = 1
+	pkgrel = 2
 	url = https://github.com/Foundry376/Mailspring
 	arch = x86_64
 	license = GPL-3.0-only
 	makedepends = git
 	makedepends = npm
-	makedepends = nodejs-lts-iron
-	makedepends = grunt-cli
+	makedepends = nodejs-lts-jod
 	makedepends = python
 	makedepends = chrpath
 	depends = alsa-lib
