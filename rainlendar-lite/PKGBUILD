@@ -5,7 +5,7 @@
 
 pkgname=rainlendar-lite
 pkgver=2.23.0
-pkgrel=1
+pkgrel=2
 pkgdesc="A desktop Calendar, ToDo list and Event list"
 arch=('x86_64')
 url="http://www.rainlendar.net/"
