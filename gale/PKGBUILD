@@ -1,25 +1,33 @@
 # Maintainer: Mark Wagie <mark dot wagie at proton dot me>
 pkgname=gale
 pkgver=1.23.3
-pkgrel=1
+pkgrel=2
 pkgdesc="A modern mod manager for Thunderstore"
 arch=('x86_64')
 url="https://kesomannen.com/gale"
 license=('GPL-3.0-only')
 depends=(
+  'bzip2'
+  'dbus'
+  'fontconfig'
   'gtk3'
   'libsoup3'
+  'sqlite'
   'webkit2gtk-4.1'
+  'which'
+  'xz'
+  'zstd'
 )
 makedepends=(
   'cargo'
   'cargo-tauri'
+  'nodejs'
   'pnpm'
 )
 source=("$pkgname-$pkgver.tar.gz::https://github.com/Kesomannen/gale/archive/refs/tags/$pkgver.tar.gz"
         "$pkgname.desktop")
 sha256sums=('acaac515b3c84e69ae8e79c2d80b46ca2337db253e824c38d10a747c41295f98'
-            '4de7796da59ef55bf7bbcde65a53b051245f80b3284ab53be20c4728345c4ff1')
+            '52abef25674537cd97783ae8dfa97e3569305856bea094c43862ec82d6e21360')
 
 prepare() {
   cd "$pkgname-$pkgver"
@@ -36,6 +44,8 @@ build() {
   export PNPM_HOME="$srcdir/pnpm-home"
   export RUSTUP_TOOLCHAIN=stable
   export CARGO_TARGET_DIR=target
+  export LIBSQLITE3_SYS_USE_PKG_CONFIG=1
+  export ZSTD_SYS_USE_PKG_CONFIG=1
   cargo tauri build --no-bundle -- --frozen
 }
 
@@ -59,6 +69,9 @@ package() {
     "$pkgdir/usr/share/icons/hicolor/256x256/apps/$pkgname.png"
   install -Dm644 src-tauri/icons/icon.png \
       "$pkgdir/usr/share/icons/hicolor/512x512/apps/$pkgname.png"
+
+  install -Dm644 "assets/$pkgname-mime.xml" \
+    "$pkgdir/usr/share/mime/packages/$pkgname.xml"
 
   install -Dm644 "$srcdir/$pkgname.desktop" -t "$pkgdir/usr/share/applications/"
 }
