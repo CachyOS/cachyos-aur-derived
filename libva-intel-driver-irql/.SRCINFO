@@ -1,7 +1,7 @@
 pkgbase = libva-intel-driver-irql
 	pkgdesc = VA-API implementation for Intel G45 and HD Graphics family (IRQL fork)
 	pkgver = 2.4.5
-	pkgrel = 1
+	pkgrel = 2
 	url = https://github.com/irql-notlessorequal/intel-vaapi-driver
 	arch = x86_64
 	license = MIT
