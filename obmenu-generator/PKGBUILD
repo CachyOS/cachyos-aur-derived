@@ -2,7 +2,7 @@
 
 pkgname=obmenu-generator
 pkgver=0.93
-pkgrel=1
+pkgrel=2
 
 pkgdesc="A fast pipe/static menu generator for the Openbox Window Manager (with icons support)."
 url="https://github.com/trizen/$pkgname"
