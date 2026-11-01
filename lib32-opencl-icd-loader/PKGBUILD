@@ -1,16 +1,15 @@
 # Maintainer: Mark Wagie <mark dot wagie at proton dot me>
 pkgname=lib32-opencl-icd-loader
 pkgver=2026.05.29
-pkgrel=1
+pkgrel=2
 pkgdesc="The OpenCL ICD Loader project. (32-bit)"
 arch=('x86_64')
 url="https://github.com/KhronosGroup/OpenCL-ICD-Loader"
 license=('Apache-2.0')
-depends=('lib32-glibc')
+depends=('lib32-glibc' 'opencl-headers')
 makedepends=(
   'cmake'
-  'gcc-multilib'
-  'opencl-headers'
+  'lib32-gcc-libs'
 )
 optdepends=('lib32-opencl-driver: packaged opencl driver')
 provides=('libOpenCL.so=1' 'lib32-ocl-icd')
