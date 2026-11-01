@@ -1,7 +1,7 @@
 pkgbase = fish-autopair
 	pkgdesc = Auto-complete matching pairs in the Fish command line
 	pkgver = 1.0.4
-	pkgrel = 2
+	pkgrel = 3
 	url = https://github.com/jorgebucaran/autopair.fish
 	arch = any
 	license = MIT

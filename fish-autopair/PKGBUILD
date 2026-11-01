@@ -4,7 +4,7 @@
 _pkgname="fish-autopair"
 pkgname="$_pkgname"
 pkgver=1.0.4
-pkgrel=2
+pkgrel=3
 pkgdesc="Auto-complete matching pairs in the Fish command line"
 url="https://github.com/jorgebucaran/autopair.fish"
 license=('MIT')
