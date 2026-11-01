@@ -6,7 +6,7 @@
 _pkgname=httpfs2
 pkgname=httpfs2-2gbplus
 pkgver=0.1.5
-pkgrel=1
+pkgrel=2
 pkgdesc='FUSE-based file system for HTTP access, patched with +2GB file support'
 arch=('i686' 'x86_64')
 url='http://httpfs.sourceforge.net/'

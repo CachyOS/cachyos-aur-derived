@@ -1,7 +1,7 @@
 pkgbase = httpfs2-2gbplus
 	pkgdesc = FUSE-based file system for HTTP access, patched with +2GB file support
 	pkgver = 0.1.5
-	pkgrel = 1
+	pkgrel = 2
 	url = http://httpfs.sourceforge.net/
 	arch = i686
 	arch = x86_64
@@ -18,4 +18,3 @@ pkgbase = httpfs2-2gbplus
 	sha256sums = da1965ff43662ed1473699e94511d9ae1c493d071eee795cdb5ff22fabeebc56
 
 pkgname = httpfs2-2gbplus
-
