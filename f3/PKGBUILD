@@ -7,7 +7,7 @@
 
 pkgname='f3'
 pkgver=10.0
-pkgrel=1
+pkgrel=2
 pkgdesc='Simple tool that tests flash cards capacity and performance to see if they live up to claimed specifications'
 arch=('x86_64' 'armv7h' 'aarch64')
 url='https://github.com/AltraMayor/f3'

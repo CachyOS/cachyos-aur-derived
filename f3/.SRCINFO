@@ -1,7 +1,7 @@
 pkgbase = f3
 	pkgdesc = Simple tool that tests flash cards capacity and performance to see if they live up to claimed specifications
 	pkgver = 10.0
-	pkgrel = 1
+	pkgrel = 2
 	url = https://github.com/AltraMayor/f3
 	arch = x86_64
 	arch = armv7h
