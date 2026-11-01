@@ -1,6 +1,6 @@
 pkgname=mingw-w64-tools
 pkgver=14.0.0
-pkgrel=1
+pkgrel=2
 pkgdesc="MinGW-w64 utilities"
 arch=(x86_64)
 url="http://mingw-w64.sourceforge.net"
