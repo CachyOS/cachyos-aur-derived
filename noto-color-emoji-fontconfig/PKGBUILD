@@ -2,10 +2,11 @@
 
 pkgname=noto-color-emoji-fontconfig
 pkgver=1.0.0
-pkgrel=2
+pkgrel=3
 pkgdesc='Fontconfig to enable Noto Color Emoji fonts where emojis can be displayed'
 arch=('any')
-license=('GPL')
+url='https://aur.archlinux.org/packages/noto-color-emoji-fontconfig'
+license=('GPL-1.0-or-later')
 depends=('noto-fonts-emoji')
 optdepends=()
 provides=('noto-color-emoji-fontconfig')

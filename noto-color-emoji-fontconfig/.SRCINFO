@@ -1,9 +1,10 @@
 pkgbase = noto-color-emoji-fontconfig
 	pkgdesc = Fontconfig to enable Noto Color Emoji fonts where emojis can be displayed
 	pkgver = 1.0.0
-	pkgrel = 2
+	pkgrel = 3
+	url = https://aur.archlinux.org/packages/noto-color-emoji-fontconfig
 	arch = any
-	license = GPL
+	license = GPL-1.0-or-later
 	depends = noto-fonts-emoji
 	provides = noto-color-emoji-fontconfig
 	conflicts = noto-color-emoji-fontconfig-no-binding
