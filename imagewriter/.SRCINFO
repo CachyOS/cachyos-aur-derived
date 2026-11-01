@@ -1,14 +1,19 @@
 pkgbase = imagewriter
 	pkgdesc = A graphical utility for writing raw disk images & hybrid isos to USB keys
-	pkgver = 1.10.1432200249.1d253d9.2.25
+	pkgver = 1.10.1432200249.1d253d9
 	pkgrel = 1
+	epoch = 1
 	url = https://github.com/openSUSE/imagewriter
 	arch = x86_64
 	license = GPL-2.0-only
 	depends = hicolor-icon-theme
 	depends = qt5-base
 	depends = udisks2
-	source = https://download.opensuse.org/tumbleweed/repo/src-oss/src/imagewriter-1.10.1432200249.1d253d9-2.25.src.rpm
-	sha256sums = a09a2557df73e72f757c604a481ac52461c336681159e0e7eded8375bf109627
+	source = imagewriter-1d253d960a28f9de4468b0b091c231083f03c1c8.tar.gz::https://github.com/openSUSE/imagewriter/archive/1d253d960a28f9de4468b0b091c231083f03c1c8.tar.gz
+	source = imagewriter-remove-sys-sysctl-include.patch::https://github.com/openSUSE/imagewriter/commit/3164e25267243ef4983f53ef5c1f849d3301c36f.patch
+	source = imagewriter-replace-toAscii-with-toLatin1.patch::https://github.com/openSUSE/imagewriter/commit/e7e8806b9cd748360b932d1a9eda9966b8109b65.patch
+	sha256sums = 7761ee45b16b5841c6b62b091c7f9d0b8c64b14b79d77e9909ca813e1dc9885d
+	sha256sums = 8edacc486007df34f4350044a35c9626d30bd1d8091ed283c13150a2b0f8b657
+	sha256sums = 9db7a296ab0a6a57c1957d21fa078d1bdea4d71ab17bbb84a457a55d38b90396
 
 pkgname = imagewriter

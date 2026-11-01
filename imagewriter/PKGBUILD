@@ -2,9 +2,9 @@
 # Contributor: shimi <shimi.chen@gmail.com>
 # Contributor: Dmytro Meleshko <dmytro.meleshko@gmail.com>
 pkgname=imagewriter
-_pkgver=1.10.1432200249.1d253d9-2.25
-pkgver=${_pkgver//-/.}
+pkgver=1.10.1432200249.1d253d9
 pkgrel=1
+epoch=1
 pkgdesc="A graphical utility for writing raw disk images & hybrid isos to USB keys"
 arch=('x86_64')
 url="https://github.com/openSUSE/imagewriter"
@@ -14,21 +14,27 @@ depends=(
   'qt5-base'
   'udisks2'
 )
-source=("https://download.opensuse.org/tumbleweed/repo/src-oss/src/$pkgname-${_pkgver}.src.rpm")
-sha256sums=('a09a2557df73e72f757c604a481ac52461c336681159e0e7eded8375bf109627')
+_commit=1d253d960a28f9de4468b0b091c231083f03c1c8
+source=(
+  # should use git instead or be tag at all instead of hardcoded commit
+  "$pkgname-$_commit.tar.gz::$url/archive/$_commit.tar.gz"
+  "$pkgname-remove-sys-sysctl-include.patch::$url/commit/3164e25267243ef4983f53ef5c1f849d3301c36f.patch"
+  "$pkgname-replace-toAscii-with-toLatin1.patch::$url/commit/e7e8806b9cd748360b932d1a9eda9966b8109b65.patch"
+)
+sha256sums=('7761ee45b16b5841c6b62b091c7f9d0b8c64b14b79d77e9909ca813e1dc9885d'
+            '8edacc486007df34f4350044a35c9626d30bd1d8091ed283c13150a2b0f8b657'
+            '9db7a296ab0a6a57c1957d21fa078d1bdea4d71ab17bbb84a457a55d38b90396')
 
 prepare() {
-  bsdtar xvf "$pkgname-${_pkgver%-*}.tar.xz"
-
-  cd "$pkgname-${_pkgver%-*}"
-  patch -Np1 -i ../0001-remove-include-sys-sysctl.h.patch
-
-  # Replace calls to deprecated toAscii method with calls to toLatin1
-  find . -type f -exec sed -i 's/toAscii/toLatin1/g' {} \;
+  cd "$pkgname-$_commit"
+  # https://github.com/openSUSE/imagewriter/pull/28
+  patch -Np1 -i "../$pkgname-remove-sys-sysctl-include.patch"
+  # https://github.com/openSUSE/imagewriter/pull/25
+  patch -Np1 -i "../$pkgname-replace-toAscii-with-toLatin1.patch"
 }
 
 build() {
-  cd "$pkgname-${_pkgver%-*}"
+  cd "$pkgname-$_commit"
   qmake-qt5 \
     QMAKE_CFLAGS="${CFLAGS} -DKIOSKHACK" \
     QMAKE_CXXFLAGS="${CXXFLAGS} -DKIOSKHACK" \
@@ -40,6 +46,6 @@ build() {
 }
 
 package() {
-  cd "$pkgname-${_pkgver%-*}"
+  cd "$pkgname-$_commit"
   make DESTDIR="$pkgdir" install
 }
