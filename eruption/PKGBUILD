@@ -7,7 +7,7 @@ _pkgname="eruption"
 pkgname="$_pkgname"
 pkgdesc='Realtime RGB LED Driver for Linux'
 pkgver=0.3.6
-pkgrel=2
+pkgrel=3
 url="https://github.com/eruption-project/eruption"
 license=('GPL-3.0-or-later')
 arch=('i686' 'x86_64')
@@ -19,8 +19,8 @@ depends=(
   'libevdev'
   'libpulse'
   'libusb'
-  'lua'
-  'lua-socket'
+  'lua54'
+  'lua54-socket'
   'systemd-libs'
 )
 makedepends=(
@@ -79,6 +79,7 @@ build() {
 }
 
 package() {
+  _cargo_env
   cd "$_pkgsrc"
   install -Dm755 "$CARGO_TARGET_DIR/release/eruption" -t "$pkgdir/usr/bin/"
   install -Dm755 "$CARGO_TARGET_DIR/release/eruptionctl" -t "$pkgdir/usr/bin/"

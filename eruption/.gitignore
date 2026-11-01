@@ -1,6 +1,7 @@
 *
 !PKGBUILD
 !.SRCINFO
+!eruption.install
 !.gitignore
 
 !.nvchecker.toml
