@@ -2,7 +2,7 @@
 # Contributor: George Rawlinson <george@rawlinson.net.nz>
 pkgname=air
 pkgver=1.67.4
-pkgrel=1
+pkgrel=2
 pkgdesc="Live reload for Go apps"
 arch=(x86_64)
 url="https://github.com/${pkgname}-verse/${pkgname}"
@@ -14,28 +14,29 @@ source=("${pkgname}::git+${url}.git#tag=v${pkgver}")
 b2sums=('4a0f94235504732b2e694c34c33e6c032e6a9d0f568073df86e23e754cc8e298fb1edfc4417eebd4d65b77e621ff120e408016a366fb79cb98d3ae343cd8e9ee')
 
 pkgver() {
-  cd ${pkgname}
+  cd "${pkgname}"
   git describe --tags | sed 's/^v//'
 }
 
 prepare() {
-  # set Go flags
-  export GOPATH="$srcdir"/gopath
+  export GOPATH="${srcdir}/gopath"
+
+  cd "${pkgname}"
+  # create directory for build output
+  mkdir -p build
+  # download dependencies
+  go mod download -modcacherw
+}
+
+build() {
+  export GOPATH="${srcdir}/gopath"
   export CGO_CPPFLAGS="${CPPFLAGS}"
   export CGO_CFLAGS="${CFLAGS}"
   export CGO_CXXFLAGS="${CXXFLAGS}"
   export CGO_LDFLAGS="${LDFLAGS}"
   export CGO_ENABLED=1
 
-  cd ${pkgname}
-  # create directory for build output
-  mkdir -p build
-  # download dependencies
-  go mod download
-}
-
-build() {
-  cd ${pkgname}
+  cd "${pkgname}"
   go build -v \
     -trimpath \
     -buildmode=pie \
@@ -54,7 +55,7 @@ build() {
 # }
 
 package() {
-  cd ${pkgname}
+  cd "${pkgname}"
   # binary
   install -vDm755 -t "${pkgdir}/usr/bin" "build/${pkgname}"
   # documentation
