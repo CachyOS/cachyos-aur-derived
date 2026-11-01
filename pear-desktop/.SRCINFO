@@ -1,14 +1,14 @@
 pkgbase = pear-desktop
 	pkgdesc = Extension for music player
 	pkgver = 3.12.0
-	pkgrel = 1
+	pkgrel = 2
 	url = https://github.com/pear-devs/pear-desktop
 	install = pear-desktop.install
 	arch = x86_64
 	license = MIT
 	makedepends = nvm
 	makedepends = pnpm
-	depends = electron38
+	depends = electron42
 	depends = libsecret
 	conflicts = youtube-music
 	source = pear-desktop-3.12.0.tar.gz::https://github.com/pear-devs/pear-desktop/archive/refs/tags/v3.12.0.tar.gz
@@ -16,6 +16,6 @@ pkgbase = pear-desktop
 	source = pear-desktop.desktop
 	sha256sums = 2f6a4948ba3c8c00ed43a6c014cd18430f2f1509ea4115dd6a8d538c45eb3107
 	sha256sums = bf77b9390f6657d6b58613600cc76178da9ffa97cce55b8d0ba50b4c2ab7f996
-	sha256sums = facdb724c14b4d2a95d8ccba525ad70f399c5a511ebb2e9b6f05878cdc8e92a9
+	sha256sums = 90d9a1c90a4284ff60371a043dfd7623967616862579bbdcf9379ff88a66b549
 
 pkgname = pear-desktop

@@ -1,9 +1,10 @@
 # Maintainer: Mark Wagie <mark dot wagie at proton dot me>
 pkgname=pear-desktop
+_app_id=com.github.th-ch.youtube-music
 pkgver=3.12.0
-pkgrel=1
-_nodeversion=22
-_electronversion=38
+pkgrel=2
+_nodeversion=24
+_electronversion=42
 pkgdesc="Extension for music player"
 arch=('x86_64')
 url="https://github.com/pear-devs/pear-desktop"
@@ -23,7 +24,7 @@ source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz"
         "$pkgname.desktop")
 sha256sums=('2f6a4948ba3c8c00ed43a6c014cd18430f2f1509ea4115dd6a8d538c45eb3107'
             'bf77b9390f6657d6b58613600cc76178da9ffa97cce55b8d0ba50b4c2ab7f996'
-            'facdb724c14b4d2a95d8ccba525ad70f399c5a511ebb2e9b6f05878cdc8e92a9')
+            '90d9a1c90a4284ff60371a043dfd7623967616862579bbdcf9379ff88a66b549')
 
 _ensure_local_nvm() {
   # let's be sure we are starting clean
@@ -64,7 +65,7 @@ package() {
   cp -r pack/linux-unpacked/resources/app.asar.unpacked "$pkgdir/usr/lib/$pkgname"
 
   install -Dm755 "$srcdir/$pkgname.sh" "$pkgdir/usr/bin/$pkgname"
-  install -Dm644 "$srcdir/$pkgname.desktop" -t "$pkgdir/usr/share/applications/"
+  install -Dm644 "$srcdir/$pkgname.desktop" "$pkgdir/usr/share/applications/${_app_id}.desktop"
   install -Dm644 license -t "$pkgdir/usr/share/licenses/$pkgname/"
 
   for i in 16 24 32 48 64 128 256 512 1024; do
