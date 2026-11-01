@@ -1,5 +1,151 @@
 Changelog for Hummingbird
 
+Version 2.2.0 - 15 October 2026
+
+- [ProMIND] no change
+
+
+*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*
+
+
+Version 2.1.0 - 15 June 2026
+
+- [ProMIND] no change
+
+
+*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*
+
+
+Version 2.1.0 RC 1 - 27 May 2026
+
+- [ProMIND] no change
+
+
+*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*
+
+
+Version 2.1.0 beta 1 - 11 May 2026
+
+- [ProMIND] no change
+
+
+*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*
+
+
+Changelog for Hummingbird
+
+Version 2.1.0 alpha 1 - 23 April 2026
+
+- [ProMIND] removed obsoleted ncp-disable option
+
+
+*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*
+
+
+Version 2.0.0 - 22 July 2025
+
+- [ProMIND] no change
+
+
+*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*
+
+
+Version 2.0.0 RC 3 - 16 July 2025
+
+- [ProMIND] no change
+
+
+*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*
+
+
+Version 2.0.0 RC 2 - 9 June 2025
+
+- [ProMIND] no change
+
+
+*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*
+
+
+Version 2.0.0 RC 1 - 14 April 2025
+
+- [ProMIND] default_ping_mode now defaults to NetFilter::TrafficMode::OUTPUT
+
+
+*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*
+
+
+Version 2.0.0 beta 5 - 3 April 2025
+
+- [ProMIND] added "allow-ping" option
+- [ProMIND] added "allow-ipv6ndp" option
+
+
+*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*
+
+
+Version 2.0.0 beta 4 - 14 February 2025
+
+- [ProMIND] no change
+
+
+*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*
+
+
+Version 2.0.0 beta 3 - 11 February 2025
+
+- [ProMIND] updated to OpenVPN3 AirVPN 3.11 20250206
+
+
+*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*
+
+
+Version 2.0.0 beta 2 - 12 December 2024
+
+- [ProMIND] updated to OpenVPN3 AirVPN 3.11
+
+
+*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*
+
+
+Version 2.0.0 beta 1 - 13 May 2024
+
+- [ProMIND] function read_profile() renamed to read_openvpn_profile()
+- [ProMIND] function worker_thread() renamed to openvpn_worker_thread()
+- [ProMIND] function start_connection_thread() renamed to start_openvpn_connection_thread()
+- [ProMIND] added function wireguard_client()
+- [ProMIND] added function finalize_connection()
+- [ProMIND] added option mode
+- [ProMIND] normalized log activity. Added function hblog()
+- [ProMIND] function clean_up() renamed to clean_up_and_exit()
+- [ProMIND] added function parse_options()
+- [ProMIND] added function bluetit_lock_file_exist()
+- [ProMIND] init_check(): improved check for Bluetit connection
+- [ProMIND] clean_up_and_exit() renamed to cleanup_and_exit()
+- [ProMIND] added auto completion scripts for bash and zsh
+- [ProMIND] added "remove-wireguard-device" option
+- [ProMIND] Added wireguard_device_exists() function
+
+
+*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*
+
+
+Version 2.0.0 alpha 2 - 24 November 2023
+
+- [ProMIND] initial compliance to 2.0 classes and architecture
+
+
+*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*
+
+
+Version 2.0.0 alpha 1 - 15 September 2023
+
+- [ProMIND] updated to OpenVPN3 AirVPN 3.9
+- [ProMIND] --eval option prints ClientAPI::EvalConfig.reouteList data
+
+
+*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*
+
+
 Version 1.3.0 - 1 June 2023
 
 - [ProMIND] updated to OpenVPN3 AirVPN 3.8.4

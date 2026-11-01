@@ -1,7 +1,7 @@
 pkgbase = hummingbird
-	pkgdesc = FLOSS OpenVPN3 client using AirVPN's OpenVPN3 library fork
-	pkgver = 1.3.0
-	pkgrel = 3
+	pkgdesc = FLOSS OpenVPN3 and WireGuard client using AirVPN's OpenVPN3 library fork
+	pkgver = 2.2.0
+	pkgrel = 1
 	url = https://gitlab.com/AirVPN/AirVPN-Suite
 	changelog = Changelog.txt
 	arch = x86_64
@@ -9,26 +9,25 @@ pkgbase = hummingbird
 	arch = aarch64
 	license = GPL-3.0-or-later
 	makedepends = git
-	makedepends = wireguard-tools
-	depends = crypto++
-	depends = curl
-	depends = zlib
+	depends = glibc
+	depends = libgcc
+	depends = libstdc++
 	depends = lz4
 	depends = openssl
-	depends = zstd
 	depends = xz
-	depends = glibc
-	depends = gcc-libs
+	depends = zlib
+	depends = zstd
+	depends = fmt
 	provides = hummingbird-bin
 	conflicts = hummingbird-bin
 	conflicts = airvpn-suite
 	conflicts = airvpn-suite-bin
 	conflicts = airvpn-suite-beta-bin
-	source = git+https://gitlab.com/AirVPN/AirVPN-Suite.git#commit=ef5ce5ad8fff24f3476f3a072f44d31a5cd1d3fc
-	source = git+https://github.com/AirVPN/openvpn3-airvpn.git#commit=3614b1a565fa2fee0667f86bd21a49e7a6a24421
-	source = asio-1-24-0.tar.gz::https://github.com/chriskohlhoff/asio/archive/asio-1-24-0.tar.gz
+	source = git+https://gitlab.com/AirVPN/AirVPN-Suite.git#commit=35fe8af098db7e907207aa5ab6ad38219286c9cf
+	source = git+https://github.com/AirVPN/openvpn3-airvpn.git#commit=095286b6a2ceee0cb040edc5ba135942db5fedbb
+	source = asio-1-38-2.tar.gz::https://github.com/chriskohlhoff/asio/archive/asio-1-38-2.tar.gz
 	sha256sums = SKIP
 	sha256sums = SKIP
-	sha256sums = cbcaaba0f66722787b1a7c33afe1befb3a012b5af3ad7da7ff0f6b8c9b7a8a5b
+	sha256sums = 9f2648fa483e58a6bf848d970ee0ea650ca19ed7769dfa520ed4f7b8d27af1db
 
 pkgname = hummingbird
