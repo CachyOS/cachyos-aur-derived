@@ -148,6 +148,7 @@ source=(
 	gtk4-writer-scrollbar-parity.patch
 	gtk4-writer-groove-border.patch
 	gtk4-writer-pressed-thumb.patch
+	gtk4-check-private-bus.patch
 	gtk4-writer-browser-scrollbar.patch
 	firefox-sidebar-scrollbar.patch
 	firefox-addon-state.patch
@@ -156,6 +157,7 @@ source=(
 	firefox-notice-transition.patch
 	bug-sweep.patch
 	firefox-157.patch
+	firefox-nova.patch
 )
 sha256sums=('e01dbf05c24c11a3660e6185a9a7607d0838d4560ab717d44b449e9520476f6e'
             '60d6c52289f3b6e7c0645bb9acaa96a769801f66e77f50cd5551b7e613611152'
@@ -262,6 +264,7 @@ sha256sums=('e01dbf05c24c11a3660e6185a9a7607d0838d4560ab717d44b449e9520476f6e'
             '297f9366557406bf61cf3e53e4e840e98426b02d8a1368ad9e08c7df7ee3f271'
             'a1e2b2ba985927ea60c555693a0e02ddb3ff315022179850e212a294fbe02f86'
             '79c093038ed1c9cdafeab7546a24887c42a009f21604a0428da8038bcf28d57b'
+            'a516681087275b0760c3951aeeb3b9d388a4bc27ea4f53192cb70d63f927b921'
             'a46d76a6a283ff26e8a3772c08c8aa4c328bcb3fc49801a6acb997924c5cd65c'
             '05029b171668d48be05c42745bdbd11921a0c32afbb9589ce51b8aad3a9c6bb0'
             '32cb54f33df02330df466d20eef2f4d0baad7e14efd81299a276ac744ab5a72c'
@@ -269,7 +272,8 @@ sha256sums=('e01dbf05c24c11a3660e6185a9a7607d0838d4560ab717d44b449e9520476f6e'
             'bbfbcfdd99f45c1d6c6365208279349f83b30f0891061e6dcb425e4cdedb15a6'
             '76bb238db584dde12364736fb002737f23826b06ea4fc3d43ad1ee826928cf6c'
             '23a17a146db657c8744ec7b7852c23a7e92a24bb5ee34ce004f6fb75d4e684c8'
-            '709d64f32c146014c1cff5055dd9a2f0c5b11b48814210d79d5ba75a5e11824e')
+            '709d64f32c146014c1cff5055dd9a2f0c5b11b48814210d79d5ba75a5e11824e'
+            '0ce903faf2cb8252ebdbcfd5c939e5d78e797667d3a50726e57e27e1112c86f6')
 
 pkgver() {
 	git -C "$_srcname" log -1 --format=%cd --date=format:%Y%m%d
@@ -411,6 +415,8 @@ prepare() {
 	patch -Np1 -d "$_srcname" -i "$srcdir/gtk4-writer-groove-border.patch"
 	# The patch states the pressed scroll bar thumb as the hovered thumb.
 	patch -Np1 -d "$_srcname" -i "$srcdir/gtk4-writer-pressed-thumb.patch"
+	# The patch gives the private bus of assert-bus no service directory.
+	patch -Np1 -d "$_srcname" -i "$srcdir/gtk4-check-private-bus.patch"
 	# The patch colours the scroll bars of the browser from QtCurve. The
 	# patch adds a check, so it takes the three way merge of git.
 	git -C "$_srcname" add -A
@@ -435,6 +441,15 @@ prepare() {
 	patch -Np1 -d "$_srcname" -i "$srcdir/bug-sweep.patch"
 	# The patch keeps the Firefox chrome in the QtCurve colours and corners under Firefox 157.
 	patch -Np1 -d "$_srcname" -i "$srcdir/firefox-157.patch"
+	# The patch pins the in-content accent, the promo of the app menu and the
+	# chrome surfaces of Firefox Nova to the QtCurve colours. The patch also
+	# keeps the gradient of the static theme in the top toolbars. The patch
+	# also pins the button, row and text colours of the about: pages. The
+	# patch also pins the colours of the PDF viewer, the view pages, the
+	# pressed buttons and the border of the notification bar. The patch adds
+	# three checks, so it takes the three way merge of git.
+	git -C "$_srcname" add -A
+	git -C "$_srcname" apply --3way "$srcdir/firefox-nova.patch"
 }
 
 build() {

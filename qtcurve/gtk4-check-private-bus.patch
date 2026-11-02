@@ -1,0 +1,84 @@
+Give the private bus of assert-bus no service directory
+
+The fourth arm of assert-bus started its private bus from the standard
+session configuration of the host. A bus of that form reads the
+standard service directories. The probe of the daemon asks the portal
+for the theme name, so the bus started the portal, and the portal
+started its backends. The kill of the bus ended the portal, but a
+backend that ignores the loss of the bus stayed as an orphan. The
+build of the GTK theme runs the arm, so a build started that chain as
+well.
+
+The services of that chain ran with the home and the runtime directory
+of the caller. The head comment of the script states that no run
+reaches the files of the caller. The document portal of the chain also
+stopped the live document portal when the runtime directory of the
+caller reached the bus.
+
+The arm now writes a bus configuration of its own and starts the bus
+from that file. The file names no service directory, so no service
+starts on demand and the probe connects and reads no name. The listen
+address moves into the file, and the arm waits for the printed address
+as before. The bus allows the EXTERNAL mechanism alone, so no cookie
+keyring can appear in the home of the caller.
+
+dbus-daemon logs one line for each start of a service. The arm now
+reads the bus log after the daemon leaves and fails on such a line.
+The exit codes, the success lines and the liveness reads of the four
+arms stay as they were.
+
+The change sits on the branch work/gtk4-theme of the local tree, as the
+seventeenth commit. The fork wyn/qtcurve holds that branch. Merge request !15
+on system/qtcurve holds that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/gtk4/check/assert-bus.sh b/gtk4/check/assert-bus.sh
+index 679c2fdd..f73ded89 100644
+--- a/gtk4/check/assert-bus.sh
++++ b/gtk4/check/assert-bus.sh
+@@ -186,12 +186,25 @@ echo "assert-bus: the watch mode with no --force lived past a first pass of" \
+ 
+ # 4. The daemon leaves with the code 0 when the session bus dies, so a logout
+ # stops a daemon that no unit holds. The arm needs dbus-daemon, and it names
+-# the binary where the host holds none. The private bus holds no portal, so
+-# the probe of the daemon connects and reads no name. That outcome is enough
+-# for the handler of the lost bus.
++# the binary where the host holds none.
+ if command -v dbus-daemon > /dev/null 2>&1; then
+-    dbus-daemon --session --nofork --address="unix:abstract=$realname" \
+-        --print-address > "$work/bus.log" 2>&1 &
++    # The configuration below names no service directory, so no service
++    # starts on demand and the probe of the daemon connects and reads no
++    # name. That outcome is enough for the handler of the lost bus.
++    cat > "$work/bus.conf" <<EOF
++<busconfig>
++  <type>session</type>
++  <listen>unix:abstract=$realname</listen>
++  <auth>EXTERNAL</auth>
++  <policy context="default">
++    <allow send_destination="*" eavesdrop="true"/>
++    <allow eavesdrop="true"/>
++    <allow own="*"/>
++  </policy>
++</busconfig>
++EOF
++    dbus-daemon --config-file="$work/bus.conf" --nofork --print-address \
++        > "$work/bus.log" 2>&1 &
+     buspid=$!
+     pids="$pids $buspid"
+     wait_line 15 "$work/bus.log" "$realname" \
+@@ -205,6 +218,13 @@ if command -v dbus-daemon > /dev/null 2>&1; then
+     if [ "$code" -ne 0 ]; then
+         fail "the daemon gave the code $code and not 0 after the bus died"
+     fi
++    # dbus-daemon logs one "Activating service" line for each start of a
++    # service, and the private bus must start none.
++    starts=$(grep -cF "Activating service" "$work/bus.log" 2>/dev/null) ||
++        starts=0
++    if [ "$starts" -ne 0 ]; then
++        fail "the private bus started $starts services and not 0"
++    fi
+     echo "assert-bus: the daemon left with the code 0 when the session bus" \
+          "died"
+ else
