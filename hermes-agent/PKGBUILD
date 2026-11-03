@@ -23,7 +23,7 @@
 # system-tools.py / keep-venv-interpreter.patch adapted from jabla's
 # hermes-agent-bin (thanks).
 pkgname=hermes-agent
-pkgver=0.22.6
+pkgver=0.22.7
 pkgrel=1
 pkgdesc="Locally-run AI agent with tool use, web browsing, and automation"
 arch=('x86_64')
@@ -52,7 +52,7 @@ source=(
     'keep-venv-interpreter.patch'
     'system-tools.py'
 )
-sha256sums=('2add026d44c602d8b911f7ef366bd3860505e0cd124e935aa78e09fd7e814091'
+sha256sums=('91bf15f50ce61e7da8a7890c11b202b904c3d7c0e2688a6dc6bcb42a2fe8b91d'
             '516bee4492e4d6f6e4310703bdec7e88229a1b0ddb828542f297d4e6e226c427'
             '5950d73a49526767dfac20084d8c5597b7ebf5c16e7bff99e31dc4d7fe0d139d')
 options=('!debug')
