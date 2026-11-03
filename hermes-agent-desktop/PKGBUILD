@@ -3,7 +3,7 @@ pkgname=hermes-agent-desktop
 _pkgname=hermes-desktop          # /usr/bin launcher name (AUR convention, lowercase)
 _upstream=Hermes                 # productName + executableName
 _electron=electron44             # must match upstream's pinned Electron major
-pkgver=0.22.6
+pkgver=0.22.7
 _pkgver_tag=v${pkgver}
 pkgrel=1
 pkgdesc="Desktop UI for Hermes Agent (chat, voice, files, settings)"
@@ -41,7 +41,7 @@ source=(
   'hermes-desktop'
   'launcher.test.cjs'
 )
-sha256sums=('2add026d44c602d8b911f7ef366bd3860505e0cd124e935aa78e09fd7e814091'
+sha256sums=('91bf15f50ce61e7da8a7890c11b202b904c3d7c0e2688a6dc6bcb42a2fe8b91d'
             '9c046a8b38d6a794c3d8109f7693edbfe303a61c80b77f651ca1c8a21718cfed'
             '412ad7b2b6bc5149a8d236ad2cb9be54d2ac0ab78dbd3c8e16deb4f4e683713f'
             '6b2e17a0411f23dcafa9a6da7d8cd850573430a45ff1353e0febbbfc84fbea9f'
