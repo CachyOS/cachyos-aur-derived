@@ -1,13 +1,13 @@
 pkgbase = intel-one-mono-fonts
 	pkgdesc = Expressive monospaced font family that’s built with clarity, legibility, and the needs of developers in mind
-	pkgver = 1.4.0
-	pkgrel = 2
+	pkgver = 1.5.0
+	pkgrel = 1
 	url = https://github.com/intel/intel-one-mono
 	arch = any
 	license = custom:OFL
 	makedepends = git
 	source = git+https://github.com/intel/intel-one-mono.git#commit=99e2d6ca170744c62bfb5f52547435f23720abe1
-	b2sums = SKIP
+	b2sums = 747b5cac13ba9645bd30feafbc0d3ca18d07aa07b517b5f09a57e7166a436cd0a8e8bdccd0efd0e335cd21837a6d5eafcb38ee3c59539709e675e0db2f311061
 
 pkgname = otf-intel-one-mono
 
