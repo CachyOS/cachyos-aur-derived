@@ -1,3 +1,4 @@
 [jdownloader2]
-source = "manual"
-
+source = "aur"
+aur = "jdownloader2"
+strip_release = true

@@ -1,2 +1,4 @@
 [qt5-location]
-source = "manual"
+source = "aur"
+aur = "qt5-location"
+strip_release = true

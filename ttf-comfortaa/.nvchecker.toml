@@ -1,2 +1,4 @@
 [ttf-comfortaa]
-source = "manual"
+source = "aur"
+aur = "ttf-comfortaa"
+strip_release = true

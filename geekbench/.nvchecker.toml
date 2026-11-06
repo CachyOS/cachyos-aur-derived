@@ -1,2 +1,4 @@
 [geekbench]
-source = "manual"
+source = "aur"
+aur = "geekbench"
+strip_release = true

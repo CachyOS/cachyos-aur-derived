@@ -1,2 +1,4 @@
 [zfsbootmenu-sb]
-source = "manual"
+source = "regex"
+url = "https://raw.githubusercontent.com/KorewaKiyo/zfsbootmenu-sb/main/PKGBUILD"
+regex = 'pkgver=([\d.]+)'

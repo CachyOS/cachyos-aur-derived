@@ -1,2 +1,4 @@
 [aic94xx-firmware]
-source = "manual"
+source = "aur"
+aur = "aic94xx-firmware"
+strip_release = true

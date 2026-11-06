@@ -1,2 +1,4 @@
 [gcc9]
-source = "manual"
+source = "regex"
+url = "https://ftp.gnu.org/gnu/gcc/"
+regex = 'gcc-(9\.[\d.]+\d)/'

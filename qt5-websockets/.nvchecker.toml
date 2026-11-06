@@ -1,2 +1,4 @@
 [qt5-websockets]
-source = "manual"
+source = "aur"
+aur = "qt5-websockets"
+strip_release = true

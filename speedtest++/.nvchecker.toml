@@ -1,2 +1,4 @@
 ["speedtest++"]
-source = "manual"
+source = "aur"
+aur = "speedtest++"
+strip_release = true

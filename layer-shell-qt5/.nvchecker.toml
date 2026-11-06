@@ -1,2 +1,5 @@
 [layer-shell-qt5]
-source = "manual"
+source = "git"
+git = "https://invent.kde.org/plasma/layer-shell-qt.git"
+prefix = "v"
+include_regex = 'v5\.27\.[1-7]?\d'

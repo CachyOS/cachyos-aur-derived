@@ -1,2 +1,4 @@
 [noto-color-emoji-fontconfig]
-source = "manual"
+source = "aur"
+aur = "noto-color-emoji-fontconfig"
+strip_release = true

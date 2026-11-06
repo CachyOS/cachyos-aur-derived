@@ -1,2 +1,4 @@
 [xone-dongle-firmware]
-source = "manual"
+source = "aur"
+aur = "xone-dongle-firmware"
+strip_release = true

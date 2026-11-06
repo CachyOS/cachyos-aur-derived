@@ -1,2 +1,4 @@
 [xcursor-neutral]
-source = "manual"
+source = "aur"
+aur = "xcursor-neutral"
+strip_release = true

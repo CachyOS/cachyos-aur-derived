@@ -1,2 +1,4 @@
 [imagewriter]
-source = "manual"
+source = "jq"
+url = "https://api.github.com/repos/openSUSE/imagewriter/commits/master"
+filter = '"1.10.\(.commit.committer.date | fromdate).\(.sha[0:7])"'

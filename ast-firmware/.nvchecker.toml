@@ -1,2 +1,4 @@
 [ast-firmware]
-source = "manual"
+source = "aur"
+aur = "ast-firmware"
+strip_release = true

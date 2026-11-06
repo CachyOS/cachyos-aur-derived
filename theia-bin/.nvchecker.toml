@@ -1,2 +1,4 @@
 [theia-bin]
-source = "manual"
+source = "regex"
+url = "https://download.eclipse.org/theia/ide/latest/linux/latest-linux.yml"
+regex = 'version: ([\d.]+)'

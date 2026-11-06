@@ -1,2 +1,6 @@
 [neovim-nightly-bin]
-source = "manual"
+source = "regex"
+url = "https://github.com/neovim/neovim/releases/tag/nightly"
+regex = 'NVIM v([\d.]+-dev-\d+\+g[0-9a-f]+)'
+from_pattern = '^([\d.]+)-dev-(\d+)\+(g[0-9a-f]+)$'
+to_pattern = '\1+dev+\2+\3'

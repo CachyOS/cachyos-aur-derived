@@ -1,2 +1,4 @@
 [qt5-webchannel]
-source = "manual"
+source = "aur"
+aur = "qt5-webchannel"
+strip_release = true

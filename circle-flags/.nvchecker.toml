@@ -1,2 +1,4 @@
 [circle-flags]
-source = "manual"
+source = "regex"
+url = "http://packages.linuxmint.com/pool/main/c/circle-flags/"
+regex = 'circle-flags_([\d.]+)\+mint1\.tar\.xz'
