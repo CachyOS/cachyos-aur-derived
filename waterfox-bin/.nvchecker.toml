@@ -1,2 +1,4 @@
 [waterfox-bin]
-source = "manual"
+source = "github"
+github = "BrowserWorks/Waterfox"
+use_latest_release = true
