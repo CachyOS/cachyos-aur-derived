@@ -1,0 +1,4 @@
+[uxplay]
+source = "git"
+git = "https://github.com/FDH2/UxPlay"
+prefix = "v"
