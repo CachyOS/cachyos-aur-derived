@@ -18,20 +18,8 @@ _commit=d72444b40cf68cfe18799525226c5bee10ac1bd5
 source=(
   # should use git instead or be tag at all instead of hardcoded commit
   "$pkgname-$_commit.tar.gz::$url/archive/$_commit.tar.gz"
-  "$pkgname-remove-sys-sysctl-include.patch::$url/commit/3164e25267243ef4983f53ef5c1f849d3301c36f.patch"
-  "$pkgname-replace-toAscii-with-toLatin1.patch::$url/commit/e7e8806b9cd748360b932d1a9eda9966b8109b65.patch"
 )
-sha256sums=('59deec2c9858ce744aea7e412971e08e00d5d9122e27421e6e36413e571693ce'
-            '8edacc486007df34f4350044a35c9626d30bd1d8091ed283c13150a2b0f8b657'
-            '9db7a296ab0a6a57c1957d21fa078d1bdea4d71ab17bbb84a457a55d38b90396')
-
-prepare() {
-  cd "$pkgname-$_commit"
-  # https://github.com/openSUSE/imagewriter/pull/28
-  patch -Np1 -i "../$pkgname-remove-sys-sysctl-include.patch"
-  # https://github.com/openSUSE/imagewriter/pull/25
-  patch -Np1 -i "../$pkgname-replace-toAscii-with-toLatin1.patch"
-}
+sha256sums=('59deec2c9858ce744aea7e412971e08e00d5d9122e27421e6e36413e571693ce')
 
 build() {
   cd "$pkgname-$_commit"

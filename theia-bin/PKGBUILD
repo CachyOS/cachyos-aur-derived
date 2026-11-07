@@ -20,6 +20,6 @@ package() {
   rm -f "${pkgdir}/usr/share/doc/theia-ide-electron-appchangelog.gz"
 
   # Replace included binary with system copy
-  ln -sf /usr/bin/rg "${pkgdir}/opt/TheiaIDE/resources/app/lib/backend/native/rg"
+  ln -sf /usr/bin/rg "${pkgdir}/opt/TheiaIDE/resources/app.asar.unpacked/lib/backend/native/rg"
 }
 
