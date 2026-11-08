@@ -10,7 +10,7 @@ pkgbase = gnome-shell-extension-dash-to-dock
 	makedepends = git
 	makedepends = sassc
 	depends = gnome-shell
-	source = git+https://github.com/micheleg/dash-to-dock.git#commit=b1478f10a3fca9eaa5dc9d2f9907c20427e269f6
-	sha256sums = b372b62e89ce94dcba334d0e0a7f35d595114c9a469a135a76152fd41b0122e9
+	source = git+https://github.com/micheleg/dash-to-dock.git#tag=extensions.gnome.org-v110
+	sha256sums = 3a4014bd5db1c6e2322bde2a1be2da85ec3753f2857120426a7494e040e41c26
 
 pkgname = gnome-shell-extension-dash-to-dock

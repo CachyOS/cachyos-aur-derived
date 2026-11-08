@@ -1,2 +1,4 @@
 [grub-hook]
-source = "manual"
+source = "aur"
+aur = "grub-hook"
+strip_release = true

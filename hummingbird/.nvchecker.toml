@@ -1,2 +1,4 @@
 [hummingbird]
-source = "manual"
+source = "regex"
+url = "https://gitlab.com/AirVPN/AirVPN-Suite/-/raw/master/README.md"
+regex = '### Version ([\d.]+) - Release date'

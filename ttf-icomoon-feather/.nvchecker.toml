@@ -1,2 +1,4 @@
 [ttf-icomoon-feather]
-source = "manual"
+source = "aur"
+aur = "ttf-icomoon-feather"
+strip_release = true

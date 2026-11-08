@@ -2,7 +2,7 @@
 
 _pkgbase=ab-download-manager
 pkgname="$_pkgbase"
-pkgver=1.11.2
+pkgver=1.11.4
 pkgrel=1
 pkgdesc="A Download Manager that speeds up your downloads"
 arch=('x86_64')
@@ -27,7 +27,7 @@ source=(
     "$_pkgbase::git+https://github.com/amir1376/ab-download-manager.git#tag=v$pkgver"
     'abdownloadmanager.desktop'
 )
-sha256sums=('aeaa625a2caafb5a61ad16ec087110c0a3c6809cd52339b5b593162ddcf1b4fc'
+sha256sums=('0b45896e1fdc13ec4bbbb18ba745e60e20a7ae55c2bf32eac017e3653d0945a1'
             'd194cf142921d78c8a2a8c6c2b3a8b41bf2545eb2c7147a8f866946528227031')
 
 build() {

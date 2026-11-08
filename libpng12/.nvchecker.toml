@@ -1,2 +1,5 @@
 [libpng12]
-source = "manual"
+source = "git"
+git = "https://github.com/pnggroup/libpng.git"
+prefix = "v"
+include_regex = 'v1\.2\.\d+'

@@ -1,2 +1,4 @@
 [tonelib-gfx-bin]
-source = "manual"
+source = "aur"
+aur = "tonelib-gfx-bin"
+strip_release = true

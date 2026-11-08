@@ -1,2 +1,4 @@
 [nouveau-fw]
-source = "manual"
+source = "regex"
+url = "https://download.nvidia.com/XFree86/Linux-x86_64/"
+regex = '(340\.\d+)/'

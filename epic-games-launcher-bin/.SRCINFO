@@ -1,0 +1,34 @@
+pkgbase = epic-games-launcher-bin
+	pkgdesc = Official Epic Games Store launcher (Preview)
+	pkgver = 0.113.0
+	pkgrel = 2
+	url = https://launcher.epicgames.com/
+	arch = x86_64
+	license = LicenseRef-EpicGamesLauncher
+	depends = cairo
+	depends = dbus
+	depends = gdk-pixbuf2
+	depends = glib2
+	depends = glibc
+	depends = gtk3
+	depends = hicolor-icon-theme
+	depends = libayatana-appindicator
+	depends = libgcc
+	depends = libsoup3
+	depends = libstdc++
+	depends = libx11
+	depends = webkit2gtk-4.1
+	optdepends = lib32-vulkan-driver: run 32-bit Windows games through GE-Proton
+	optdepends = org.freedesktop.secrets: store auth tokens in the keyring instead of plaintext auth.json
+	optdepends = python: run Windows games through GE-Proton
+	optdepends = vulkan-driver: run Windows games through GE-Proton
+	optdepends = xdg-utils: open external links in the default browser
+	provides = epic-games-launcher=0.113.0
+	conflicts = epic-games-launcher
+	noextract = EpicGamesLauncher-0.113.0-g2164614-x86_64.deb
+	options = !debug
+	options = !strip
+	source = EpicGamesLauncher-0.113.0-g2164614-x86_64.deb::https://content-download-egs.distro.on.epicgames.com/Builds/EGLv2/0.113.0%2Bg2164614/Linux/EpicGamesLauncher-x86_64.deb
+	sha256sums = 884def8de247bc279bea571be6f5dec6c5481ac94cc06af62b577624be56c201
+
+pkgname = epic-games-launcher-bin

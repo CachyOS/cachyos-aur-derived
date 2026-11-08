@@ -1,2 +1,4 @@
 [yozo-office]
-source = "manual"
+source = "aur"
+aur = "yozo-office"
+strip_release = true

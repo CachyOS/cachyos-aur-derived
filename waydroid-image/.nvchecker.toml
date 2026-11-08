@@ -1,2 +1,6 @@
 [waydroid-image]
-source = "manual"
+source = "aur"
+aur = "waydroid-image"
+strip_release = true
+from_pattern = '^\d+:(.+)$'
+to_pattern = '\1'

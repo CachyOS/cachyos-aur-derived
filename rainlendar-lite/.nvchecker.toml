@@ -1,2 +1,4 @@
 [rainlendar-lite]
-source = "manual"
+source = "regex"
+url = "https://www.rainlendar.net/"
+regex = 'rainlendar2-lite_([\d.]+\d)'

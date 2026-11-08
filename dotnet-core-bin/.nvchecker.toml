@@ -1,2 +1,4 @@
 [dotnet-core-bin]
-source = "manual"
+source = "jq"
+url = "https://builds.dotnet.microsoft.com/dotnet/release-metadata/10.0/releases.json"
+filter = '."latest-runtime" + ".sdk" + (."latest-sdk" | split(".")[2])'

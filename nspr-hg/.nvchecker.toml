@@ -1,2 +1,4 @@
 [nspr-hg]
-source = "manual"
+source = "aur"
+aur = "nspr-hg"
+strip_release = true

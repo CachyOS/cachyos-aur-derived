@@ -1,2 +1,4 @@
 [shim-signed]
-source = "manual"
+source = "jq"
+url = "https://mdapi.fedoraproject.org/rawhide/pkg/shim-x64"
+filter = '.version + "+fedora+" + .release'

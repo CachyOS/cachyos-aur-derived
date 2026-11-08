@@ -1,2 +1,4 @@
 [parsec-bin]
-source = "manual"
+source = "aur"
+aur = "parsec-bin"
+strip_release = true

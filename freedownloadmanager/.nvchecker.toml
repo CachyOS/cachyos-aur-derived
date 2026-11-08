@@ -1,2 +1,4 @@
 [freedownloadmanager]
-source = "manual"
+source = "aur"
+aur = "freedownloadmanager"
+strip_release = true
