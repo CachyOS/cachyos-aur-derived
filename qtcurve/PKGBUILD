@@ -3,8 +3,8 @@
 # hardcoded as usual..
 _commit=6c3176e0f7ad8d669287b91e5e4c509cf3218f5f
 pkgname=qtcurve
-pkgver=20261006
-pkgrel=2
+pkgver=20261108
+pkgrel=1
 pkgdesc="A configurable widget style for Qt6 with KDE Frameworks integration"
 arch=(x86_64)
 url="https://invent.kde.org/system/qtcurve"
