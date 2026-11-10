@@ -1,0 +1,5 @@
+[afmf-linux]
+source = "github"
+github = "serialexperimentslainnnn/afmf-linux"
+use_max_release = true
+prefix = "v"
