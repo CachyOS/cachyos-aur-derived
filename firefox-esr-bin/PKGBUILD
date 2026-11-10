@@ -7,8 +7,8 @@
 
 pkgname=firefox-esr-bin
 _pkgname=${pkgname/-bin/}
-pkgver=153.6.0
-pkgrel=2
+pkgver=153.7.0
+pkgrel=1
 pkgdesc='Standalone web browser from mozilla.org - Extended Support Release'
 url='https://www.mozilla.org/en-US/firefox/enterprise/'
 arch=('x86_64')
@@ -19,7 +19,7 @@ source=("https://ftp.mozilla.org/pub/firefox/releases/${pkgver}esr/linux-x86_64/
         "$_pkgname.desktop"
         "$_pkgname-safe.desktop"
         'policies.json')
-sha256sums=('31321cd9e2cef73df678417e810cdd1b5760aa5cc8063c8465669e5869cb8498'
+sha256sums=('7d2eb92ca3a7b2a83de092eb9b94c853980214de2fbfdccb2ac39d61c593c5a5'
             '2e3409188d110acdfa3cf33cdc1dc6d2e232a357ca922bf807c2ca23fa66110f'
             '8428c11c1403cb29dbb974cab680259019d841029dc70d21250978ba05525838'
             'e977c3d690224dd727d8761d2c0a66ba41bfd02ae0fd7850c4545d06b5a8e63c')
