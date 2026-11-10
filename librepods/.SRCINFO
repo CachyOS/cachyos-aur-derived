@@ -1,7 +1,7 @@
 pkgbase = librepods
 	pkgdesc = AirPods liberated from Apple's ecosystem
 	pkgver = 1.0.4
-	pkgrel = 1
+	pkgrel = 2
 	url = https://github.com/kavishdevar/librepods
 	arch = x86_64
 	license = GPL-3.0-only

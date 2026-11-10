@@ -1,7 +1,7 @@
 pkgbase = chatgpt-desktop-bin
 	pkgdesc = Official ChatGPT desktop app for Linux
 	pkgver = 26.1103.60933
-	pkgrel = 1
+	pkgrel = 2
 	url = https://chatgpt.com/download
 	arch = x86_64
 	license = custom
@@ -32,7 +32,7 @@ pkgbase = chatgpt-desktop-bin
 	depends = mesa
 	depends = nspr
 	depends = nss
-	depends = openssl
+	depends = openssl-3
 	depends = pango
 	depends = systemd-libs
 	depends = sh

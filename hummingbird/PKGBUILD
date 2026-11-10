@@ -2,7 +2,7 @@
 pkgname=hummingbird
 _pkgname=AirVPN-Suite
 pkgver=2.2.0
-pkgrel=1
+pkgrel=2
 # no proper tags for us
 _commit=35fe8af098db7e907207aa5ab6ad38219286c9cf
 # AirVPN's OpenVPN3 fork

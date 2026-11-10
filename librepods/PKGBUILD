@@ -3,7 +3,7 @@
 pkgname="librepods"
 pkgver=1.0.4
 _pkgver="$(sed -E 's/([a-z]+)/-\1./g' <<< "$pkgver")"
-pkgrel=1
+pkgrel=2
 pkgdesc="AirPods liberated from Apple's ecosystem"
 arch=(
   'x86_64'

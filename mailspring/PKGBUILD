@@ -8,12 +8,12 @@
 
 pkgname=mailspring
 pkgver=1.26.2
-pkgrel=2
+pkgrel=3
 pkgdesc="A beautiful, fast and maintained fork of Nylas Mail by one of the original authors."
 arch=(x86_64)
 license=(GPL-3.0-only)
 url="https://github.com/Foundry376/Mailspring"
-depends=(alsa-lib gtk3 nss glibc)
+depends=(alsa-lib gtk3 nss glibc openssl-3)
 makedepends=(git npm nodejs-lts-jod python chrpath)
 source=("git+https://github.com/Foundry376/Mailspring.git#tag=${pkgver}")
 sha256sums=('f1e560d32e026eaa392ad0f6be49a8c3380c82844bcc6677ce7a60452a47e7e0')

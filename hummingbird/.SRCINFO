@@ -1,7 +1,7 @@
 pkgbase = hummingbird
 	pkgdesc = FLOSS OpenVPN3 and WireGuard client using AirVPN's OpenVPN3 library fork
 	pkgver = 2.2.0
-	pkgrel = 1
+	pkgrel = 2
 	url = https://gitlab.com/AirVPN/AirVPN-Suite
 	changelog = Changelog.txt
 	arch = x86_64

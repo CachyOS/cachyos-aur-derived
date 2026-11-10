@@ -3,7 +3,7 @@
 
 pkgname=chatgpt-desktop-bin
 pkgver=26.1103.60933
-pkgrel=1
+pkgrel=2
 pkgdesc="Official ChatGPT desktop app for Linux"
 arch=('x86_64')
 url="https://chatgpt.com/download"
@@ -47,7 +47,7 @@ depends=(
   'mesa'
   'nspr'
   'nss'
-  'openssl'
+  'openssl-3'
   'pango'
   'systemd-libs'
   'sh'
