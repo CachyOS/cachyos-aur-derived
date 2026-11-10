@@ -5,7 +5,7 @@ _commit=68a3b41753b66a2f00cf98667a68458961f5cb25
 _srcname=qtcurve
 pkgname=qtcurve-gtk-theme
 pkgver=20260909
-pkgrel=9
+pkgrel=10
 pkgdesc="The QtCurve theme data for GTK 2, GTK 3 and GTK 4; the engines and the writer are in qtcurve"
 arch=(any)
 url="https://invent.kde.org/system/qtcurve"
@@ -149,6 +149,7 @@ source=(
 	gtk4-writer-groove-border.patch
 	gtk4-writer-pressed-thumb.patch
 	gtk4-check-private-bus.patch
+	gtk4-writer-sunken-step.patch
 	gtk4-writer-browser-scrollbar.patch
 	firefox-sidebar-scrollbar.patch
 	firefox-addon-state.patch
@@ -265,6 +266,7 @@ sha256sums=('e01dbf05c24c11a3660e6185a9a7607d0838d4560ab717d44b449e9520476f6e'
             'a1e2b2ba985927ea60c555693a0e02ddb3ff315022179850e212a294fbe02f86'
             '79c093038ed1c9cdafeab7546a24887c42a009f21604a0428da8038bcf28d57b'
             'a516681087275b0760c3951aeeb3b9d388a4bc27ea4f53192cb70d63f927b921'
+            '2a486f257be03a052905cb92580c5e6ff5fa348de0bd75aa1f59eecfe7bc5304'
             'a46d76a6a283ff26e8a3772c08c8aa4c328bcb3fc49801a6acb997924c5cd65c'
             '05029b171668d48be05c42745bdbd11921a0c32afbb9589ce51b8aad3a9c6bb0'
             '32cb54f33df02330df466d20eef2f4d0baad7e14efd81299a276ac744ab5a72c'
@@ -417,6 +419,8 @@ prepare() {
 	patch -Np1 -d "$_srcname" -i "$srcdir/gtk4-writer-pressed-thumb.patch"
 	# The patch gives the private bus of assert-bus no service directory.
 	patch -Np1 -d "$_srcname" -i "$srcdir/gtk4-check-private-bus.patch"
+	# The patch fills a pressed button from the sunken step of the shade ladder.
+	patch -Np1 -d "$_srcname" -i "$srcdir/gtk4-writer-sunken-step.patch"
 	# The patch colours the scroll bars of the browser from QtCurve. The
 	# patch adds a check, so it takes the three way merge of git.
 	git -C "$_srcname" add -A

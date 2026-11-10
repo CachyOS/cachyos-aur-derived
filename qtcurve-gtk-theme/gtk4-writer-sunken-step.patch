@@ -1,0 +1,311 @@
+Fill a pressed button from the sunken step of the shade ladder
+
+Style::getFill() fills a sunken control from step 4 of the shade
+ladder, and a checked control away from the mouse takes the same
+step. The getFill() of the GTK 2 engine gives the same steps.
+Writer::button() painted the pressed image and the pressed ground
+from step 2. A pressed or checked button of a GTK program therefore
+took another ground than the same button of a Qt program.
+
+Writer::button() now takes step 4 for the pressed image and the
+pressed ground. The pressed rule of the flat and tool bar buttons
+copies that box, and the pressed accent rules tint that image. The
+GTK 3 sheets write the same values inline. No other rule of the
+sheets changes.
+
+The five shade tables take the new factors of the pressed rows. Each
+pressed image row of the gradient table keeps the factor 0.900 of one
+gradient stop.
+
+The change sits on the branch work/gtk4-theme of the local tree, as the
+eighteenth commit. The fork wyn/qtcurve holds that branch. Merge request !15
+on system/qtcurve holds that branch.
+
+Drop this patch when upstream merges the change.
+
+diff --git a/gtk4/check/shades-cover.txt b/gtk4/check/shades-cover.txt
+index b1f3da80..edddab56 100644
+--- a/gtk4/check/shades-cover.txt
++++ b/gtk4/check/shades-cover.txt
+@@ -7,8 +7,8 @@
+ :root | --qtc-btn-img | 1.040 0.980 | gtk4 |
+ :root | --qtc-btn-img-hover | 1.040 1.030 0.980 1.030 | gtk4 |
+ :root | --qtc-btn-bg-hover | 1.030 | gtk4 |
+-:root | --qtc-btn-img-active | 1.040 0.900 0.980 0.900 | gtk4 |
+-:root | --qtc-btn-bg-active | 0.900 | gtk4 |
++:root | --qtc-btn-img-active | 1.040 0.840 0.980 0.840 | gtk4 |
++:root | --qtc-btn-bg-active | 0.840 | gtk4 |
+ :root | --qtc-btn-img-off | 1.040 0.980 | gtk4 |
+ :root | --qtc-btn-border-focus | 0.750 | gtk4 |
+ :root | --qtc-btn-focus-ring | 1.070 | gtk4 |
+@@ -70,8 +70,8 @@ button | background-image | 1.040 0.980 |  |
+ button | border | 0.750 |  |
+ button:hover | background-image | 1.040 1.030 0.980 1.030 |  |
+ button:hover | background-color | 1.030 |  |
+-button:active | background-image | 1.040 0.900 0.980 0.900 |  |
+-button:active | background-color | 0.900 |  |
++button:active | background-image | 1.040 0.840 0.980 0.840 |  |
++button:active | background-color | 0.840 |  |
+ button:active | border | 0.750 |  |
+ button:disabled | background-image | 1.040 0.980 |  |
+ button:disabled | border | 0.750 |  |
+@@ -168,8 +168,8 @@ menu | background-color | 1.020 | gtk3 |
+ # The factors that the state cues and the popup band add.
+ :root | --qtc-btn-img-accent-hover | 1.040 1.030 0.980 1.030 | gtk4 |
+ :root | --qtc-btn-img-danger-hover | 1.040 1.030 0.980 1.030 | gtk4 |
+-:root | --qtc-btn-img-accent-active | 1.040 0.900 0.980 0.900 | gtk4 |
+-:root | --qtc-btn-img-danger-active | 1.040 0.900 0.980 0.900 | gtk4 |
++:root | --qtc-btn-img-accent-active | 1.040 0.840 0.980 0.840 | gtk4 |
++:root | --qtc-btn-img-danger-active | 1.040 0.840 0.980 0.840 | gtk4 |
+ :root | --qtc-btn-border-accent-active | 0.840 | gtk4 |
+ :root | --qtc-btn-border-danger-active | 0.840 | gtk4 |
+ :root | --qtc-btn-border-accent-back | 0.900 | gtk4 |
+@@ -181,9 +181,9 @@ button:focus-within | border | 0.750 | gtk4 |
+ button:focus-within | box-shadow | 1.070 | gtk4 |
+ button.suggested-action:not(:disabled):hover | background-image | 1.040 1.030 0.980 1.030 |  |
+ button.destructive-action:not(:disabled):hover | background-image | 1.040 1.030 0.980 1.030 |  |
+-button.suggested-action:not(:disabled):active | background-image | 1.040 0.900 0.980 0.900 |  |
++button.suggested-action:not(:disabled):active | background-image | 1.040 0.840 0.980 0.840 |  |
+ button.suggested-action:not(:disabled):active | border | 0.840 |  |
+-button.destructive-action:not(:disabled):active | background-image | 1.040 0.900 0.980 0.900 |  |
++button.destructive-action:not(:disabled):active | background-image | 1.040 0.840 0.980 0.840 |  |
+ button.destructive-action:not(:disabled):active | border | 0.840 |  |
+ button:backdrop | background-image | 1.040 0.980 |  |
+ button:backdrop | border | 0.750 |  |
+@@ -193,8 +193,8 @@ button.destructive-action:not(:disabled):backdrop | background-image | 1.040 0.9
+ button.destructive-action:not(:disabled):backdrop | border | 0.900 |  |
+ button.flat:hover | background-image | 1.040 1.030 0.980 1.030 |  |
+ button.flat:hover | background-color | 1.030 |  |
+-button.flat:active | background-image | 1.040 0.900 0.980 0.900 |  |
+-button.flat:active | background-color | 0.900 |  |
++button.flat:active | background-image | 1.040 0.840 0.980 0.840 |  |
++button.flat:active | background-color | 0.840 |  |
+ button.flat:active | border | 0.750 |  |
+ headerbar:backdrop | border | 0.750 |  |
+ button:focus | background-image | 1.040 0.980 | gtk3 |
+diff --git a/gtk4/check/shades-flat.txt b/gtk4/check/shades-flat.txt
+index 49894038..3360dc02 100644
+--- a/gtk4/check/shades-flat.txt
++++ b/gtk4/check/shades-flat.txt
+@@ -4,7 +4,7 @@
+ 
+ :root | --qtc-btn-border | 0.750 | gtk4 |
+ :root | --qtc-btn-bg-hover | 1.030 | gtk4 |
+-:root | --qtc-btn-bg-active | 0.900 | gtk4 |
++:root | --qtc-btn-bg-active | 0.840 | gtk4 |
+ :root | --qtc-btn-border-focus | 0.750 | gtk4 |
+ :root | --qtc-btn-focus-ring | 1.070 | gtk4 |
+ :root | --qtc-btn-border-accent | 0.750 | gtk4 |
+@@ -47,7 +47,7 @@
+ :root | --qtc-menu-bg | 1.020 | gtk4 |
+ button | border | 0.750 |  |
+ button:hover | background-color | 1.030 |  |
+-button:active | background-color | 0.900 |  |
++button:active | background-color | 0.840 |  |
+ button:active | border | 0.750 |  |
+ button:disabled | border | 0.750 |  |
+ button:focus-within | border | 0.750 | gtk4 |
+@@ -60,7 +60,7 @@ button:backdrop | border | 0.750 |  |
+ button.suggested-action:not(:disabled):backdrop | border | 0.900 |  |
+ button.destructive-action:not(:disabled):backdrop | border | 0.900 |  |
+ button.flat:hover | background-color | 1.030 |  |
+-button.flat:active | background-color | 0.900 |  |
++button.flat:active | background-color | 0.840 |  |
+ button.flat:active | border | 0.750 |  |
+ entry | border | 0.750 |  |
+ entry | border-bottom-color | 0.350 0.750 |  |
+diff --git a/gtk4/check/shades-grad.txt b/gtk4/check/shades-grad.txt
+index 18b85ced..385fde63 100644
+--- a/gtk4/check/shades-grad.txt
++++ b/gtk4/check/shades-grad.txt
+@@ -7,8 +7,8 @@
+ :root | --qtc-btn-img | 1.200 0.984 0.900 1.060 | gtk4 |
+ :root | --qtc-btn-img-hover | 1.200 1.030 0.984 1.030 0.900 1.030 1.060 1.030 | gtk4 |
+ :root | --qtc-btn-bg-hover | 1.030 | gtk4 |
+-:root | --qtc-btn-img-active | 1.200 0.900 0.984 0.900 0.900 0.900 1.060 0.900 | gtk4 |
+-:root | --qtc-btn-bg-active | 0.900 | gtk4 |
++:root | --qtc-btn-img-active | 1.200 0.840 0.984 0.840 0.900 0.840 1.060 0.840 | gtk4 |
++:root | --qtc-btn-bg-active | 0.840 | gtk4 |
+ :root | --qtc-btn-img-off | 1.200 0.984 0.900 1.060 | gtk4 |
+ :root | --qtc-btn-border-focus | 0.750 | gtk4 |
+ :root | --qtc-btn-focus-ring | 1.070 | gtk4 |
+@@ -74,8 +74,8 @@ button | background-image | 1.200 0.984 0.900 1.060 |  |
+ button | border | 0.750 |  |
+ button:hover | background-image | 1.200 1.030 0.984 1.030 0.900 1.030 1.060 1.030 |  |
+ button:hover | background-color | 1.030 |  |
+-button:active | background-image | 1.200 0.900 0.984 0.900 0.900 0.900 1.060 0.900 |  |
+-button:active | background-color | 0.900 |  |
++button:active | background-image | 1.200 0.840 0.984 0.840 0.900 0.840 1.060 0.840 |  |
++button:active | background-color | 0.840 |  |
+ button:active | border | 0.750 |  |
+ button:disabled | background-image | 1.200 0.984 0.900 1.060 |  |
+ button:disabled | border | 0.750 |  |
+@@ -178,8 +178,8 @@ menu | background-color | 1.020 | gtk3 |
+ # The factors that the state cues and the popup band add.
+ :root | --qtc-btn-img-accent-hover | 1.200 1.030 0.984 1.030 0.900 1.030 1.060 1.030 | gtk4 |
+ :root | --qtc-btn-img-danger-hover | 1.200 1.030 0.984 1.030 0.900 1.030 1.060 1.030 | gtk4 |
+-:root | --qtc-btn-img-accent-active | 1.200 0.900 0.984 0.900 0.900 0.900 1.060 0.900 | gtk4 |
+-:root | --qtc-btn-img-danger-active | 1.200 0.900 0.984 0.900 0.900 0.900 1.060 0.900 | gtk4 |
++:root | --qtc-btn-img-accent-active | 1.200 0.840 0.984 0.840 0.900 0.840 1.060 0.840 | gtk4 |
++:root | --qtc-btn-img-danger-active | 1.200 0.840 0.984 0.840 0.900 0.840 1.060 0.840 | gtk4 |
+ :root | --qtc-btn-border-accent-active | 0.840 | gtk4 |
+ :root | --qtc-btn-border-danger-active | 0.840 | gtk4 |
+ :root | --qtc-btn-border-accent-back | 0.900 | gtk4 |
+@@ -191,9 +191,9 @@ button:focus-within | border | 0.750 | gtk4 |
+ button:focus-within | box-shadow | 1.070 | gtk4 |
+ button.suggested-action:not(:disabled):hover | background-image | 1.200 1.030 0.984 1.030 0.900 1.030 1.060 1.030 |  |
+ button.destructive-action:not(:disabled):hover | background-image | 1.200 1.030 0.984 1.030 0.900 1.030 1.060 1.030 |  |
+-button.suggested-action:not(:disabled):active | background-image | 1.200 0.900 0.984 0.900 0.900 0.900 1.060 0.900 |  |
++button.suggested-action:not(:disabled):active | background-image | 1.200 0.840 0.984 0.840 0.900 0.840 1.060 0.840 |  |
+ button.suggested-action:not(:disabled):active | border | 0.840 |  |
+-button.destructive-action:not(:disabled):active | background-image | 1.200 0.900 0.984 0.900 0.900 0.900 1.060 0.900 |  |
++button.destructive-action:not(:disabled):active | background-image | 1.200 0.840 0.984 0.840 0.900 0.840 1.060 0.840 |  |
+ button.destructive-action:not(:disabled):active | border | 0.840 |  |
+ button:backdrop | background-image | 1.200 0.984 0.900 1.060 |  |
+ button:backdrop | border | 0.750 |  |
+@@ -203,8 +203,8 @@ button.destructive-action:not(:disabled):backdrop | background-image | 1.200 0.9
+ button.destructive-action:not(:disabled):backdrop | border | 0.900 |  |
+ button.flat:hover | background-image | 1.200 1.030 0.984 1.030 0.900 1.030 1.060 1.030 |  |
+ button.flat:hover | background-color | 1.030 |  |
+-button.flat:active | background-image | 1.200 0.900 0.984 0.900 0.900 0.900 1.060 0.900 |  |
+-button.flat:active | background-color | 0.900 |  |
++button.flat:active | background-image | 1.200 0.840 0.984 0.840 0.900 0.840 1.060 0.840 |  |
++button.flat:active | background-color | 0.840 |  |
+ button.flat:active | border | 0.750 |  |
+ headerbar:backdrop | border | 0.750 |  |
+ button:focus | background-image | 1.200 0.984 0.900 1.060 | gtk3 |
+diff --git a/gtk4/check/shades-opt.txt b/gtk4/check/shades-opt.txt
+index ff10e88c..205f4993 100644
+--- a/gtk4/check/shades-opt.txt
++++ b/gtk4/check/shades-opt.txt
+@@ -6,8 +6,8 @@
+ :root | --qtc-btn-img | 1.040 0.980 | gtk4 |
+ :root | --qtc-btn-img-hover | 1.040 1.030 0.980 1.030 | gtk4 |
+ :root | --qtc-btn-bg-hover | 1.030 | gtk4 |
+-:root | --qtc-btn-img-active | 1.040 0.900 0.980 0.900 | gtk4 |
+-:root | --qtc-btn-bg-active | 0.900 | gtk4 |
++:root | --qtc-btn-img-active | 1.040 0.840 0.980 0.840 | gtk4 |
++:root | --qtc-btn-bg-active | 0.840 | gtk4 |
+ :root | --qtc-btn-img-off | 1.040 0.980 | gtk4 |
+ :root | --qtc-btn-border-focus | 0.750 | gtk4 |
+ :root | --qtc-btn-focus-ring | 1.070 | gtk4 |
+@@ -17,8 +17,8 @@
+ :root | --qtc-btn-border-danger | 0.750 | gtk4 |
+ :root | --qtc-btn-img-accent-hover | 1.040 1.030 0.980 1.030 | gtk4 |
+ :root | --qtc-btn-img-danger-hover | 1.040 1.030 0.980 1.030 | gtk4 |
+-:root | --qtc-btn-img-accent-active | 1.040 0.900 0.980 0.900 | gtk4 |
+-:root | --qtc-btn-img-danger-active | 1.040 0.900 0.980 0.900 | gtk4 |
++:root | --qtc-btn-img-accent-active | 1.040 0.840 0.980 0.840 | gtk4 |
++:root | --qtc-btn-img-danger-active | 1.040 0.840 0.980 0.840 | gtk4 |
+ :root | --qtc-entry-border | 0.750 | gtk4 |
+ :root | --qtc-entry-border-low | 0.350 0.750 | gtk4 |
+ :root | --qtc-entry-border-focus | 0.750 | gtk4 |
+@@ -76,8 +76,8 @@ button | background-image | 1.040 0.980 |  |
+ button | border | 0.750 |  |
+ button:hover | background-image | 1.040 1.030 0.980 1.030 |  |
+ button:hover | background-color | 1.030 |  |
+-button:active | background-image | 1.040 0.900 0.980 0.900 |  |
+-button:active | background-color | 0.900 |  |
++button:active | background-image | 1.040 0.840 0.980 0.840 |  |
++button:active | background-color | 0.840 |  |
+ button:active | border | 0.750 |  |
+ button:disabled | background-image | 1.040 0.980 |  |
+ button:disabled | border | 0.750 |  |
+@@ -90,9 +90,9 @@ button.destructive-action:not(:disabled) | background-image | 1.040 0.980 |  |
+ button.destructive-action:not(:disabled) | border | 0.750 |  |
+ button.suggested-action:not(:disabled):hover | background-image | 1.040 1.030 0.980 1.030 |  |
+ button.destructive-action:not(:disabled):hover | background-image | 1.040 1.030 0.980 1.030 |  |
+-button.suggested-action:not(:disabled):active | background-image | 1.040 0.900 0.980 0.900 |  |
++button.suggested-action:not(:disabled):active | background-image | 1.040 0.840 0.980 0.840 |  |
+ button.suggested-action:not(:disabled):active | border | 0.840 |  |
+-button.destructive-action:not(:disabled):active | background-image | 1.040 0.900 0.980 0.900 |  |
++button.destructive-action:not(:disabled):active | background-image | 1.040 0.840 0.980 0.840 |  |
+ button.destructive-action:not(:disabled):active | border | 0.840 |  |
+ button:backdrop | background-image | 1.040 0.980 |  |
+ button:backdrop | border | 0.750 |  |
+@@ -102,8 +102,8 @@ button.destructive-action:not(:disabled):backdrop | background-image | 1.040 0.9
+ button.destructive-action:not(:disabled):backdrop | border | 0.900 |  |
+ button.flat:hover | background-image | 1.040 1.030 0.980 1.030 |  |
+ button.flat:hover | background-color | 1.030 |  |
+-button.flat:active | background-image | 1.040 0.900 0.980 0.900 |  |
+-button.flat:active | background-color | 0.900 |  |
++button.flat:active | background-image | 1.040 0.840 0.980 0.840 |  |
++button.flat:active | background-color | 0.840 |  |
+ button.flat:active | border | 0.750 |  |
+ entry | border | 0.750 |  |
+ entry | border-bottom-color | 0.350 0.750 |  |
+diff --git a/gtk4/check/shades.txt b/gtk4/check/shades.txt
+index dfe71ad8..2e9e3789 100644
+--- a/gtk4/check/shades.txt
++++ b/gtk4/check/shades.txt
+@@ -10,8 +10,8 @@
+ :root | --qtc-btn-img | 1.040 0.980 | gtk4 |
+ :root | --qtc-btn-img-hover | 1.040 1.030 0.980 1.030 | gtk4 |
+ :root | --qtc-btn-bg-hover | 1.030 | gtk4 |
+-:root | --qtc-btn-img-active | 1.040 0.900 0.980 0.900 | gtk4 |
+-:root | --qtc-btn-bg-active | 0.900 | gtk4 |
++:root | --qtc-btn-img-active | 1.040 0.840 0.980 0.840 | gtk4 |
++:root | --qtc-btn-bg-active | 0.840 | gtk4 |
+ :root | --qtc-btn-img-off | 1.040 0.980 | gtk4 |
+ :root | --qtc-btn-border-focus | 0.750 | gtk4 |
+ :root | --qtc-btn-focus-ring | 1.070 | gtk4 |
+@@ -72,8 +72,8 @@ button | background-image | 1.040 0.980 |  |
+ button | border | 0.750 |  |
+ button:hover | background-image | 1.040 1.030 0.980 1.030 |  |
+ button:hover | background-color | 1.030 |  |
+-button:active | background-image | 1.040 0.900 0.980 0.900 |  |
+-button:active | background-color | 0.900 |  |
++button:active | background-image | 1.040 0.840 0.980 0.840 |  |
++button:active | background-color | 0.840 |  |
+ button:active | border | 0.750 |  |
+ button:disabled | background-image | 1.040 0.980 |  |
+ button:disabled | border | 0.750 |  |
+@@ -169,8 +169,8 @@ menu | background-color | 1.020 | gtk3 |
+ # The factors that the state cues and the popup band add.
+ :root | --qtc-btn-img-accent-hover | 1.040 1.030 0.980 1.030 | gtk4 |
+ :root | --qtc-btn-img-danger-hover | 1.040 1.030 0.980 1.030 | gtk4 |
+-:root | --qtc-btn-img-accent-active | 1.040 0.900 0.980 0.900 | gtk4 |
+-:root | --qtc-btn-img-danger-active | 1.040 0.900 0.980 0.900 | gtk4 |
++:root | --qtc-btn-img-accent-active | 1.040 0.840 0.980 0.840 | gtk4 |
++:root | --qtc-btn-img-danger-active | 1.040 0.840 0.980 0.840 | gtk4 |
+ :root | --qtc-btn-border-accent-active | 0.840 | gtk4 |
+ :root | --qtc-btn-border-danger-active | 0.840 | gtk4 |
+ :root | --qtc-btn-border-accent-back | 0.900 | gtk4 |
+@@ -182,9 +182,9 @@ button:focus-within | border | 0.750 | gtk4 |
+ button:focus-within | box-shadow | 1.070 | gtk4 |
+ button.suggested-action:not(:disabled):hover | background-image | 1.040 1.030 0.980 1.030 |  |
+ button.destructive-action:not(:disabled):hover | background-image | 1.040 1.030 0.980 1.030 |  |
+-button.suggested-action:not(:disabled):active | background-image | 1.040 0.900 0.980 0.900 |  |
++button.suggested-action:not(:disabled):active | background-image | 1.040 0.840 0.980 0.840 |  |
+ button.suggested-action:not(:disabled):active | border | 0.840 |  |
+-button.destructive-action:not(:disabled):active | background-image | 1.040 0.900 0.980 0.900 |  |
++button.destructive-action:not(:disabled):active | background-image | 1.040 0.840 0.980 0.840 |  |
+ button.destructive-action:not(:disabled):active | border | 0.840 |  |
+ button:backdrop | background-image | 1.040 0.980 |  |
+ button:backdrop | border | 0.750 |  |
+@@ -194,8 +194,8 @@ button.destructive-action:not(:disabled):backdrop | background-image | 1.040 0.9
+ button.destructive-action:not(:disabled):backdrop | border | 0.900 |  |
+ button.flat:hover | background-image | 1.040 1.030 0.980 1.030 |  |
+ button.flat:hover | background-color | 1.030 |  |
+-button.flat:active | background-image | 1.040 0.900 0.980 0.900 |  |
+-button.flat:active | background-color | 0.900 |  |
++button.flat:active | background-image | 1.040 0.840 0.980 0.840 |  |
++button.flat:active | background-color | 0.840 |  |
+ button.flat:active | border | 0.750 |  |
+ headerbar:backdrop | border | 0.750 |  |
+ button:focus | background-image | 1.040 0.980 | gtk3 |
+diff --git a/gtk4/writer/widgets.cpp b/gtk4/writer/widgets.cpp
+index ca2890ee..1a87335c 100644
+--- a/gtk4/writer/widgets.cpp
++++ b/gtk4/writer/widgets.cpp
+@@ -1006,8 +1006,8 @@ Writer::button()
+ 
+     Box active = box;
+     active.image = tgrad(QStringLiteral("btn-img-active"),
+-                         m_opts.sunkenAppearance, lad(Role::Button, 2));
+-    active.bg = tv(QStringLiteral("btn-bg-active"), lad(Role::Button, 2));
++                         m_opts.sunkenAppearance, lad(Role::Button, 4));
++    active.bg = tv(QStringLiteral("btn-bg-active"), lad(Role::Button, 4));
+     ink(active, QStringLiteral("btn-fg"), Role::ButtonText, Role::Button,
+         cover(active.image, active.bg));
+     active.more.clear();
