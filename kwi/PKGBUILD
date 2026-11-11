@@ -1,0 +1,104 @@
+# Maintainer: Peter Jung
+
+# Upstream has no tagged release yet, so a snapshot of master is packaged.
+# .update-hook.sh keeps _commit in sync with pkgver.
+_commit=8f46921fabddc52c7cf3dae59987799a671f96b4
+# kwi needs libghostty-vt >= 1.0, but the ghostty package in extra still ships
+# 0.1.0-dev and owns the same files. Build the standalone release here and
+# link it statically until a usable libghostty-vt is packaged.
+_ghostty_vt_ver=1.0.0
+pkgname=kwi
+pkgver=20261111
+pkgrel=1
+pkgdesc="Modern and fast terminal for KDE Plasma and other desktops, built on libghostty-vt"
+arch=(x86_64)
+url="https://invent.kde.org/utilities/kwi"
+license=(
+    'GPL-2.0-only OR GPL-3.0-only OR LicenseRef-KDE-Accepted-GPL'
+    'LGPL-2.1-only OR LGPL-3.0-only OR LicenseRef-KDE-Accepted-LGPL'
+    BSD-2-Clause
+    CC0-1.0
+    CC-BY-SA-4.0
+    MIT
+)
+depends=(
+    gcc-libs
+    glibc
+    hicolor-icon-theme
+    kcolorscheme
+    kconfig
+    kcoreaddons
+    kdbusaddons
+    kguiaddons
+    ki18n
+    kiconthemes
+    kio
+    kirigami
+    kirigami-addons
+    kirigami-app-components
+    kitemmodels
+    knotifications
+    kparts
+    kpty
+    kwidgetsaddons
+    kwindowsystem
+    kxmlgui
+    qqc2-desktop-style
+    qt6-base
+    qt6-declarative
+    qt6-svg
+)
+makedepends=(
+    cmake
+    extra-cmake-modules
+    git
+    ninja
+    qt6-shadertools
+    zig
+)
+optdepends=(
+    'union: styling tweaks when the Union Qt Quick style is in use'
+)
+source=(
+    "git+https://invent.kde.org/utilities/kwi.git#commit=$_commit"
+    "https://release.files.ghostty.org/libghostty-vt/$_ghostty_vt_ver/libghostty-vt-$_ghostty_vt_ver.tar.gz"
+    "https://release.files.ghostty.org/libghostty-vt/$_ghostty_vt_ver/libghostty-vt-$_ghostty_vt_ver-deps.tar.gz"
+)
+sha256sums=('d6851f4bc2b9a1ef57311e691b7a3e8b8dbf21e53bd19089848523a24180e42a'
+            '4a6ef758be721923e1969e7b81b443dcc92d8dd3fb5a39600c03a8817a753676'
+            '4d5ea5e448e4c7ea8fb55ccbaa8668f2a97d44f438cee831e2b7ecd162d85c29')
+
+build() {
+    # libghostty-vt, staged outside of $pkgdir. --system keeps Zig offline,
+    # the deps tarball holds every package. The cache dir has to start empty.
+    rm -rf zig-cache ghostty-vt
+    (
+        cd "libghostty-vt-$_ghostty_vt_ver"
+        ZIG_GLOBAL_CACHE_DIR="$srcdir/zig-cache" DESTDIR="$srcdir/ghostty-vt" \
+            zig build \
+                --prefix /usr \
+                --system "$srcdir/libghostty-vt-$_ghostty_vt_ver-deps" \
+                -Doptimize=ReleaseFast \
+                -Dcpu=baseline
+    )
+
+    cmake -B build -S "$pkgname" -G Ninja \
+        -DCMAKE_BUILD_TYPE=None \
+        -DCMAKE_INSTALL_PREFIX=/usr \
+        -DGhostty_ROOT="$srcdir/ghostty-vt/usr" \
+        -DGhostty_USE_STATIC_LIBS=ON \
+        -DBUILD_KPART=ON \
+        -DBUILD_TESTING=OFF \
+        -Wno-dev
+    cmake --build build
+}
+
+package() {
+    DESTDIR="$pkgdir" cmake --install build
+
+    # kwi installs its own LICENSES/ to /usr/share/licenses/kwi already
+    install -Dm644 "libghostty-vt-$_ghostty_vt_ver/LICENSE" \
+        "$pkgdir/usr/share/licenses/$pkgname/libghostty-vt/LICENSE"
+    install -Dm644 "libghostty-vt-$_ghostty_vt_ver/deps/libghostty-vt-third-party.json" \
+        "$pkgdir/usr/share/licenses/$pkgname/libghostty-vt/third-party.json"
+}

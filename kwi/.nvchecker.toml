@@ -1,0 +1,4 @@
+[kwi]
+source = "gitlab"
+gitlab = "utilities/kwi"
+host = "invent.kde.org"
