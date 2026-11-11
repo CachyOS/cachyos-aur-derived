@@ -54,9 +54,8 @@ optdepends=(
     'gst-libav: FFmpeg plugin'
     'gvfs: Various devices support'
     )
-# NB commits are chosen corresponding a git tag https://github.com/clementine-player/Clementine/tags
-source=("git+https://github.com/clementine-player/Clementine.git#commit=9838398307d8928eec2deee5faacb3dcab0766f4")
-sha256sums=('6d2ba2a3620ec323dc36cf1e2d5a746416668c5d78976401fa7ae0fbec917f72')
+source=("git+https://github.com/clementine-player/Clementine.git#tag=${pkgver}")
+sha256sums=('59c3d0aeba3cb97c876ccebdf2d69797f6b69bcaaca4a8c8664cef32fea5d615')
 
 pkgver() {
   cd Clementine
