@@ -1,0 +1,12 @@
+post_install() {
+    if [[ -n "$user" && "$user" != root ]] && id -nG "$user" 2>/dev/null | grep -qw tss; then
+       echo ":: tpm2-tss detected. To use TPM 2.0 keyslots, add your user to the 'tss' group:"
+       echo ""
+       echo "   sudo usermod -aG tss \$USER"
+       echo ""
+       echo ":: for more info - https://luksbox.penthertz.com/docs/keyslots/tpm2/"
+}
+
+post_upgrade() {
+    post_install
+}
