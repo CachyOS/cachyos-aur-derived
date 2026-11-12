@@ -12,7 +12,7 @@ post_install() {
         echo ":: Check membership manually: id -nG <user>"
         echo ":: Add user with: sudo usermod -aG tss <user>"
 
-    elif ! id -nG "$user" 2>/dev/null | grep -qw tss'; then
+    elif ! id -nG "$user" 2>/dev/null | grep -qw tss; then
         echo ":: tpm2-tss detected. User '$user' is not in the 'tss' group."
         echo ""
         echo "   sudo usermod -aG tss '$user'"

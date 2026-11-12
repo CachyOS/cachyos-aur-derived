@@ -16,6 +16,7 @@ optdepends=(
 provides=($_pkgname)
 conflicts=($_pkgname{,-git})
 replaces=($_pkgname{-cli,-gui})
+install="${pkgname}.install"
 source_x86_64=(
 	"${_pkgname}-v${pkgver}-x86_64-linux-jammy.tar.gz::${url}/releases/download/v${pkgver}/${_pkgname}-v${pkgver}-x86_64-linux-jammy.tar.gz"
 )
