@@ -104,7 +104,6 @@ source=(
 	"git+https://invent.kde.org/system/qtcurve.git#commit=$_commit"
 	qt6-child-layout-margin.patch
 	qt6-dolphin-small-status-bar.patch
-	qt-dolphin-selected-item-text.patch
 	qt6-wayland-shadows.patch
 	qt6-kdecoration3.patch
 	qt6-kdecoration3-kcm.patch
@@ -158,7 +157,6 @@ source=(
 sha256sums=('e01dbf05c24c11a3660e6185a9a7607d0838d4560ab717d44b449e9520476f6e'
             '60d6c52289f3b6e7c0645bb9acaa96a769801f66e77f50cd5551b7e613611152'
             'e4219281d09f042bac722d7ab6a6784b9b56ea34129e8b877942c91770d9a912'
-            '72db2670dbdf7c2622a600b77ebb58dd9ba49b191cef1b76a8c8ce7ec8bf4af5'
             '1e615faef30ded051d8713b5707c4693bc5f4b9eb8438f99d9f59f40faec3f42'
             '87ade57a7f738a5584bb9991fdc9f3b489a308d5710ef69f54a8802b50997a93'
             '32ecb48317edb4b51e4f086fae161a827b7f5650abd2cc60f454b64888c11876'
@@ -281,8 +279,6 @@ prepare() {
 	patch -Np1 -d "$_srcname" -i "$srcdir/qt6-child-layout-margin.patch"
 	# The patch keeps the whole status text in Dolphin.
 	patch -Np1 -d "$_srcname" -i "$srcdir/qt6-dolphin-small-status-bar.patch"
-	# The patch keeps the text of a selected item readable in Dolphin.
-	patch -Np1 -d "$_srcname" -i "$srcdir/qt-dolphin-selected-item-text.patch"
 	# The patch draws menu and tooltip shadows on Wayland as well as on X11.
 	patch -Np1 -d "$_srcname" -i "$srcdir/qt6-wayland-shadows.patch"
 	# The patch draws the window frame of Plasma 6 in the QtCurve look.
