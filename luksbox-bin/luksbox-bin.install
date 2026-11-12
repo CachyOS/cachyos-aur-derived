@@ -1,19 +1,18 @@
 post_install() {
     if ! getent group tss >/dev/null 2>&1; then
-        echo ":: 'tss' group not found. Make sure tpm2-tss is installed."
+        echo ":: 'tss' group not found. TPM2 keyslots may not work."
         echo ":: For more info: https://luksbox.penthertz.com/docs/keyslots/tpm2/"
         return
     fi
 
-    local user="${SUDO_USER:-${DOAS_USER:-${USER:-}}}"
-    [[ "$user" == root ]] && user=""
-
+    local user="$(getent passwd 1000 | cut -d: -f1)"
+    
     if [[ -z "$user" ]]; then
         echo ":: tpm2-tss detected, but could not determine the invoking user."
         echo ":: Check membership manually: id -nG <user>"
         echo ":: Add user with: sudo usermod -aG tss <user>"
 
-    elif ! id -nG "$user" 2>/dev/null | grep -Eq '(^|[[:space:]])tss([[:space:]]|$)'; then
+    elif ! id -nG "$user" 2>/dev/null | grep -qw tss'; then
         echo ":: tpm2-tss detected. User '$user' is not in the 'tss' group."
         echo ""
         echo "   sudo usermod -aG tss '$user'"
