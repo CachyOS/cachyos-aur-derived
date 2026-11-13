@@ -1,0 +1,47 @@
+# Maintainer: Daniel Demejker <ddemejker@tuta.io>
+
+pkgname=luksbox-bin
+_pkgname=luksbox
+pkgver=0.6.1
+pkgrel=1
+pkgdesc="Store sensitive files in the cloud, or on shared media without trusting the host. LUKSbox is a Rust-based encrypted-container tool with passphrase, FIDO2 (YubiKey, Titan, Nitrokey, Windows Hello), TPM 2.0/SEP, and hybrid post-quantum (ML-KEM-768 / 1024) keyslots. Mounts as a real drive on Linux, macOS, and Windows."
+arch=('x86_64' 'aarch64')
+url="https://github.com/PentHertz/LUKSbox"
+license=('Apache-2.0')
+depends=('fuse3' 'gtk3')
+optdepends=(
+  'tpm2-tss: TPM2 unlock support'
+  'libfido2: FIDO2 unlock support'
+)
+provides=($_pkgname)
+conflicts=($_pkgname{,-git})
+replaces=($_pkgname{-cli,-gui})
+install="${pkgname}.install"
+source_x86_64=(
+	"${_pkgname}-v${pkgver}-x86_64-linux-jammy.tar.gz::${url}/releases/download/v${pkgver}/${_pkgname}-v${pkgver}-x86_64-linux-jammy.tar.gz"
+)
+source_aarch64=(
+	"${_pkgname}-v${pkgver}-aarch64-linux-jammy.tar.gz::${url}/releases/download/v${pkgver}/${_pkgname}-v${pkgver}-aarch64-linux-jammy.tar.gz"
+)
+sha256sums_x86_64=('22d3e75d8de2dd596cf0faf6cb2c6c7eb7c663e1d9393c040f193a10ab70eca6')
+sha256sums_aarch64=('375b2527125cc0e03cbc51393e022fe5f9093a9262204d000e04010729812531')
+
+package() {
+    tar xf "$_pkgname-v$pkgver-$arch-linux-jammy.tar.gz" -C "$srcdir"
+
+    install -Dm755 "$srcdir/$_pkgname"     "$pkgdir/usr/bin/$_pkgname"
+    install -Dm755 "$srcdir/$_pkgname-gui" "$pkgdir/usr/bin/$_pkgname-gui"
+
+    install -Dm644 "$srcdir/share/applications/com.penthertz.$_pkgname.desktop" \
+        "$pkgdir/usr/share/applications/com.penthertz.$_pkgname.desktop"
+
+    local size
+    for size in 16 24 32 48 64 128 256 512; do
+        local src="$srcdir/share/icons/hicolor/${size}x${size}/apps/com.penthertz.$_pkgname.png"
+        [[ -f "$src" ]] && install -Dm644 "$src" \
+            "$pkgdir/usr/share/icons/hicolor/${size}x${size}/apps/com.penthertz.$_pkgname.png"
+    done
+
+    install -Dm644 "$srcdir/share/mime/packages/com.penthertz.$_pkgname.xml" \
+        "$pkgdir/usr/share/mime/packages/com.penthertz.$_pkgname.xml"
+}
