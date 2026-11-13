@@ -268,7 +268,7 @@ sha256sums=('e01dbf05c24c11a3660e6185a9a7607d0838d4560ab717d44b449e9520476f6e'
             '76bb238db584dde12364736fb002737f23826b06ea4fc3d43ad1ee826928cf6c'
             '23a17a146db657c8744ec7b7852c23a7e92a24bb5ee34ce004f6fb75d4e684c8'
             '709d64f32c146014c1cff5055dd9a2f0c5b11b48814210d79d5ba75a5e11824e'
-            '7555dee14f4bceecec9783a29a3bf6a2222bff6449c82e0c9362dca0f749abb3')
+            '54798c25be46a83a72740202838ddf8019a5a6cc0c046ff247974dadede4c09f')
 
 pkgver() {
 	git -C "$_srcname" log -1 --format=%cd --date=format:%Y%m%d
@@ -443,8 +443,13 @@ prepare() {
 	# patch also pins the colours of the PDF viewer, the view pages, the
 	# pressed buttons and the border of the notification bar. The patch also
 	# pins the selected login row, the text fields of the about: pages and
-	# the new names of Firefox 159. The patch adds three checks, so it takes
-	# the three way merge of git.
+	# the new names of Firefox 159.
+	#
+	# The patch also pins the hovered borders, the page greys and the hovered
+	# rows that the browser paints with its own colours. The patch also pins
+	# the frames, the focus colour, the open grounds and the list rows that
+	# the Qt style paints in another colour. The patch adds three checks, so
+	# it takes the three way merge of git.
 	git -C "$_srcname" add -A
 	git -C "$_srcname" apply --3way "$srcdir/firefox-nova.patch"
 }
