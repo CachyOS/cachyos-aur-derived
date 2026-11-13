@@ -1,6 +1,6 @@
 # Maintainer: Guru <anjanaya@gmail.com>
 pkgname=agent-browser
-pkgver=0.42.0
+pkgver=0.43.0
 pkgrel=1
 pkgdesc="Headless browser automation CLI for AI agents"
 arch=('x86_64')
@@ -15,7 +15,7 @@ options=('!strip' '!debug')
 # The npm tarball carries upstream's prebuilt CLI for every platform. Ship only
 # the x86_64 glibc binary and the skill data it reads next to it.
 source=("https://registry.npmjs.org/${pkgname}/-/${pkgname}-${pkgver}.tgz")
-sha256sums=('3c2546296646b858a29da3c0a2f0f891c322ab32941c84b251f63c0dd803dd98')
+sha256sums=('e45d3b95c112da0858f8a7c836d55dbc0b7858fac47df1509d740adff65e0abb')
 
 package() {
   cd package
