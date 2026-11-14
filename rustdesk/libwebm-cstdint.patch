@@ -1,0 +1,16 @@
+# SPDX-FileCopyrightText: 2010 Google Inc.
+# SPDX-FileCopyrightText: 2012 The WebM project authors
+# SPDX-FileCopyrightText: 2026 Recipe contributors
+# SPDX-License-Identifier: BSD-3-Clause AND 0BSD
+# Regenerated against pinned libwebm d411c8668dc226d9a3c7433c560dedfcc46fc69c.
+# Same missing-include fix as the AUR recipe; upstream context is BSD-3-Clause.
+--- mkvparser.cc
++++ mkvparser.cc
+@@ -16,6 +16,7 @@
+ #include <cfloat>
+ #include <climits>
+ #include <cmath>
++#include <cstdint>
+ #include <cstring>
+ #include <memory>
+ #include <new>

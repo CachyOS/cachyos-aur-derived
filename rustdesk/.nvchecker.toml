@@ -1,0 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Recipe contributors
+# SPDX-License-Identifier: 0BSD
+# The package-local hook refreshes source/SDK pins for the selected release.
+[rustdesk]
+source = "github"
+github = "rustdesk/rustdesk"
+use_latest_release = true

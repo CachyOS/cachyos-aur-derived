@@ -1,0 +1,13 @@
+# SPDX-FileCopyrightText: 2026 Recipe contributors
+# SPDX-License-Identifier: 0BSD
+# Arch libyuv ships headers and libyuv.so, but no pkg-config file.
+# Version 0 means unspecified; RustDesk does not request a minimum here.
+prefix=/usr
+includedir=${prefix}/include
+libdir=${prefix}/lib
+
+Name: libyuv
+Description: Build adapter for the Arch Linux libyuv package
+Version: 0
+Libs: -L${libdir} -lyuv
+Cflags: -I${includedir}

@@ -1,0 +1,53 @@
+# SPDX-FileCopyrightText: 2026 Recipe contributors
+# SPDX-License-Identifier: 0BSD
+pkgname=flutter-rust-bridge-codegen1
+pkgver=1.80.1
+pkgrel=3
+pkgdesc='Flutter Rust Bridge v1 generator for RustDesk'
+arch=('x86_64')
+url='https://github.com/fzyzcjy/flutter_rust_bridge'
+license=('MIT')
+# Code generation invokes Cargo/cargo-expand and loads libclang at runtime.
+depends=(
+  'cargo'
+  'cargo-expand'
+  'clang'
+  'glibc'
+  'libgcc'
+)
+# cargo is also a runtime tool, so its existing depends entry covers building.
+source=("flutter_rust_bridge-$pkgver.tar.gz::https://codeload.github.com/fzyzcjy/flutter_rust_bridge/tar.gz/refs/tags/v$pkgver")
+sha256sums=('5c1494e79024de228a9f383c8e52e45b042cd0cf24f4b0f47ee4d5448938b336')
+
+prepare() {
+  cd "flutter_rust_bridge-$pkgver" || return
+  export CARGO_HOME="$srcdir/cargo-home"
+  export RUSTUP_TOOLCHAIN=stable
+  cargo fetch --locked --target "$CARCH-unknown-linux-gnu"
+}
+
+build() {
+  cd "flutter_rust_bridge-$pkgver" || return
+  export CARGO_HOME="$srcdir/cargo-home"
+  export RUSTUP_TOOLCHAIN=stable
+  export CARGO_TARGET_DIR=target
+  # RustDesk's bridge exposes UUID session identifiers.
+  cargo build --frozen --release -p flutter_rust_bridge_codegen --features uuid
+}
+
+check() {
+  cd "flutter_rust_bridge-$pkgver" || return
+  export CARGO_HOME="$srcdir/cargo-home"
+  export RUSTUP_TOOLCHAIN=stable
+  export CARGO_TARGET_DIR=target
+  cargo test --frozen -p flutter_rust_bridge_codegen --lib --features uuid
+  ./target/release/flutter_rust_bridge_codegen --version
+}
+
+package() {
+  cd "flutter_rust_bridge-$pkgver" || return
+  # Versioned executable can coexist with a future v2 generator.
+  install -Dm755 target/release/flutter_rust_bridge_codegen \
+    "$pkgdir/usr/bin/flutter-rust-bridge-codegen1"
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}
