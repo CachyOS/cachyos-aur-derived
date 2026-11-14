@@ -2,7 +2,7 @@
 # Contributor: Pierre-Luc Rigaux
 
 pkgname=sysd-manager
-pkgver=2.24.6
+pkgver=2.25.0
 pkgrel=1
 pkgdesc="A user-friendly GUI to manage systemd units"
 arch=("x86_64")
@@ -12,7 +12,7 @@ depends=("gtk4" "libadwaita" "systemd-libs" "gtksourceview5" "gettext")
 makedepends=("cargo" "git")
 source=("${pkgname}-${pkgver}.tar.gz::https://github.com/plrigaux/${pkgname}/archive/refs/tags/v${pkgver}.tar.gz")
 _pkgsrcdir=${pkgname}-${pkgver}
-sha256sums=('7556a97ee7b8697e881a777d085c1f91d363c318f2379fad7d359c0a31f1755d')
+sha256sums=('04c76fe95cb9d4f580962d522272de8dcb5fdf72663301e9d8414af11ffaef86')
 
 prepare() {
 	cd ${_pkgsrcdir}
