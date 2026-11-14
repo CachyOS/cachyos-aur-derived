@@ -1,6 +1,6 @@
 pkgbase = kwi
 	pkgdesc = Modern and fast terminal for KDE Plasma and other desktops, built on libghostty-vt
-	pkgver = 20261113
+	pkgver = 20261114
 	pkgrel = 1
 	url = https://invent.kde.org/utilities/kwi
 	arch = x86_64
@@ -42,10 +42,10 @@ pkgbase = kwi
 	depends = qt6-declarative
 	depends = qt6-svg
 	optdepends = union: styling tweaks when the Union Qt Quick style is in use
-	source = git+https://invent.kde.org/utilities/kwi.git#commit=0b3801c630ad97bae21faffc0642afcbbab69549
+	source = git+https://invent.kde.org/utilities/kwi.git#commit=cac652b1f40fa8fcb92f988ad455413a31ef51a1
 	source = https://release.files.ghostty.org/libghostty-vt/1.0.0/libghostty-vt-1.0.0.tar.gz
 	source = https://release.files.ghostty.org/libghostty-vt/1.0.0/libghostty-vt-1.0.0-deps.tar.gz
-	sha256sums = 00503d15e590edceb35211698e5d628fc72788c014741933b906468d58aea7f0
+	sha256sums = b3395b660a1e430aa805aeb9dc9444056f19d0d58fbaf0f8a16dd6211c51d23d
 	sha256sums = 4a6ef758be721923e1969e7b81b443dcc92d8dd3fb5a39600c03a8817a753676
 	sha256sums = 4d5ea5e448e4c7ea8fb55ccbaa8668f2a97d44f438cee831e2b7ecd162d85c29
 
