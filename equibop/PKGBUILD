@@ -2,7 +2,7 @@
 pkgname=equibop
 _pkgname=Equibop
 pkgdesc="A custom Discord desktop app with Equicord pre-installed"
-pkgver=3.3.3
+pkgver=3.3.4
 # Reminder for devs: don't forget to update the electron version on equibop.sh
 pkgrel=1
 electron=electron43
@@ -21,7 +21,7 @@ conflicts=('equibop-bin')
 source=("$url/archive/refs/tags/v${pkgver}.tar.gz"
         'equibop.desktop'
         'equibop.sh')
-sha256sums=('b4fcbb4ee3db745647c608d2aabb83ac9959cfbc46e56f42e542b2886227c513'
+sha256sums=('c557e280b461350841efc660cff14047172615797585b0249634b1a417ebb6fc'
             '2df1651c56f3ac253b679db81500474f54e9887321db0daa4d3ac2a1ebad5f4d'
             'e14f0ca9fc0bfeacbc0e8acb874c10e759f9077cb1552d179bdef471331a1736')
 
