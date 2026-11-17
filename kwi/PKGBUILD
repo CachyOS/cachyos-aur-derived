@@ -2,13 +2,13 @@
 
 # Upstream has no tagged release yet, so a snapshot of master is packaged.
 # .update-hook.sh keeps _commit in sync with pkgver.
-_commit=e62b89982e1b785b56e06bad714c3eece949ad9e
+_commit=e468c2d514e662554779323af46179e4773dd96e
 # kwi needs libghostty-vt >= 1.0, but the ghostty package in extra still ships
 # 0.1.0-dev and owns the same files. Build the standalone release here and
 # link it statically until a usable libghostty-vt is packaged.
 _ghostty_vt_ver=1.0.0
 pkgname=kwi
-pkgver=20261116
+pkgver=20261117
 pkgrel=1
 pkgdesc="Modern and fast terminal for KDE Plasma and other desktops, built on libghostty-vt"
 arch=(x86_64)
@@ -64,7 +64,7 @@ source=(
     "https://release.files.ghostty.org/libghostty-vt/$_ghostty_vt_ver/libghostty-vt-$_ghostty_vt_ver.tar.gz"
     "https://release.files.ghostty.org/libghostty-vt/$_ghostty_vt_ver/libghostty-vt-$_ghostty_vt_ver-deps.tar.gz"
 )
-sha256sums=('912e462cfc783049039ce0b8c5e7948fd398fed8461f1dfb4f06db743c46a006'
+sha256sums=('71bd7e76103af41f0e7684abb6e0471fc20319b830af86b51e1471b635d5994e'
             '4a6ef758be721923e1969e7b81b443dcc92d8dd3fb5a39600c03a8817a753676'
             '4d5ea5e448e4c7ea8fb55ccbaa8668f2a97d44f438cee831e2b7ecd162d85c29')
 
