@@ -1,6 +1,6 @@
 pkgbase = fluxer
 	pkgdesc = A free and open source group chat, video, and voice calling app
-	pkgver = 2026.1117.40548
+	pkgver = 2026.1117.144711
 	pkgrel = 1
 	url = https://fluxer.app/
 	arch = x86_64
@@ -12,9 +12,9 @@ pkgbase = fluxer
 	depends = libnotify
 	depends = nspr
 	options = !strip
-	source = fluxer-2026.1117.40548-x64.tar.gz::https://pkgs.fluxer.com/desktop/stable/linux/x64/2026.1117.40548/tar_gz
+	source = fluxer-2026.1117.144711-x64.tar.gz::https://pkgs.fluxer.com/desktop/stable/linux/x64/2026.1117.144711/tar_gz
 	source = fluxer.desktop
-	sha256sums = 820f1821f0773e5d98ec70024e66277408286cdb530d463e18c57c79f8310a1a
+	sha256sums = 4138b8cc245dfb3ddc14a0da0d6c607c8558c5759a3fb3f1638b453cb0bd1e06
 	sha256sums = d126b3c15f4884517f9b0472506045991cf3b6fdcfa36b389e665394a0b96ed1
 
 pkgname = fluxer
