@@ -7,7 +7,7 @@
 
 _pkgname=neovim
 pkgname=neovim-nightly-bin
-pkgver=0.13.0+dev+2113+gf1d176d1ab
+pkgver=0.13.0+dev+2122+g4ef4bed584
 pkgrel=1
 pkgdesc='Fork of Vim aiming to improve user experience, plugins, and GUIs (nightly build)'
 arch=('x86_64' 'aarch64')
@@ -40,7 +40,7 @@ esac
 source=("$_pkgname-$_date.tar.gz::https://github.com/neovim/neovim/releases/download/nightly/nvim-linux-${architecture}.tar.gz"
 	"$pkgname-archlinux.vim"
 	"$pkgname-sysinit.vim")
-b2sums=('dc002dc4f0190a0e3f9d6dce31639014ada3cca0b26ec24616da19b058a0926d85ccf7c7dde15dbed7acb4338cdeb7e00338d0f61bf323157c488e94288b6ab8'
+b2sums=('aa8c836955fba7fc24aa8b29ed370c2508d9a0891d6fdb81e886313cdb72c47b2308cedd17ff93c1ae51ee0d6d0ca34ec616c68954755175593b8ed9713f82d9'
         'd0871e240bd9c7de7d898e1fba95364f4c4a12dbb3ac40892bbf93a49eb0e8cc2c8bc1ccae9ea5b700581a185a4df56bd28427d42a7d4b288560207b3951a15d'
         '6ed647c3a4c0907a60060fa61117d484aa091c69c73dda1f0a99aa4e67870ae2092a2c1057a15ced9fc56b08374ce8a8b86dbe531df777f9ad49302c7a9d3da0')
 # The nightly asset is replaced in place every day, so it cannot be pinned. This
