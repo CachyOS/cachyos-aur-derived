@@ -45,7 +45,7 @@ build() {
 }
 
 package() {
-    cd "$_gitname-$pkgver"
+    cd "$pkgname-$pkgver"
     install -Dm644 xdm-app/target/xdm-app.jar "$pkgdir/usr/share/java/$pkgname/$pkgname.jar"
     install -Dm755 "$srcdir/$pkgname.sh" "$pkgdir/usr/bin/$pkgname"
 
