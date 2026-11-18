@@ -1,0 +1,8 @@
+# Missing shared libraries that ci/check-rebuilds.sh should not act on.
+#
+# One entry per line:
+#   <pkgbase>                ignore every missing library of this pkgbase
+#   <pkgbase> <soname-glob>  ignore matching libraries only ("*" is a wildcard)
+#
+# Use this for prebuilt (-bin) packages that ship plugins linking against
+# optional libraries, or anything else a pkgrel bump cannot fix.

@@ -1,0 +1,142 @@
+name: Rebuild check
+
+on:
+  schedule:
+    - cron: "43 4 * * *"
+  workflow_dispatch:
+    inputs:
+      package:
+        description: "Optional package directory/pkgbase to check"
+        required: false
+        type: string
+      rebuild_limit:
+        description: "Maximum number of PRs to open in one run"
+        required: false
+        default: "10"
+        type: string
+      open_prs:
+        description: "Open pull requests (off = report only)"
+        required: false
+        default: true
+        type: boolean
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  # Shares the group with the update workflow: both move the checkout between bot branches.
+  group: aur-package-updates
+  cancel-in-progress: false
+
+env:
+  REPO_MANAGE_UTIL_GIT: https://github.com/CachyOS/repo-manage-util.git
+  REPO_MANAGE_UTIL_REF: master
+
+jobs:
+  rebuild:
+    runs-on: ubuntu-latest
+    container:
+      image: archlinux:base-devel
+
+    env:
+      BASE_BRANCH: ${{ github.ref_name }}
+      GH_TOKEN: ${{ github.token }}
+      REBUILD_LIMIT: ${{ inputs.rebuild_limit || '10' }}
+      PACKAGE_FILTER: ${{ inputs.package || '' }}
+      OPEN_PRS: ${{ github.event_name == 'schedule' || inputs.open_prs }}
+      # Published packages are several GiB; keep them off the repository checkout.
+      REBUILD_WORKDIR: /var/tmp/rebuild-work
+
+    steps:
+      - name: Install dependencies
+        run: |
+          pacman -Syu --noconfirm git github-cli jq rust clang lld llvm sudo
+
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Resolve repo-manage-util revision
+        id: rmu
+        run: |
+          rev="$(git ls-remote "$REPO_MANAGE_UTIL_GIT" "$REPO_MANAGE_UTIL_REF" | cut -f1 | head -n1)"
+          [[ -n "$rev" ]] || rev="$REPO_MANAGE_UTIL_REF"
+          printf 'rev=%s\n' "$rev" >>"$GITHUB_OUTPUT"
+
+      - name: Cache repo-manage-util
+        id: rmu-cache
+        uses: actions/cache@v5
+        with:
+          path: /opt/repo-manage-util
+          key: repo-manage-util-${{ steps.rmu.outputs.rev }}
+
+      - name: Build repo-manage-util
+        if: steps.rmu-cache.outputs.cache-hit != 'true'
+        run: |
+          cargo install --locked --root /opt/repo-manage-util \
+            --git "$REPO_MANAGE_UTIL_GIT" --rev "${{ steps.rmu.outputs.rev }}" repo-manage-util
+
+      - name: Configure build user
+        run: |
+          useradd -m builder
+          printf 'builder ALL=(ALL) NOPASSWD: ALL\n' >/etc/sudoers.d/builder
+          chmod 0440 /etc/sudoers.d/builder
+          chown -R builder:builder "$GITHUB_WORKSPACE"
+          install -d -o builder -g builder "$REBUILD_WORKDIR"
+
+      - name: Check for packages needing a rebuild
+        run: |
+          run_as_builder=(
+            sudo -u builder -H env
+            REBUILD_WORKDIR="$REBUILD_WORKDIR"
+            REPO_MANAGE_UTIL=/opt/repo-manage-util/bin/repo-manage-util
+            TERM=xterm-256color
+          )
+          if [[ -n "$PACKAGE_FILTER" ]]; then
+            "${run_as_builder[@]}" bash ci/check-rebuilds.sh "$PACKAGE_FILTER"
+          else
+            "${run_as_builder[@]}" bash ci/check-rebuilds.sh
+          fi
+
+      - name: Publish rebuild summary
+        if: always()
+        run: |
+          if [[ -n "${GITHUB_STEP_SUMMARY:-}" && -f .ci/rebuild-check/summary.md ]]; then
+            cat .ci/rebuild-check/summary.md >>"$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Open rebuild pull requests
+        if: env.OPEN_PRS == 'true'
+        run: |
+          sudo -u builder -H env \
+            BASE_BRANCH="$BASE_BRANCH" \
+            GH_TOKEN="$GH_TOKEN" \
+            REBUILD_LIMIT="$REBUILD_LIMIT" \
+            GITHUB_REF_NAME="$GITHUB_REF_NAME" \
+            GIT_AUTHOR_NAME="${GIT_AUTHOR_NAME:-cachyos-update-bot}" \
+            GIT_AUTHOR_EMAIL="${GIT_AUTHOR_EMAIL:-cachyos-update-bot@users.noreply.github.com}" \
+            TERM=xterm-256color \
+            bash ci/open-rebuild-prs.sh
+
+      - name: Publish pull request failures
+        if: always()
+        run: |
+          failure_file=.ci/rebuild-check/pr-failures.txt
+          if [[ -n "${GITHUB_STEP_SUMMARY:-}" && -s "$failure_file" ]]; then
+            {
+              printf '\n## Rebuild pull request failures\n\n```text\n'
+              cat "$failure_file"
+              printf '```\n'
+            } >>"$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload rebuild report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: rebuild-report
+          path: |
+            .ci/rebuild-check/
+            .ci/pr-bodies/
