@@ -67,7 +67,10 @@ close_superseded_update_prs() {
     jq -r \
       --arg pkg "$pkg" \
       --arg current_branch "$current_branch" \
-      '.[] | select(.headRefName != $current_branch) | select(.headRefName | startswith("bot/update/")) | select(.title | startswith($pkg + ": update to ")) | [.number, .headRefName] | @tsv' \
+      '.[] | select(.headRefName != $current_branch)
+        | select(((.headRefName | startswith("bot/update/")) and (.title | startswith($pkg + ": update to ")))
+              or ((.headRefName | startswith("bot/rebuild/")) and (.title | startswith($pkg + ": rebuild"))))
+        | [.number, .headRefName] | @tsv' \
       <<<"$open_prs_json"
   )
 
