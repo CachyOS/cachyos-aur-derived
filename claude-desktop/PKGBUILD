@@ -2,7 +2,7 @@
 
 pkgname=claude-desktop
 pkgver=5.11492.5
-pkgrel=1
+pkgrel=2
 pkgdesc="Official Claude AI desktop app from Anthropic"
 arch=('x86_64' 'aarch64')
 url="https://claude.ai/download"
@@ -77,6 +77,26 @@ package() {
     install -d "$pkgdir/usr/share/edk2"
     ln -s x64/OVMF_CODE.4m.fd "$pkgdir/usr/share/edk2/OVMF_CODE_4M.fd"
     ln -s x64/OVMF_VARS.4m.fd "$pkgdir/usr/share/edk2/OVMF_VARS_4M.fd"
+  fi
+
+  # The .deb's postinst copies these into place. On Arch they only need to be
+  # packaged: shared-mime-info's pacman hook refreshes the MIME cache, and the
+  # search provider and D-Bus service files are read from these paths directly.
+  local _res="$pkgdir/usr/lib/claude-desktop/resources"
+
+  # Shared MIME types for .mcpb, .dxt and .skill
+  install -Dm644 "$_res/linux-mime/com.anthropic.Claude.xml" \
+    "$pkgdir/usr/share/mime/packages/com.anthropic.Claude.xml"
+
+  # GNOME Shell search provider
+  install -Dm644 "$_res/gnome-search-provider/com.anthropic.Claude.search-provider.ini" \
+    "$pkgdir/usr/share/gnome-shell/search-providers/com.anthropic.Claude.search-provider.ini"
+  install -Dm644 "$_res/gnome-search-provider/com.anthropic.Claude.SearchProvider.service" \
+    "$pkgdir/usr/share/dbus-1/services/com.anthropic.Claude.SearchProvider.service"
+
+  # `ccd` terminal launcher, only when the build ships it (as the .deb's postinst does)
+  if [[ -x "$_res/bin/ccd" ]]; then
+    ln -s ../lib/claude-desktop/resources/bin/ccd "$pkgdir/usr/bin/ccd"
   fi
 
   install -Dm644 "$pkgdir/usr/share/doc/claude-desktop/copyright" \
