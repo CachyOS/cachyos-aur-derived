@@ -1,6 +1,6 @@
 pkgbase = faugus-launcher
 	pkgdesc = A simple and lightweight app for running Windows games using UMU-Launcher
-	pkgver = 2.5.7
+	pkgver = 2.5.9
 	pkgrel = 1
 	url = https://github.com/Faugus/faugus-launcher
 	arch = any
@@ -16,7 +16,7 @@ pkgbase = faugus-launcher
 	depends = gtk4
 	depends = libadwaita
 	depends = libmanette
-	source = faugus-launcher-2.5.7.tar.gz::https://github.com/Faugus/faugus-launcher/archive/refs/tags/2.5.7.tar.gz
-	sha256sums = 7fda460d6756102d2ce3fd54ad527174d437464449c30c732e0242120769a569
+	source = faugus-launcher-2.5.9.tar.gz::https://github.com/Faugus/faugus-launcher/archive/refs/tags/2.5.9.tar.gz
+	sha256sums = 86ad26a1f7ca44a0d5e61a459dc1189dcb95868f4168dcceadcc03e576bd2ac7
 
 pkgname = faugus-launcher
