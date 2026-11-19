@@ -1,7 +1,7 @@
 pkgbase = claude-desktop
 	pkgdesc = Official Claude AI desktop app from Anthropic
 	pkgver = 5.11492.5
-	pkgrel = 1
+	pkgrel = 2
 	url = https://claude.ai/download
 	arch = x86_64
 	arch = aarch64
