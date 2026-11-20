@@ -1,0 +1,5 @@
+[shelly]
+source = "github"
+github = "Seafoam-Labs/Shelly-ALPM"
+use_latest_release = true
+prefix = "v"

@@ -2,3 +2,6 @@
 source = "git"
 git = "https://github.com/amnezia-vpn/amneziawg-linux-kernel-module.git"
 prefix = "v"
+# Upstream re-tags as vX.Y.DATE-NN; hyphens are invalid in pkgver.
+from_pattern = '^v?(\d+\.\d+\.\d+)-(\d+)$'
+to_pattern = '\1.\2'
