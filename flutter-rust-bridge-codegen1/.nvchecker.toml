@@ -1,0 +1,8 @@
+# SPDX-FileCopyrightText: 2026 Recipe contributors
+# SPDX-License-Identifier: 0BSD
+# Track RustDesk's required generator, not the latest independent v1/v2 release.
+# The update hook rejects development changes not yet in a stable RustDesk release.
+[flutter-rust-bridge-codegen1]
+source = "regex"
+url = "https://raw.githubusercontent.com/rustdesk/rustdesk/master/.github/workflows/bridge.yml"
+regex = 'FLUTTER_RUST_BRIDGE_VERSION: "([0-9]+\.[0-9]+\.[0-9]+)"'

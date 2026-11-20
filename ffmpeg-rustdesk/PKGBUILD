@@ -1,0 +1,138 @@
+# SPDX-FileCopyrightText: 2026 Recipe contributors
+# SPDX-License-Identifier: 0BSD
+pkgname=ffmpeg-rustdesk
+pkgver=7.1.1
+pkgrel=2
+pkgdesc='Patched static FFmpeg libraries for RustDesk hardware codecs'
+arch=('x86_64')
+url='https://github.com/rustdesk/rustdesk'
+license=('LGPL-2.1-or-later')
+depends=('glibc' 'libdrm' 'zlib')
+makedepends=(
+  'clang'
+  'libva'
+  'nasm'
+  'pkgconf'
+)
+# Deliver ordinary native archives, not Clang LTO bitcode, to the Rust linker.
+options=('!lto' 'staticlibs')
+# Keep this patch set in sync with the source pin in rustdesk/PKGBUILD.
+_rustdesk_commit=fada664df7a294d1d1a9ca3e7cd3637069122f17
+_nvcodec=12.1.14.0
+_amf=1.4.35
+# Private archives and headers leave the system FFmpeg installation untouched.
+# _compatdir supplies the vcpkg-style lookup layout expected by hwcodec.
+_libdir=/usr/lib/rustdesk-ffmpeg-static
+_includedir=/usr/include/rustdesk-ffmpeg-static
+_compatdir=/usr/lib/rustdesk-ffmpeg/installed/x64-linux
+source=(
+  "ffmpeg-$pkgver.tar.gz::https://codeload.github.com/FFmpeg/FFmpeg/tar.gz/refs/tags/n$pkgver"
+  "rustdesk-$_rustdesk_commit.tar.gz::https://codeload.github.com/rustdesk/rustdesk/tar.gz/$_rustdesk_commit"
+  "nv-codec-headers-$_nvcodec.tar.gz::https://codeload.github.com/FFmpeg/nv-codec-headers/tar.gz/refs/tags/n$_nvcodec"
+  "amf-$_amf.tar.gz::https://codeload.github.com/GPUOpen-LibrariesAndSDKs/AMF/tar.gz/refs/tags/v$_amf"
+)
+sha256sums=(
+  'f117507dc501f2a6c11f9241d8d0c3213846cfad91764361af37befd6b6c523d'
+  '251c82c41378d55823cfc37203b75280f6c442deadb6428cb02e3a28486efcb4'
+  '2fefaa227d2a3b4170797796425a59d1dd2ed5fd231db9b4244468ba327acd0b'
+  '5d93101eae5895247bea58cff40bb84424158170ae7f931105666157cc187636'
+)
+# Paths relative to res/vcpkg/ffmpeg/ in the pinned RustDesk source archive
+# above. makepkg extracts that archive into $srcdir; its SHA-256 checksum
+# covers these patches, so no local *.patch copies are needed.
+_patches=(
+  0001-create-lib-libraries.patch
+  0002-fix-msvc-link.patch
+  0003-fix-windowsinclude.patch
+  0004-dependencies.patch
+  0005-fix-nasm.patch
+  0007-fix-lib-naming.patch
+  0013-define-WINVER.patch
+  0020-fix-aarch64-libswscale.patch
+  0024-fix-osx-host-c11.patch
+  0040-ffmpeg-add-av_stream_get_first_dts-for-chromium.patch
+  0041-add-const-for-opengl-definition.patch
+  0043-fix-miss-head.patch
+  patch/0001-avcodec-amfenc-add-query_timeout-option-for-h264-hev.patch
+  patch/0002-libavcodec-amfenc-reconfig-when-bitrate-change.patch
+  patch/0004-videotoolbox-changing-bitrate.patch
+  patch/0005-mediacodec-changing-bitrate.patch
+  patch/0006-dlopen-libva.patch
+  patch/0007-fix-linux-configure.patch
+  patch/0008-remove-amf-loop-query.patch
+  patch/0009-fix-nvenc-reconfigure-blur.patch
+  patch/0010.disable-loading-DLLs-from-app-dir.patch
+  patch/0011-android-mediacodec-encode-align-64.patch
+)
+
+prepare() {
+  cd "FFmpeg-n$pkgver" || return
+  local _patch
+  # Upstream order; the final macOS-only weak-import patch is not used on Linux.
+  for _patch in "${_patches[@]}"; do
+    patch --batch -Np1 -i \
+      "$srcdir/rustdesk-$_rustdesk_commit/res/vcpkg/ffmpeg/$_patch"
+  done
+
+  # Use upstream's exact header versions without changing system header packages.
+  local _codec_headers="$srcdir/codec-headers"
+  install -d "$_codec_headers/include/AMF" "$_codec_headers/lib/pkgconfig"
+  cp -a "$srcdir/nv-codec-headers-n$_nvcodec/include/ffnvcodec" "$_codec_headers/include/"
+  cp -a "$srcdir/AMF-$_amf/amf/public/include/." "$_codec_headers/include/AMF/"
+  sed "s|@@PREFIX@@|$_codec_headers|g" \
+    "$srcdir/nv-codec-headers-n$_nvcodec/ffnvcodec.pc.in" \
+    > "$_codec_headers/lib/pkgconfig/ffnvcodec.pc"
+}
+
+build() {
+  cd "FFmpeg-n$pkgver" || return
+  export PKG_CONFIG_PATH="$srcdir/codec-headers/lib/pkgconfig"
+  # PIC archives link into RustDesk's shared library. Disable autodetection to
+  # keep features explicit; NVENC/NVDEC must also be enabled explicitly here.
+  ./configure \
+    --prefix=/usr --libdir="$_libdir" --incdir="$_includedir" \
+    --datadir="/usr/share/$pkgname" --arch="$CARCH" --target-os=linux \
+    --cc=clang --cxx=clang++ \
+    --extra-cflags="$CFLAGS -I$srcdir/codec-headers/include" \
+    --extra-ldflags="$LDFLAGS" \
+    --disable-shared --enable-static --enable-pic \
+    --disable-autodetect --disable-everything \
+    --disable-programs --disable-doc --disable-debug --disable-network \
+    --disable-avdevice --disable-avfilter --disable-swresample --disable-swscale \
+    --disable-postproc --disable-vdpau \
+    --enable-pthreads --enable-zlib --enable-libdrm --enable-vaapi \
+    --enable-avcodec --enable-avformat \
+    --enable-decoder=h264,hevc --enable-parser=h264,hevc \
+    --enable-bsf=h264_mp4toannexb,hevc_mp4toannexb,h264_metadata,hevc_metadata \
+    --enable-muxer=mp4 --enable-protocol=file \
+    --enable-cuda --enable-cuda-llvm --enable-ffnvcodec --enable-amf \
+    --enable-nvenc --enable-nvdec \
+    --enable-encoder=h264_nvenc,hevc_nvenc,h264_amf,hevc_amf,h264_vaapi,hevc_vaapi \
+    --enable-hwaccel=h264_nvdec,hevc_nvdec,h264_vaapi,hevc_vaapi
+  make
+}
+
+check() {
+  cd "FFmpeg-n$pkgver" || return
+  local _library _encoder
+  for _library in avcodec avformat avutil; do
+    test -s "lib$_library/lib$_library.a"
+  done
+  # Check compiled-in encoders; executing them requires separate GPU tests.
+  for _encoder in H264_NVENC HEVC_NVENC H264_AMF HEVC_AMF H264_VAAPI HEVC_VAAPI; do
+    grep -qx "#define CONFIG_${_encoder}_ENCODER 1" config_components.h
+  done
+}
+
+package() {
+  cd "FFmpeg-n$pkgver" || return
+  make DESTDIR="$pkgdir" install
+  # Preserve hwcodec's expected lookup layout without putting headers in /usr/lib.
+  install -d "$pkgdir$_compatdir"
+  ln -s ../../../rustdesk-ffmpeg-static "$pkgdir$_compatdir/lib"
+  ln -s ../../../../include/rustdesk-ffmpeg-static "$pkgdir$_compatdir/include"
+  install -Dm644 COPYING.LGPLv2.1 \
+    "$pkgdir/usr/share/licenses/$pkgname/COPYING.LGPLv2.1"
+  install -Dm644 "$srcdir/rustdesk-$_rustdesk_commit/res/vcpkg/ffmpeg/portfile.cmake" \
+    "$pkgdir/usr/share/doc/$pkgname/upstream-portfile.cmake"
+}

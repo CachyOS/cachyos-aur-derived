@@ -1,0 +1,8 @@
+# SPDX-FileCopyrightText: 2026 Recipe contributors
+# SPDX-License-Identifier: 0BSD
+# Track RustDesk's required FFmpeg, not the latest independent FFmpeg release.
+# The update hook rejects development changes not yet in a stable RustDesk release.
+[ffmpeg-rustdesk]
+source = "regex"
+url = "https://raw.githubusercontent.com/rustdesk/rustdesk/master/res/vcpkg/ffmpeg/vcpkg.json"
+regex = '"version":\s*"([0-9]+\.[0-9]+\.[0-9]+)"'
