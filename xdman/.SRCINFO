@@ -1,7 +1,7 @@
 pkgbase = xdman
 	pkgdesc = Xtreme Download Manager: download manager with multiple browser integrations
-	pkgver = 9.0.8
-	pkgrel = 2
+	pkgver = 9.0.11
+	pkgrel = 1
 	epoch = 1
 	url = https://xtremedownloadmanager.com/
 	arch = x86_64
@@ -11,9 +11,9 @@ pkgbase = xdman
 	depends = java-runtime>=25
 	depends = hicolor-icon-theme
 	depends = bash
-	source = xdman-9.0.8.tar.gz::https://github.com/subhra74/xdm/archive/refs/tags/9.0.8.tar.gz
+	source = xdman-9.0.11.tar.gz::https://github.com/subhra74/xdm/archive/refs/tags/9.0.11.tar.gz
 	source = xdman.sh
-	b2sums = 2d5a87872e0a941408b7265fdc1740c8ff0d64ecdc689734860d37f57d4c39db4cb83ea5e3b14087eba75ff8fb48a85063b604fe91f8e6f80f2c938b5cbbd99f
+	b2sums = e4a67937a2d26bd3c5548511fbdd23a82798e099c686c473806cc4941d0446942f26d0a5ec680d7c243b567b5260bf0f6920da30e073dfa5ce8fc221fbd3f551
 	b2sums = a7cdd20c94a7463c78c9d87b1884c2f029e498648f93f0292275db941d83707aaf781dd8fda506122cd42b5726258ae53d9adb618048519b5ad1cd52b0ad43fd
 
 pkgname = xdman
