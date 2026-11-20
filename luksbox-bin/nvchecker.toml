@@ -1,0 +1,4 @@
+[luksbox]
+source = "git"
+git = "https://github.com/PentHertz/LUKSbox.git"
+

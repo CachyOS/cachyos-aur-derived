@@ -1,0 +1,23 @@
+pkgbase = luksbox-bin
+	pkgdesc = Store sensitive files in the cloud, or on shared media without trusting the host. LUKSbox is a Rust-based encrypted-container tool with passphrase, FIDO2 (YubiKey, Titan, Nitrokey, Windows Hello), TPM 2.0/SEP, and hybrid post-quantum (ML-KEM-768 / 1024) keyslots. Mounts as a real drive on Linux, macOS, and Windows.
+	pkgver = 0.6.1
+	pkgrel = 1
+	url = https://github.com/PentHertz/LUKSbox
+	arch = x86_64
+	arch = aarch64
+	license = Apache-2.0
+	depends = libfido2
+	depends = fuse3
+	depends = gtk3
+	optdepends = tpm2-tss: TPM2 unlock support
+	provides = luksbox
+	conflicts = luksbox
+	conflicts = luksbox-git
+	replaces = luksbox-cli
+	replaces = luksbox-gui
+	source_x86_64 = luksbox-v0.6.1-x86_64-linux-jammy.tar.gz::https://github.com/PentHertz/LUKSbox/releases/download/v0.6.1/luksbox-v0.6.1-x86_64-linux-jammy.tar.gz
+	sha256sums_x86_64 = 22d3e75d8de2dd596cf0faf6cb2c6c7eb7c663e1d9393c040f193a10ab70eca6
+	source_aarch64 = luksbox-v0.6.1-aarch64-linux-jammy.tar.gz::https://github.com/PentHertz/LUKSbox/releases/download/v0.6.1/luksbox-v0.6.1-aarch64-linux-jammy.tar.gz
+	sha256sums_aarch64 = 375b2527125cc0e03cbc51393e022fe5f9093a9262204d000e04010729812531
+
+pkgname = luksbox-bin
