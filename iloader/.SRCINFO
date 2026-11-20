@@ -1,6 +1,6 @@
 pkgbase = iloader
 	pkgdesc = User-friendly sideloader
-	pkgver = 2.4.1
+	pkgver = 2.4.2
 	pkgrel = 1
 	url = https://github.com/nab138/iloader
 	arch = x86_64
@@ -18,9 +18,9 @@ pkgbase = iloader
 	conflicts = iloader-appimage
 	conflicts = iloader-bin
 	options = !lto
-	source = iloader-2.4.1.tar.gz::https://github.com/nab138/iloader/archive/refs/tags/v2.4.1.tar.gz
+	source = iloader-2.4.2.tar.gz::https://github.com/nab138/iloader/archive/refs/tags/v2.4.2.tar.gz
 	source = iloader.desktop
-	sha256sums = 04eef1401d9b0a1287995cf1bd69fae814dcd39fe0889415ba4b659b6a8e393f
+	sha256sums = d29bf50197a917105f22512f50b9dc5eb2447e65d3022aa68a2969376f84c2c7
 	sha256sums = 755768d09b767b37df904b2afd092c9e52263d5a9752780a1b054f6229d8fa92
 
 pkgname = iloader
