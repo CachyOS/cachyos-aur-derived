@@ -12,7 +12,7 @@ _optname=hermes-agent              # fixed install dir (pkgname-independent, mat
 _pyver=3.14                        # Arch's python minor; keep depends=() in step
 _uvmin=0.13.5                      # pm's uv pin (pm/lock.json); check() stops when it moves
 _pnpmver=12.15.0                   # pm's pnpm pin (pm/lock.json); prepare() stops when it moves
-pkgver=0.23.2
+pkgver=0.23.3
 _pkgver_tag=v${pkgver}
 _tagver=${_pkgver_tag#v}           # tag without the leading v — GitHub strips it from the archive dir
 pkgrel=1
@@ -45,12 +45,14 @@ source=(
   'system-tools.py'
   'hermes_agent_env.py'
 )
-sha256sums=('7e828086c549fc2d90c16795daf416a81a8180d8a52b5d4a29656f7a2ba8f827'
+sha256sums=('061442bf28ee1abd47ef7d6884c5fd906ee0f478b4c3813a5b899ba16544f150'
             'f6824d0250926db151b0a06043a8385a642d83048e2b73967625362076b7d818'
             '0d7ba134037ee7565f40091262eee82b18d089a63238a6bdca7c88d7f5eb324d'
             '196ba6f200257073a5f02bab284a11594e67bfe1e10470a83ab0fc9437ef777b'
             'b079df6f6162180615ba92e67dae6062d7a22600462e76341d29b963aad25571'
             'c8a782bbee797b064db590d7b6e01963e0c31db7eea7ce2be13fe33a11726b6a')
+sha256sums_x86_64=('402f7045b1e0587acb1542f18d38afbccb6babf3c7451394e6fb3d9f0160c6ca'
+                   'f5173f6127cc505cdb36ec17719fe54a8511c6fd8560c7ceb4bf7c73e3b4458b')
 # pnpm as upstream pins it (pm/lock.json): the native executable and the
 # launcher package, whose dist/ holds the node-gyp the executable runs, the
 # two artifacts pm installs. Only the build runs it: the package's pm store
@@ -61,8 +63,6 @@ source_x86_64=(
 )
 # Both archives wrap their files in package/; prepare() unpacks them.
 noextract=("pnpm-exe-${_pnpmver}.tgz" "pnpm-${_pnpmver}.tgz")
-sha256sums_x86_64=('402f7045b1e0587acb1542f18d38afbccb6babf3c7451394e6fb3d9f0160c6ca'
-                   'f5173f6127cc505cdb36ec17719fe54a8511c6fd8560c7ceb4bf7c73e3b4458b')
 
 _extract_dir() {
   echo "${srcdir}/hermes-agent-${_tagver}"
