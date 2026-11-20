@@ -1,6 +1,6 @@
 pkgbase = kwi
 	pkgdesc = Modern and fast terminal for KDE Plasma and other desktops, built on libghostty-vt
-	pkgver = 20261120
+	pkgver = 0.1.0
 	pkgrel = 1
 	url = https://invent.kde.org/utilities/kwi
 	arch = x86_64
@@ -12,7 +12,6 @@ pkgbase = kwi
 	license = MIT
 	makedepends = cmake
 	makedepends = extra-cmake-modules
-	makedepends = git
 	makedepends = ninja
 	makedepends = qt6-shadertools
 	makedepends = zig
@@ -42,11 +41,14 @@ pkgbase = kwi
 	depends = qt6-declarative
 	depends = qt6-svg
 	optdepends = union: styling tweaks when the Union Qt Quick style is in use
-	source = git+https://invent.kde.org/utilities/kwi.git#commit=02604b546fae229893b35550f449d8bcc54a589e
-	source = https://release.files.ghostty.org/libghostty-vt/1.0.0/libghostty-vt-1.0.0.tar.gz
-	source = https://release.files.ghostty.org/libghostty-vt/1.0.0/libghostty-vt-1.0.0-deps.tar.gz
-	sha256sums = e8da96b7fb5134fa22cce405875e180d6cf74bc68fe71ac9c88305a914f8aa2f
-	sha256sums = 4a6ef758be721923e1969e7b81b443dcc92d8dd3fb5a39600c03a8817a753676
-	sha256sums = 4d5ea5e448e4c7ea8fb55ccbaa8668f2a97d44f438cee831e2b7ecd162d85c29
+	source = https://download.kde.org/stable/kwi/0.1.0/kwi-0.1.0.tar.xz
+	source = https://download.kde.org/stable/kwi/0.1.0/kwi-0.1.0.tar.xz.sig
+	source = https://release.files.ghostty.org/libghostty-vt/1.0.1/libghostty-vt-1.0.1.tar.gz
+	source = https://release.files.ghostty.org/libghostty-vt/1.0.1/libghostty-vt-1.0.1-deps.tar.gz
+	validpgpkeys = B3DDDB9F432544A89CF89C573E7B50C5FC57EE47
+	sha256sums = 64296e3eff3b51b1c0fdcd0d25b2441b205372a17330f3ade7a7e613b49806a7
+	sha256sums = SKIP
+	sha256sums = 333dfce97641ef9b536bb9e08907ad86abaaada50e8f7417b70d9284adef37aa
+	sha256sums = 91a4e10960a52bf5bf4b15aa2a2cddaff8a89d6cd903d3055bda4fd17de3356d
 
 pkgname = kwi

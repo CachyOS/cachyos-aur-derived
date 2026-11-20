@@ -1,14 +1,11 @@
 # Maintainer: Peter Jung
 
-# Upstream has no tagged release yet, so a snapshot of master is packaged.
-# .update-hook.sh keeps _commit in sync with pkgver.
-_commit=02604b546fae229893b35550f449d8bcc54a589e
-# kwi needs libghostty-vt >= 1.0, but the ghostty package in extra still ships
+# kwi needs libghostty-vt >= 1.0.1, but the ghostty package in extra still ships
 # 0.1.0-dev and owns the same files. Build the standalone release here and
 # link it statically until a usable libghostty-vt is packaged.
-_ghostty_vt_ver=1.0.0
+_ghostty_vt_ver=1.0.1
 pkgname=kwi
-pkgver=20261120
+pkgver=0.1.0
 pkgrel=1
 pkgdesc="Modern and fast terminal for KDE Plasma and other desktops, built on libghostty-vt"
 arch=(x86_64)
@@ -51,7 +48,6 @@ depends=(
 makedepends=(
     cmake
     extra-cmake-modules
-    git
     ninja
     qt6-shadertools
     zig
@@ -60,13 +56,15 @@ optdepends=(
     'union: styling tweaks when the Union Qt Quick style is in use'
 )
 source=(
-    "git+https://invent.kde.org/utilities/kwi.git#commit=$_commit"
+    "https://download.kde.org/stable/$pkgname/$pkgver/$pkgname-$pkgver.tar.xz"{,.sig}
     "https://release.files.ghostty.org/libghostty-vt/$_ghostty_vt_ver/libghostty-vt-$_ghostty_vt_ver.tar.gz"
     "https://release.files.ghostty.org/libghostty-vt/$_ghostty_vt_ver/libghostty-vt-$_ghostty_vt_ver-deps.tar.gz"
 )
-sha256sums=('e8da96b7fb5134fa22cce405875e180d6cf74bc68fe71ac9c88305a914f8aa2f'
-            '4a6ef758be721923e1969e7b81b443dcc92d8dd3fb5a39600c03a8817a753676'
-            '4d5ea5e448e4c7ea8fb55ccbaa8668f2a97d44f438cee831e2b7ecd162d85c29')
+sha256sums=('64296e3eff3b51b1c0fdcd0d25b2441b205372a17330f3ade7a7e613b49806a7'
+            'SKIP'
+            '333dfce97641ef9b536bb9e08907ad86abaaada50e8f7417b70d9284adef37aa'
+            '91a4e10960a52bf5bf4b15aa2a2cddaff8a89d6cd903d3055bda4fd17de3356d')
+validpgpkeys=('B3DDDB9F432544A89CF89C573E7B50C5FC57EE47') # Eike Hein <hein@kde.org>
 
 build() {
     # libghostty-vt, staged outside of $pkgdir. --system keeps Zig offline,
@@ -82,7 +80,7 @@ build() {
                 -Dcpu=baseline
     )
 
-    cmake -B build -S "$pkgname" -G Ninja \
+    cmake -B build -S "$pkgname-$pkgver" -G Ninja \
         -DCMAKE_BUILD_TYPE=None \
         -DCMAKE_INSTALL_PREFIX=/usr \
         -DGhostty_ROOT="$srcdir/ghostty-vt/usr" \
