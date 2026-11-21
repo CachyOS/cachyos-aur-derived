@@ -1,7 +1,0 @@
-*
-!.gitignore
-!.SRCINFO
-!PKGBUILD
-!xdman.sh
-
-!.nvchecker.toml
