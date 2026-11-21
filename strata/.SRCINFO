@@ -1,0 +1,37 @@
+pkgbase = strata-bin
+	pkgdesc = A fast, keyboard-first file manager for Linux
+	pkgver = 1.2.1
+	pkgrel = 1
+	url = https://stratafiles.io/
+	arch = x86_64
+	arch = aarch64
+	license = MIT
+	depends = bubblewrap
+	depends = desktop-file-utils
+	depends = ffmpeg
+	depends = ffmpegthumbnailer
+	depends = fontconfig
+	depends = glibc>=2.39
+	depends = gst-libav
+	depends = gstreamer
+	depends = gst-plugins-base
+	depends = gst-plugins-good
+	depends = gtk4
+	depends = gtksourceview5
+	depends = gvfs
+	depends = poppler-glib
+	depends = xdg-utils
+	optdepends = gvfs-smb: SMB network share support
+	optdepends = imagemagick: additional image preview support
+	optdepends = libraw: camera RAW preview support
+	optdepends = dcraw: camera RAW preview support
+	optdepends = xdg-desktop-portal: use Strata for Open/Save file chooser dialogs
+	optdepends = udiskie: unlock encrypted volumes with Strata
+	provides = strata-files
+	conflicts = strata-files
+	source_x86_64 = https://github.com/lgse/strata/releases/download/v1.2.1/strata-1.2.1-x86_64-unknown-linux-gnu.tar.gz
+	sha256sums_x86_64 = a63710ce626078ecc107105223680179a4437b8cb9fbce34d74e3d42c80330d0
+	source_aarch64 = https://github.com/lgse/strata/releases/download/v1.2.1/strata-1.2.1-aarch64-unknown-linux-gnu.tar.gz
+	sha256sums_aarch64 = 4c5552b81757639062034b9022442bf13a96c8c07af68c0f682dd000c33a78f0
+
+pkgname = strata-bin
