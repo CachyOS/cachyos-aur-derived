@@ -9,6 +9,7 @@ pkgbase = obs-vaapi
 	license = GPL2
 	makedepends = git
 	makedepends = meson
+	makedepends = simde
 	depends = obs-studio
 	depends = gst-plugins-base-libs
 	depends = gst-plugin-va
