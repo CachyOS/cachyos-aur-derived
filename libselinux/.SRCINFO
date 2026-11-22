@@ -11,12 +11,13 @@ pkgbase = libselinux
 	license = libselinux-1.0
 	makedepends = pkgconf
 	makedepends = python
+	makedepends = python-build
 	makedepends = python-pip
 	makedepends = python-setuptools
 	makedepends = ruby
 	makedepends = xz
 	makedepends = swig
-	depends = libsepol>=3.10
+	depends = libsepol>=3.11
 	depends = pcre2
 	optdepends = python: python bindings
 	optdepends = ruby: ruby bindings
