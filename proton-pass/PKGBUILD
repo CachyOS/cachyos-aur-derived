@@ -6,7 +6,7 @@
 
 pkgname=proton-pass
 pkgver=1.44.1
-pkgrel=1
+pkgrel=2
 pkgdesc="Open-source and secure identity manager"
 arch=('aarch64' 'x86_64')
 url="https://proton.me/pass"
