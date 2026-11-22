@@ -13,10 +13,19 @@ makedepends=(boost cmake qt5-tools)
 optdepends=('python: needed for torrent search tab')
 conflicts=('qbittorrent')
 provides=('qbittorrent')
-source=(https://downloads.sourceforge.net/sourceforge/qbittorrent/${_pkgname}-${pkgver}.tar.xz{,.asc})
+source=(https://downloads.sourceforge.net/sourceforge/qbittorrent/${_pkgname}-${pkgver}.tar.xz{,.asc}
+        libtorrent-2.1.patch)
 sha256sums=('bcf2dcf52a0186c3f5da2f1413453888654dc1aee5e4ad80e5a026764bc640c4'
-            'SKIP')
+            'SKIP'
+            '4cbb3bd95301d0d5c0c15178122990c979b8cf0e2bd199298b5f6556ed3611e6')
 validpgpkeys=('D8F3DA77AAC6741053599C136E4A2D025B7CC9A2')
+
+prepare() {
+  cd ${_pkgname}-${pkgver}
+
+  # Fix build with libtorrent-rasterbar 2.1 and GCC 16
+  patch -Np1 -i ../libtorrent-2.1.patch
+}
 
 build() {
   cd ${_pkgname}-${pkgver}

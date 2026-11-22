@@ -22,8 +22,10 @@ pkgbase = qbittorrent-qt5
 	conflicts = qbittorrent
 	source = https://downloads.sourceforge.net/sourceforge/qbittorrent/qbittorrent-4.6.7.tar.xz
 	source = https://downloads.sourceforge.net/sourceforge/qbittorrent/qbittorrent-4.6.7.tar.xz.asc
+	source = libtorrent-2.1.patch
 	validpgpkeys = D8F3DA77AAC6741053599C136E4A2D025B7CC9A2
 	sha256sums = bcf2dcf52a0186c3f5da2f1413453888654dc1aee5e4ad80e5a026764bc640c4
 	sha256sums = SKIP
+	sha256sums = 4cbb3bd95301d0d5c0c15178122990c979b8cf0e2bd199298b5f6556ed3611e6
 
 pkgname = qbittorrent-qt5

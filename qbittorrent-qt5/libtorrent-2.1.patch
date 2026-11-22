@@ -1,0 +1,162 @@
+Fix build against libtorrent-rasterbar 2.1 and GCC 16
+
+Partial backport of upstream qBittorrent commit e154c1a811
+("Support build against latest version of libtorrent"):
+- lt::storage_params::mapped_files was replaced by renamed_files,
+  and storage_params::path is now a string_view
+- torrent_info::files() is immutable; renames live in
+  torrent_status::renamed_files (use lt::filenames overlay)
+- torrent_status::need_save_resume replaced by need_save_resume_data
+
+Also add missing <cmath> include for std::ceil (GCC 16).
+
+Only in b: build
+--- a/src/base/bittorrent/customstorage.cpp
++++ b/src/base/bittorrent/customstorage.cpp
+@@ -65,6 +65,16 @@
+ {
+     lt::storage_holder storageHolder = m_nativeDiskIO->new_torrent(storageParams, torrent);
+ 
++#if LIBTORRENT_VERSION_NUM >= 20100
++    const Path savePath {std::string(storageParams.path)};
++    m_storageData[storageHolder] =
++    {
++        savePath,
++        storageParams.files,
++        storageParams.renamed_files,
++        storageParams.priorities
++    };
++#else
+     const Path savePath {storageParams.path};
+     m_storageData[storageHolder] =
+     {
+@@ -72,6 +82,7 @@
+         storageParams.mapped_files ? *storageParams.mapped_files : storageParams.files,
+         storageParams.priorities
+     };
++#endif
+ 
+     return storageHolder;
+ }
+@@ -156,7 +167,11 @@
+                                       , [=, handler = std::move(handler)](const std::string &name, lt::file_index_t index, const lt::storage_error &error)
+     {
+         if (!error)
++#if LIBTORRENT_VERSION_NUM >= 20100
++            m_storageData[storage].renamedFiles.rename_file(m_storageData[storage].files, index, name);
++#else
+             m_storageData[storage].files.rename_file(index, name);
++#endif
+         handler(name, index, error);
+     });
+ }
+@@ -212,7 +227,12 @@
+ void CustomDiskIOThread::handleCompleteFiles(lt::storage_index_t storage, const Path &savePath)
+ {
+     const StorageData storageData = m_storageData[storage];
++#if LIBTORRENT_VERSION_NUM >= 20100
++    const lt::filenames fileNames {storageData.files, storageData.renamedFiles};
++    const auto &fileStorage = fileNames;
++#else
+     const lt::file_storage &fileStorage = storageData.files;
++#endif
+     for (const lt::file_index_t fileIndex : fileStorage.file_range())
+     {
+         // ignore files that have priority 0
+--- a/src/base/bittorrent/customstorage.h
++++ b/src/base/bittorrent/customstorage.h
+@@ -39,6 +39,7 @@
+ #include <libtorrent/disk_interface.hpp>
+ #include <libtorrent/file_storage.hpp>
+ #include <libtorrent/io_context.hpp>
++#include <libtorrent/version.hpp>
+ 
+ #include <QHash>
+ 
+@@ -100,6 +101,9 @@
+     {
+         Path savePath;
+         lt::file_storage files;
++#if LIBTORRENT_VERSION_NUM >= 20100
++        lt::renamed_files renamedFiles;
++#endif
+         lt::aux::vector<lt::download_priority_t, lt::file_index_t> filePriorities;
+     };
+     QHash<lt::storage_index_t, StorageData> m_storageData;
+--- a/src/base/bittorrent/torrentimpl.cpp
++++ b/src/base/bittorrent/torrentimpl.cpp
+@@ -30,6 +30,7 @@
+ #include "torrentimpl.h"
+ 
+ #include <algorithm>
++#include <cmath>
+ #include <memory>
+ #include <type_traits>
+ 
+@@ -39,6 +40,7 @@
+ #include <libtorrent/session.hpp>
+ #include <libtorrent/storage_defs.hpp>
+ #include <libtorrent/time.hpp>
++#include <libtorrent/version.hpp>
+ 
+ #ifdef QBT_USES_LIBTORRENT2
+ #include <libtorrent/info_hash.hpp>
+@@ -749,7 +751,16 @@
+ 
+ bool TorrentImpl::needSaveResumeData() const
+ {
++#if LIBTORRENT_VERSION_NUM >= 20100
++    return static_cast<bool>(m_nativeStatus.need_save_resume_data
++        & (lt::torrent_handle::if_download_progress
++            | lt::torrent_handle::if_config_changed
++            | lt::torrent_handle::if_state_changed
++            | lt::torrent_handle::if_metadata_changed
++            | lt::torrent_handle::if_counters_changed));
++#else
+     return m_nativeStatus.need_save_resume;
++#endif
+ }
+ 
+ void TorrentImpl::saveResumeData(lt::resume_data_flags_t flags)
+@@ -893,7 +904,13 @@
+     if ((index < 0) || (index >= nativeIndexes.size()))
+         return {};
+ 
+-    return Path(nativeTorrentInfo()->files().file_path(nativeIndexes[index]));
++#if LIBTORRENT_VERSION_NUM >= 20100
++    const lt::file_storage &fs = nativeTorrentInfo()->files();
++    const lt::filenames files {fs, m_nativeStatus.renamed_files};
++#else
++    const lt::file_storage &files = nativeTorrentInfo()->files();
++#endif
++    return Path(files.file_path(nativeIndexes[index]));
+ }
+ 
+ qlonglong TorrentImpl::fileSize(const int index) const
+@@ -1938,7 +1955,7 @@
+             }
+         }
+ 
+-        if (m_nativeStatus.need_save_resume)
++        if (needSaveResumeData())
+             m_session->handleTorrentNeedSaveResumeData(this);
+ 
+         m_session->handleTorrentChecked(this);
+@@ -2287,15 +2304,11 @@
+ 
+ void TorrentImpl::manageIncompleteFiles()
+ {
+-    const std::shared_ptr<const lt::torrent_info> nativeInfo = nativeTorrentInfo();
+-    const lt::file_storage &nativeFiles = nativeInfo->files();
+-
+     for (int i = 0; i < filesCount(); ++i)
+     {
+         const Path path = filePath(i);
+ 
+-        const auto nativeIndex = m_torrentInfo.nativeIndexes().at(i);
+-        const Path actualPath {nativeFiles.file_path(nativeIndex)};
++        const Path actualPath = actualFilePath(i);
+         const Path wantedPath = wantedActualPath(i, path);
+         if (actualPath != wantedPath)
+         {
+Only in b/src/base: version.h
