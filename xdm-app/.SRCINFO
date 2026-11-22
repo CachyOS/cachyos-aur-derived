@@ -1,6 +1,6 @@
 pkgbase = xdm-app
 	pkgdesc = Xtreme Download Manager: download manager with multiple browser integrations
-	pkgver = 9.0.11
+	pkgver = 9.0.12
 	pkgrel = 1
 	epoch = 1
 	url = https://xtremedownloadmanager.com/
@@ -14,9 +14,9 @@ pkgbase = xdm-app
 	depends = bash
 	conflicts = xdman
 	replaces = xdman
-	source = git+https://github.com/subhra74/xdm.git#tag=9.0.11
+	source = git+https://github.com/subhra74/xdm.git#tag=9.0.12
 	source = xdm-app.sh
-	b2sums = 409973e25f2da57f1832a8bd06a71a492d282fac6afce569e1a8f9a5712d407bbf78f9e145ad4d24db5974b6975c37e444c9478885bc69c9b1771815cd97e2b3
+	b2sums = 99e869eee0098e235226c9a19680c964e08f3ceffb4ef770eaa6b217df076df3c667b54d7eeb47e347fb17173f40db5734a6d3bc31c9f95590b6d2a6dec2a1d6
 	b2sums = 5e4b6b7e36b6387616def14aa3db37871c06cf22c0075ac72c2b9ca5457723d2e6b740e22086cdd14841969e37c73679cd470f54aec0959ee903ce88b971c2ca
 
 pkgname = xdm-app
