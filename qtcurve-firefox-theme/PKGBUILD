@@ -4,7 +4,7 @@ _commit=68a3b41753b66a2f00cf98667a68458961f5cb25
 _srcname=qtcurve
 pkgname=qtcurve-firefox-theme
 pkgver=20260909
-pkgrel=6
+pkgrel=7
 pkgdesc="The QtCurve theme for the Firefox chrome; the writer that follows the settings is in qtcurve"
 arch=(any)
 url="https://invent.kde.org/system/qtcurve"
@@ -268,7 +268,7 @@ sha256sums=('e01dbf05c24c11a3660e6185a9a7607d0838d4560ab717d44b449e9520476f6e'
             '76bb238db584dde12364736fb002737f23826b06ea4fc3d43ad1ee826928cf6c'
             '23a17a146db657c8744ec7b7852c23a7e92a24bb5ee34ce004f6fb75d4e684c8'
             '709d64f32c146014c1cff5055dd9a2f0c5b11b48814210d79d5ba75a5e11824e'
-            '54798c25be46a83a72740202838ddf8019a5a6cc0c046ff247974dadede4c09f')
+            '833a873f3d32c6a9a1354f2e713f5d48cdb23c0e52aa648e1c1a16864f4f1676')
 
 pkgver() {
 	git -C "$_srcname" log -1 --format=%cd --date=format:%Y%m%d
@@ -448,8 +448,10 @@ prepare() {
 	# The patch also pins the hovered borders, the page greys and the hovered
 	# rows that the browser paints with its own colours. The patch also pins
 	# the frames, the focus colour, the open grounds and the list rows that
-	# the Qt style paints in another colour. The patch adds three checks, so
-	# it takes the three way merge of git.
+	# the Qt style paints in another colour. The patch also follows Firefox
+	# 160 alone: it pins the zoom box, the menus, the gradients, the glow
+	# rows and the disabled controls of QtCurve. The patch adds three checks,
+	# so it takes the three way merge of git.
 	git -C "$_srcname" add -A
 	git -C "$_srcname" apply --3way "$srcdir/firefox-nova.patch"
 }
