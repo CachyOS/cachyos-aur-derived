@@ -11,17 +11,40 @@ conflicts=(wayfire-plugins-focus-request
            wayfire-plugins-shadows-git)
 depends=("wayfire>=${pkgver%.*}" cairo glibmm iio-sensor-proxy librsvg)
 makedepends=(boost meson ninja nlohmann-json glm git vulkan-headers wayland-protocols)
-source=("https://github.com/WayfireWM/${pkgname}/releases/download/v${pkgver}/${pkgname}-${pkgver}.tar.xz")
-sha256sums=('2c8be09911049c36e9871c7b359d7b47c3eed608e5b0df4401ebe3bb3da89eb5')
-b2sums=('0dc481edfa788768386d0663d3064f37fdae3c4a642e77038c55fa0c57e48243bb1dad32541d6934a9617d41369c3eb0d5bb23a3da501f239e5e48d4ce2995bf')
+# Unlike 0.10.0, the 0.11.2 release tarball no longer bundles the wrap-git
+# subprojects, and arch-meson uses --wrap-mode=nodownload, so vendor them.
+_subprojects=(filters focus-request pixdecor wayfire-shadows)
+source=("https://github.com/WayfireWM/${pkgname}/releases/download/v${pkgver}/${pkgname}-${pkgver}.tar.xz"
+        "filters::git+https://github.com/soreau/filters.git#commit=ecfe09aa87e812cd11c13eff60414c106d5accef"
+        "focus-request::git+https://gitlab.com/wayfireplugins/focus-request.git#commit=b5c5029f1a695bcd79e2fa0de615cd8028f64f62"
+        "pixdecor::git+https://github.com/soreau/pixdecor.git#commit=d74909d3056565a8f2cbfbc33c6951960d486e63"
+        "wayfire-shadows::git+https://github.com/timgott/wayfire-shadows.git#commit=4bfdbbf1abe40519183b9a1e1648a732bc656f13")
+sha256sums=('2c8be09911049c36e9871c7b359d7b47c3eed608e5b0df4401ebe3bb3da89eb5'
+            'SKIP'
+            'SKIP'
+            'SKIP'
+            'SKIP')
+b2sums=('0dc481edfa788768386d0663d3064f37fdae3c4a642e77038c55fa0c57e48243bb1dad32541d6934a9617d41369c3eb0d5bb23a3da501f239e5e48d4ce2995bf'
+        'SKIP'
+        'SKIP'
+        'SKIP'
+        'SKIP')
+
+prepare () {
+	local _sp
+	for _sp in "${_subprojects[@]}"; do
+		rm -rf "${pkgname}-${pkgver}/subprojects/${_sp}"
+		cp -a "${_sp}" "${pkgname}-${pkgver}/subprojects/${_sp}"
+	done
+}
 
 build () {
 	rm -rf build
 	arch-meson "${pkgname}-${pkgver}" build \
-		-Denable_filters=true \
-		-Denable_focus_request=true \
-		-Denable_pixdecor=true \
-		-Denable_wayfire_shadows=true \
+		-Dfilters=true \
+		-Dfocus_request=true \
+		-Dpixdecor=true \
+		-Dwayfire_shadows=true \
 		--auto-features=disabled
 	meson compile -C build
 }
