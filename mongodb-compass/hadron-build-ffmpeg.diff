@@ -1,15 +1,15 @@
 diff --git a/packages/hadron-build/src/lib/target.ts b/packages/hadron-build/src/lib/target.ts
-index 9d14084..d495c1b 100644
+index 9b82d74..ccef051 100644
 --- a/packages/hadron-build/src/lib/target.ts
 +++ b/packages/hadron-build/src/lib/target.ts
-@@ -6,7 +6,6 @@ import path from 'path';
+@@ -6,7 +6,6 @@ import chalk from 'chalk';
  import normalizePkg from 'normalize-package-data';
  import parseGitHubRepoURL from 'parse-github-repo-url';
  import type packager from 'electron-packager';
 -import safeFFMPEG from 'electron-packager-plugin-non-proprietary-codecs-ffmpeg';
- import { windowsInstallerVersion } from './windows-installer-version';
  import createDebug from 'debug';
  import which from 'which';
+ import plist from 'plist';
 @@ -309,7 +308,6 @@ class Target {
        platform: this.platform,
        arch: this.arch,
