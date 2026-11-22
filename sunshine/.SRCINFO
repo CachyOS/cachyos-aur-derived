@@ -1,6 +1,6 @@
 pkgbase = sunshine
 	pkgdesc = Self-hosted game stream host for Moonlight
-	pkgver = 2026.1121.151158
+	pkgver = 2026.1122.180652
 	pkgrel = 1
 	url = https://app.lizardbyte.dev/Sunshine
 	install = sunshine.install
@@ -50,7 +50,7 @@ pkgbase = sunshine
 	depends = which
 	optdepends = cuda: Nvidia GPU encoding support
 	optdepends = libva-mesa-driver: AMD GPU encoding support
-	source = sunshine::git+https://github.com/LizardByte/Sunshine.git#tag=v2026.1121.151158
-	sha256sums = a886dc18b2553f1b2e6fe94dc56c21e7ad647cacdb39c7f36f7514ace4db2229
+	source = sunshine::git+https://github.com/LizardByte/Sunshine.git#tag=v2026.1122.180652
+	sha256sums = ed4635ac1b6758e2377ecce61a47216450940256474a85d3f4b9c69ceb82d0a1
 
 pkgname = sunshine
