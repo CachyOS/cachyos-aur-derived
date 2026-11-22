@@ -1,0 +1,87 @@
+Backport of the test fixes from upstream commit 56ff2910
+("build(deps): upgrade to Go 1.27", #5681):
+https://github.com/kopia/kopia/commit/56ff2910627073e25392026720ee996b0766a088
+
+Go 1.27 changed the compress/flate output and the fmt output of a nil
+json.RawMessage, breaking hard-coded test expectations.
+
+diff -ruN a/repo/content/content_manager_test.go b/repo/content/content_manager_test.go
+--- a/repo/content/content_manager_test.go
++++ b/repo/content/content_manager_test.go
+@@ -2095,7 +2095,7 @@
+ 	require.NoError(t, err)
+
+ 	// gzip-compressed length
+-	require.Equal(t, uint32(79), ci.PackedLength)
++	require.Equal(t, 75, int(ci.PackedLength), "packed length")
+ 	require.Equal(t, uint32(len(compressibleData)), ci.OriginalLength)
+ 	require.Equal(t, headerID, ci.CompressionHeaderID)
+
+diff -ruN a/repo/maintenancestats/builder_test.go b/repo/maintenancestats/builder_test.go
+--- a/repo/maintenancestats/builder_test.go
++++ b/repo/maintenancestats/builder_test.go
+@@ -1,6 +1,7 @@
+ package maintenancestats
+
+ import (
++	"encoding/json"
+ 	"testing"
+ 	"time"
+
+@@ -370,24 +371,40 @@
+ 		name        string
+ 		stats       Extra
+ 		expectedErr string
++		checkError  func(t *testing.T, err error)
+ 	}{
+ 		{
+ 			name:        "unsupported kind",
+-			expectedErr: "invalid kind for stats { []}: unsupported stats kind",
++			expectedErr: "invalid kind for stats",
++			checkError: func(t *testing.T, err error) {
++				t.Helper()
++				require.ErrorIs(t, err, ErrUnSupportedStatKindError)
++			},
+ 		},
+ 		{
+ 			name: "unmarshal fails",
+ 			stats: Extra{
+ 				Kind: cleanupMarkersStatsKind,
+ 			},
+-			expectedErr: "error unmarshaling raw stats [] of kind cleanupMarkersStats to *maintenancestats.CleanupMarkersStats: unexpected end of JSON input",
++			checkError: func(t *testing.T, err error) {
++				t.Helper()
++
++				var target *json.SyntaxError
++
++				require.ErrorAs(t, err, &target)
++			},
++
++			expectedErr: "error unmarshaling raw stats",
+ 		},
+ 	}
+
+ 	for _, tc := range cases {
+-		result, err := BuildFromExtra(tc.stats)
++		t.Run(tc.name, func(t *testing.T) {
++			result, err := BuildFromExtra(tc.stats)
+
+-		require.EqualError(t, err, tc.expectedErr)
+-		require.Nil(t, result)
++			tc.checkError(t, err)
++			require.ErrorContains(t, err, tc.expectedErr)
++			require.Nil(t, result)
++		})
+ 	}
+ }
+diff -ruN a/repo/repository_test.go b/repo/repository_test.go
+--- a/repo/repository_test.go
++++ b/repo/repository_test.go
+@@ -806,7 +806,7 @@
+
+ 	// this is what 100x{1,2,3,4} compresses down to using gzip, it's also
+ 	// the number of bytes that go into encryption.
+-	const compressedByteCount = 36
++	const compressedByteCount = 33
+
+ 	const encryptionOverhead = 28

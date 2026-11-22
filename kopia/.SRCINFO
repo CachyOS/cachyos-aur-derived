@@ -10,6 +10,8 @@ pkgbase = kopia
 	makedepends = go
 	depends = glibc
 	source = kopia-0.23.1.tar.gz::https://github.com/kopia/kopia/archive/refs/tags/v0.23.1.tar.gz
+	source = kopia-go1.27-tests.patch
 	sha256sums = 0009ca0b2249a7042f779e722e87f8d8c12262117b308db522f7c8d46720a22e
+	sha256sums = bcb3e01c2a6fc1376c2e4de40e9ea37f65fcfa88f4f60200ac117d82d0efd421
 
 pkgname = kopia
