@@ -8,9 +8,12 @@ pkgbase = agent-browser
 	depends = glibc
 	optdepends = chromium: browser to automate (or google-chrome)
 	optdepends = google-chrome: browser to automate (or chromium)
+	noextract = agent-browser-cli-linux-x64-gnu-0.43.0.tgz
 	options = !strip
 	options = !debug
 	source = https://registry.npmjs.org/agent-browser/-/agent-browser-0.43.0.tgz
+	source = agent-browser-cli-linux-x64-gnu-0.43.0.tgz::https://registry.npmjs.org/@agent-browser/cli-linux-x64-gnu/-/cli-linux-x64-gnu-0.43.0.tgz
 	sha256sums = e45d3b95c112da0858f8a7c836d55dbc0b7858fac47df1509d740adff65e0abb
+	sha256sums = aa00b14ee8294edfeb1bc01bc6418cf4b7e50d75b046a9ab497c10384207383f
 
 pkgname = agent-browser

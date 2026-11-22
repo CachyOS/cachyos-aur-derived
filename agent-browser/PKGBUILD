@@ -12,16 +12,25 @@ optdepends=(
   'google-chrome: browser to automate (or chromium)'
 )
 options=('!strip' '!debug')
-# The npm tarball carries upstream's prebuilt CLI for every platform. Ship only
-# the x86_64 glibc binary and the skill data it reads next to it.
-source=("https://registry.npmjs.org/${pkgname}/-/${pkgname}-${pkgver}.tgz")
-sha256sums=('e45d3b95c112da0858f8a7c836d55dbc0b7858fac47df1509d740adff65e0abb')
+# Since 0.43.0 the main npm tarball only carries the launcher and skill data;
+# the prebuilt CLI ships in per-platform packages. Use the x86_64 glibc one.
+source=("https://registry.npmjs.org/${pkgname}/-/${pkgname}-${pkgver}.tgz"
+        "${pkgname}-cli-linux-x64-gnu-${pkgver}.tgz::https://registry.npmjs.org/@${pkgname}/cli-linux-x64-gnu/-/cli-linux-x64-gnu-${pkgver}.tgz")
+# both tarballs unpack to package/, so extract the native one separately
+noextract=("${pkgname}-cli-linux-x64-gnu-${pkgver}.tgz")
+sha256sums=('e45d3b95c112da0858f8a7c836d55dbc0b7858fac47df1509d740adff65e0abb'
+            'aa00b14ee8294edfeb1bc01bc6418cf4b7e50d75b046a9ab497c10384207383f')
+
+prepare() {
+  mkdir -p cli-linux-x64-gnu
+  bsdtar -xf "${pkgname}-cli-linux-x64-gnu-${pkgver}.tgz" -C cli-linux-x64-gnu --strip-components=1
+}
 
 package() {
   cd package
 
   local _libdir="/usr/lib/${pkgname}"
-  install -Dm755 "bin/${pkgname}-linux-x64" "${pkgdir}${_libdir}/bin/${pkgname}-linux-x64"
+  install -Dm755 "../cli-linux-x64-gnu/bin/${pkgname}" "${pkgdir}${_libdir}/bin/${pkgname}-linux-x64"
   cp -r --no-preserve=ownership skill-data skills "${pkgdir}${_libdir}/"
   find "${pkgdir}${_libdir}" -type d -exec chmod 755 {} + \
     -o -type f ! -path "*/bin/*" -exec chmod 644 {} +
