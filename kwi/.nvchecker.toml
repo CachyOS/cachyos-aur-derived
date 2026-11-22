@@ -1,4 +1,0 @@
-[kwi]
-source = "git"
-git = "https://invent.kde.org/utilities/kwi.git"
-prefix = "v"
