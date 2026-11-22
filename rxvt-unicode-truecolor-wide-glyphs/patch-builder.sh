@@ -7,7 +7,7 @@
 
 # config
 pkgname="rxvt-unicode"
-pkgversion="9.31"
+pkgversion="9.32"
 extension="tar.bz2"
 initial="a"
 modified="b"
@@ -35,7 +35,6 @@ tar xvf "$pkgname-$pkgversion.$extension"
 mv "$pkgname-$pkgversion" "$modified"
 
 # build patches
-build_patch "7-bit-queries"
 build_patch "lines-rewrap"
 build_patch "24-bit-color"
 build_patch "enable-wide-glyphs"
