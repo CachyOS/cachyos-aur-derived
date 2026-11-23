@@ -20,8 +20,7 @@ source=("${pkgname}_${pkgver}.orig.tar.gz"::"https://github.com/vagnum08/cpupowe
 sha256sums=('c05e3ef856013d553cb64918931434c87ac12e0c4cb6c175c62d1defbbb91a2f')
 
 build() {
-  sed -i '15d' "$srcdir/${pkgname}-${pkgver}/data/meson.build"
-  meson --prefix /usr -Dsystemddir=/usr/lib/systemd --buildtype=plain "$srcdir/${pkgname}-${pkgver}" build
+  meson setup --prefix /usr -Dsystemddir=/usr/lib/systemd --buildtype=plain "$srcdir/${pkgname}-${pkgver}" build
   ninja -C build
 }
 
