@@ -10,7 +10,7 @@ conflicts=(wayfire-plugins-focus-request
            wayfire-plugins-windecor
            wayfire-plugins-shadows-git)
 depends=("wayfire>=${pkgver%.*}" cairo glibmm iio-sensor-proxy librsvg)
-makedepends=(boost meson ninja nlohmann-json glm git vulkan-headers wayland-protocols)
+makedepends=(boost cmake meson ninja nlohmann-json glm git vulkan-headers wayland-protocols)
 # Unlike 0.10.0, the 0.11.2 release tarball no longer bundles the wrap-git
 # subprojects, and arch-meson uses --wrap-mode=nodownload, so vendor them.
 _subprojects=(filters focus-request pixdecor wayfire-shadows)
