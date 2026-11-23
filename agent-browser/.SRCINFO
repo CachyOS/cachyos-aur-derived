@@ -1,19 +1,19 @@
 pkgbase = agent-browser
 	pkgdesc = Headless browser automation CLI for AI agents
-	pkgver = 0.43.0
-	pkgrel = 2
+	pkgver = 0.44.0
+	pkgrel = 1
 	url = https://github.com/vercel-labs/agent-browser
 	arch = x86_64
 	license = Apache-2.0
 	depends = glibc
 	optdepends = chromium: browser to automate (or google-chrome)
 	optdepends = google-chrome: browser to automate (or chromium)
-	noextract = agent-browser-cli-linux-x64-gnu-0.43.0.tgz
+	noextract = agent-browser-cli-linux-x64-gnu-0.44.0.tgz
 	options = !strip
 	options = !debug
-	source = https://registry.npmjs.org/agent-browser/-/agent-browser-0.43.0.tgz
-	source = agent-browser-cli-linux-x64-gnu-0.43.0.tgz::https://registry.npmjs.org/@agent-browser/cli-linux-x64-gnu/-/cli-linux-x64-gnu-0.43.0.tgz
-	sha256sums = e45d3b95c112da0858f8a7c836d55dbc0b7858fac47df1509d740adff65e0abb
-	sha256sums = aa00b14ee8294edfeb1bc01bc6418cf4b7e50d75b046a9ab497c10384207383f
+	source = https://registry.npmjs.org/agent-browser/-/agent-browser-0.44.0.tgz
+	source = agent-browser-cli-linux-x64-gnu-0.44.0.tgz::https://registry.npmjs.org/@agent-browser/cli-linux-x64-gnu/-/cli-linux-x64-gnu-0.44.0.tgz
+	sha256sums = 5c26522e4876d5517a12aa878f357dda535396782b425380bc23149e5c85cc0c
+	sha256sums = bd27c036feb38847397d1957a9b589cf8ee3c72676f41b3d19903a1b7a3c1890
 
 pkgname = agent-browser
