@@ -12,7 +12,7 @@ _optname=hermes-agent              # fixed install dir (pkgname-independent, mat
 _pyver=3.14                        # Arch's python minor; keep depends=() in step
 _uvmin=0.13.5                      # pm's uv pin (pm/lock.json); check() stops when it moves
 _pnpmver=12.15.0                   # pm's pnpm pin (pm/lock.json); prepare() stops when it moves
-pkgver=0.23.3
+pkgver=0.23.4
 _pkgver_tag=v${pkgver}
 _tagver=${_pkgver_tag#v}           # tag without the leading v — GitHub strips it from the archive dir
 pkgrel=1
@@ -45,7 +45,7 @@ source=(
   'system-tools.py'
   'hermes_agent_env.py'
 )
-sha256sums=('061442bf28ee1abd47ef7d6884c5fd906ee0f478b4c3813a5b899ba16544f150'
+sha256sums=('875e633ae5b3c6349c1bcffc18c0476518fbe5dead355e4aa09ad827ebffce0c'
             'f6824d0250926db151b0a06043a8385a642d83048e2b73967625362076b7d818'
             '0d7ba134037ee7565f40091262eee82b18d089a63238a6bdca7c88d7f5eb324d'
             '196ba6f200257073a5f02bab284a11594e67bfe1e10470a83ab0fc9437ef777b'
