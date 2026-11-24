@@ -7,8 +7,8 @@
 # Contributor : Geoffrey Teale <tealeg@googlemail.com>
 
 pkgname=google-breakpad
-pkgver=v2024.02.16
-pkgrel=3
+pkgver=v2026.07.24
+pkgrel=1
 _lssver=v2024.02.01
 pkgdesc="An open-source multi-platform crash reporting system"
 arch=('i686' 'x86_64' 'armv7h')
@@ -22,8 +22,8 @@ provides=()
 source=("${pkgname}-${pkgver}.tar.gz::https://chromium.googlesource.com/breakpad/breakpad/+archive/refs/tags/${pkgver}.tar.gz"
 	"lss-${_lssver}.tar.gz::https://chromium.googlesource.com/linux-syscall-support/+archive/refs/tags/${_lssver}.tar.gz")
 noextract=("lss-${_lssver}.tar.gz")
-sha256sums=('SKIP'
-            'SKIP')
+sha256sums=('086d207d6a69ae26d889a1df0e446ab10d3372b4b6195f5492ee99c443cc93dd'
+            'e71571f898da72ca31e74600cb6aff1ab79756139d91f56fca89046df017e988')
 
 prepare() {
 mkdir -p src/third_party/lss
