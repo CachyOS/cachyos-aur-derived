@@ -1,7 +1,7 @@
 pkgbase = heroic-games-launcher
 	pkgdesc = An Open Source Launcher for GOG, Epic Games and Amazon Games
 	pkgver = 2.22.4
-	pkgrel = 1
+	pkgrel = 2
 	url = https://heroicgameslauncher.com/
 	arch = x86_64
 	license = GPL-3.0-only
@@ -16,7 +16,7 @@ pkgbase = heroic-games-launcher
 	depends = python
 	depends = libgcc
 	depends = glibc
-	depends = zlib-ng-compat
+	depends = zlib
 	optdepends = gamemode
 	optdepends = gamescope
 	optdepends = mangohud

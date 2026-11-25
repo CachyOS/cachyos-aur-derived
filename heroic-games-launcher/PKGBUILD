@@ -4,7 +4,7 @@ _electron=electron43
 pkgver=2.22.4
 
 pkgname=heroic-games-launcher
-pkgrel=1
+pkgrel=2
 pkgdesc="An Open Source Launcher for GOG, Epic Games and Amazon Games"
 arch=(x86_64)
 url=https://heroicgameslauncher.com/
@@ -21,7 +21,7 @@ depends=(
     "python"
     "libgcc"
     "glibc"
-    "zlib-ng-compat"
+    "zlib"
 )
 makedepends=(
     "desktop-file-utils"
