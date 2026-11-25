@@ -1,7 +1,7 @@
 pkgbase = lha
 	pkgdesc = A compression and archive utility for LH-7 format archives
-	pkgver = 1.14i_ac20260722
-	pkgrel = 2
+	pkgver = 1.14i_ac20261125
+	pkgrel = 1
 	epoch = 1
 	url = http://lha.osdn.jp
 	arch = x86_64
