@@ -1,13 +1,12 @@
 # Maintainer: Mark Wagie <mark dot wagie at proton dot me>
 pkgname=protonplus
 pkgver=0.6.9
-pkgrel=1
+pkgrel=2
 pkgdesc="A modern compatibility tools manager"
 arch=('x86_64')
 url="https://github.com/Vysp3r/ProtonPlus"
 license=('GPL-3.0-or-later')
 depends=(
-  'appstream'
   'gtk4'
   'json-glib'
   'libadwaita'
@@ -15,6 +14,7 @@ depends=(
   'libgee'
   'libsoup3'
   'libnotify'
+  'libyaml'
   'sdl3'
 )
 makedepends=(
