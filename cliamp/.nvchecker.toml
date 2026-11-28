@@ -1,0 +1,4 @@
+[cliamp]
+source = "git"
+git = "https://github.com/bjarneo/cliamp.git"
+prefix = "v"
