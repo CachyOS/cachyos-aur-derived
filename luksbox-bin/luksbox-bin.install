@@ -1,0 +1,34 @@
+post_install() {
+    if ! getent group tss >/dev/null 2>&1; then
+        echo ":: 'tss' group not found. TPM2 keyslots may not work."
+        echo ":: For more info: https://luksbox.penthertz.com/docs/keyslots/tpm2/"
+        return
+    fi
+
+    local user="$(getent passwd 1000 | cut -d: -f1)"
+    
+    if [[ -z "$user" ]]; then
+        echo ":: tpm2-tss detected, but could not determine the invoking user."
+        echo ":: Check membership manually: id -nG <user>"
+        echo ":: Add user with: sudo usermod -aG tss <user>"
+
+    elif ! id -nG "$user" 2>/dev/null | grep -qw tss; then
+        echo ":: tpm2-tss detected. User '$user' is not in the 'tss' group."
+        echo ""
+        echo "   sudo usermod -aG tss '$user'"
+        echo ""
+        echo ":: Log out and back in for changes to take effect."
+
+    else
+        echo ":: User '$user' is already a member of the 'tss' group."
+    fi
+
+    echo ""
+    echo ":: Also ensure TPM udev rules grant access to the 'tss' group."
+    echo ":: /dev/tpm0 and /dev/tpmrm0 should be owned by root:tss with mode 0660."
+    echo ":: For more info: https://luksbox.penthertz.com/docs/keyslots/tpm2/"
+}
+
+post_upgrade() {
+    post_install
+}
