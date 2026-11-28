@@ -1,0 +1,26 @@
+pkgbase = ffmpeg-rustdesk
+	pkgdesc = Patched static FFmpeg libraries for RustDesk hardware codecs
+	pkgver = 7.1.1
+	pkgrel = 2
+	url = https://github.com/rustdesk/rustdesk
+	arch = x86_64
+	license = LGPL-2.1-or-later
+	makedepends = clang
+	makedepends = libva
+	makedepends = nasm
+	makedepends = pkgconf
+	depends = glibc
+	depends = libdrm
+	depends = zlib
+	options = !lto
+	options = staticlibs
+	source = ffmpeg-7.1.1.tar.gz::https://codeload.github.com/FFmpeg/FFmpeg/tar.gz/refs/tags/n7.1.1
+	source = rustdesk-fada664df7a294d1d1a9ca3e7cd3637069122f17.tar.gz::https://codeload.github.com/rustdesk/rustdesk/tar.gz/fada664df7a294d1d1a9ca3e7cd3637069122f17
+	source = nv-codec-headers-12.1.14.0.tar.gz::https://codeload.github.com/FFmpeg/nv-codec-headers/tar.gz/refs/tags/n12.1.14.0
+	source = amf-1.4.35.tar.gz::https://codeload.github.com/GPUOpen-LibrariesAndSDKs/AMF/tar.gz/refs/tags/v1.4.35
+	sha256sums = f117507dc501f2a6c11f9241d8d0c3213846cfad91764361af37befd6b6c523d
+	sha256sums = 251c82c41378d55823cfc37203b75280f6c442deadb6428cb02e3a28486efcb4
+	sha256sums = 2fefaa227d2a3b4170797796425a59d1dd2ed5fd231db9b4244468ba327acd0b
+	sha256sums = 5d93101eae5895247bea58cff40bb84424158170ae7f931105666157cc187636
+
+pkgname = ffmpeg-rustdesk
