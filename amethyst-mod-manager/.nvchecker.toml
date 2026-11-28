@@ -1,0 +1,5 @@
+[amethyst-mod-manager]
+source = "github"
+github = "ChrisDKN/Amethyst-Mod-Manager"
+use_latest_release = true
+prefix = "v"

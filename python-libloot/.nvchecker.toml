@@ -1,0 +1,4 @@
+[python-libloot]
+source = "github"
+github = "loot/libloot"
+use_latest_release = true
